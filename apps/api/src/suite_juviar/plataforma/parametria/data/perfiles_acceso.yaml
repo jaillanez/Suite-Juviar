@@ -1,0 +1,13 @@
+version: 1
+dueno_dato: "Recursos Humanos"
+estado: "PROVISORIO"
+reglas:
+  - perfil: "deposito"
+    puestos_codigo: ["OP-DEP", "OP-AUT"]
+    sectores_codigo: ["DEP"]
+  - perfil: "campo"
+    puestos_codigo: ["CAP-VIN"]
+    sectores_codigo: []
+  - perfil: "bascula"
+    puestos_codigo: ["OP-BAS"]
+    sectores_codigo: ["BAS"]

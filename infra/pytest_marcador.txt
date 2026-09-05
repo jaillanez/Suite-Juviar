@@ -1,0 +1,8 @@
+# Agregar a pyproject.toml para que las verificaciones locales no corran
+# en la suite normal ni en integración continua:
+
+[tool.pytest.ini_options]
+markers = [
+    "local: requiere las bases del PostgreSQL local (no corre en CI)",
+]
+addopts = "-m 'not local'"

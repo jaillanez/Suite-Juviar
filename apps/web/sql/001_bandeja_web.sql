@@ -37,7 +37,13 @@ CREATE TABLE IF NOT EXISTS web.catalogo (
 );
 
 -- Permisos: el usuario del sitio inserta solicitudes y lee catálogos. Nada más.
-CREATE ROLE web_sitio LOGIN;
+DO $$
+BEGIN
+    CREATE ROLE web_sitio LOGIN;
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
 GRANT USAGE ON SCHEMA web TO web_sitio;
 GRANT INSERT ON web.bandeja_solicitudes TO web_sitio;
 GRANT USAGE ON SEQUENCE web.seq_referencia_solicitud TO web_sitio;
@@ -47,7 +53,13 @@ GRANT SELECT ON web.catalogo TO web_sitio;
 -- si el sitio pudiera leerla, un lead vería los de los demás.
 
 -- El worker interno usa otro rol, con lectura y actualización de estado.
-CREATE ROLE web_worker LOGIN;
+DO $$
+BEGIN
+    CREATE ROLE web_worker LOGIN;
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END
+$$;
 GRANT USAGE ON SCHEMA web TO web_worker;
 GRANT SELECT, UPDATE ON web.bandeja_solicitudes TO web_worker;
 GRANT SELECT, INSERT, UPDATE, DELETE ON web.catalogo TO web_worker;

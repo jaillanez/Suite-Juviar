@@ -1,0 +1,181 @@
+# ---------------------------------------------------------------------------
+# CATÁLOGO DE EPP Y ROPA DE TRABAJO — PROVISORIO
+# ---------------------------------------------------------------------------
+# El catálogo real es la norma interna RD 068/11, que todavía no tenemos
+# digitalizada. Esto es una muestra con la estructura correcta para que la
+# aplicación funcione en prueba.
+#
+# Cuando llegue el RD 068/11 completo se reemplaza el contenido de este
+# archivo. La estructura no cambia.
+#
+# Dueño del dato: Higiene y Seguridad.
+# Las columnas producto / tipo_modelo / marca / posee_certificacion son las
+# que exige la grilla del RD 062/11.
+# ---------------------------------------------------------------------------
+version: 1
+norma: "RD 068/11"
+estado: PROVISORIO
+dueno_del_dato: "Higiene y Seguridad"
+
+elementos:
+  - codigo: "1580"
+    producto: "Chomba piqué manga corta"
+    tipo_modelo: "Piqué azul marino"
+    marca: "Ombú"
+    posee_certificacion: false
+    certificacion: null
+    unidad: "unidad"
+    vida_util_dias: 180
+
+  - codigo: "1581"
+    producto: "Camisa de trabajo manga larga"
+    tipo_modelo: "Grafa 70 gris"
+    marca: "Ombú"
+    posee_certificacion: false
+    certificacion: null
+    unidad: "unidad"
+    vida_util_dias: 180
+
+  - codigo: "1602"
+    producto: "Pantalón de trabajo"
+    tipo_modelo: "Grafa 70 azul"
+    marca: "Pampero"
+    posee_certificacion: false
+    certificacion: null
+    unidad: "unidad"
+    vida_util_dias: 180
+
+  - codigo: "2110"
+    producto: "Calzado de seguridad"
+    tipo_modelo: "Botín puntera composite"
+    marca: "Funcional"
+    posee_certificacion: true
+    certificacion: "IRAM 3610 — Marca de conformidad Res. 18/2025"
+    unidad: "par"
+    vida_util_dias: 365
+
+  - codigo: "2115"
+    producto: "Bota de goma caña alta"
+    tipo_modelo: "PVC antideslizante"
+    marca: "Trueno"
+    posee_certificacion: true
+    certificacion: "IRAM 3643"
+    unidad: "par"
+    vida_util_dias: 365
+
+  - codigo: "3040"
+    producto: "Guante de nitrilo"
+    tipo_modelo: "Soporte textil, puño largo"
+    marca: "Vitrex"
+    posee_certificacion: true
+    certificacion: "IRAM 3607"
+    unidad: "par"
+    vida_util_dias: 30
+
+  - codigo: "3055"
+    producto: "Guante de precisión"
+    tipo_modelo: "Nitrilo sin polvo, descartable"
+    marca: "Vitrex"
+    posee_certificacion: true
+    certificacion: "IRAM 3607"
+    unidad: "caja x 100"
+    vida_util_dias: 30
+
+  - codigo: "3070"
+    producto: "Guante anticorte"
+    tipo_modelo: "Nivel 5, recubrimiento poliuretano"
+    marca: "Steelpro"
+    posee_certificacion: true
+    certificacion: "IRAM 3607 nivel 5"
+    unidad: "par"
+    vida_util_dias: 90
+
+  - codigo: "4020"
+    producto: "Antiparra de seguridad"
+    tipo_modelo: "Lente incoloro antiempañante"
+    marca: "Libus"
+    posee_certificacion: true
+    certificacion: "IRAM 3630"
+    unidad: "unidad"
+    vida_util_dias: 365
+
+  - codigo: "4035"
+    producto: "Protector auditivo de copa"
+    tipo_modelo: "NRR 25 dB"
+    marca: "Libus"
+    posee_certificacion: true
+    certificacion: "IRAM 4060"
+    unidad: "unidad"
+    vida_util_dias: 365
+
+  - codigo: "4040"
+    producto: "Protector auditivo endoaural"
+    tipo_modelo: "Espuma con cordón"
+    marca: "3M"
+    posee_certificacion: true
+    certificacion: "IRAM 4060"
+    unidad: "par"
+    vida_util_dias: 15
+
+  - codigo: "5010"
+    producto: "Casco de seguridad"
+    tipo_modelo: "ALA completa, arnés cremallera"
+    marca: "Libus"
+    posee_certificacion: true
+    certificacion: "IRAM 3620"
+    unidad: "unidad"
+    vida_util_dias: 1825
+
+  - codigo: "5030"
+    producto: "Mameluco enterizo"
+    tipo_modelo: "Antiácido, cierre frontal"
+    marca: "Pampero"
+    posee_certificacion: true
+    certificacion: "IRAM 3859"
+    unidad: "unidad"
+    vida_util_dias: 180
+
+  - codigo: "5045"
+    producto: "Chaleco reflectivo"
+    tipo_modelo: "Alta visibilidad, bandas 3M"
+    marca: "Libus"
+    posee_certificacion: true
+    certificacion: "IRAM 3859"
+    unidad: "unidad"
+    vida_util_dias: 365
+
+  - codigo: "5060"
+    producto: "Faja lumbar"
+    tipo_modelo: "Con tiradores regulables"
+    marca: "Steelpro"
+    posee_certificacion: false
+    certificacion: null
+    unidad: "unidad"
+    vida_util_dias: 365
+
+  - codigo: "6010"
+    producto: "Campera abrigo de trabajo"
+    tipo_modelo: "Polar forrada, invierno"
+    marca: "Ombú"
+    posee_certificacion: false
+    certificacion: null
+    unidad: "unidad"
+    vida_util_dias: 730
+
+  - codigo: "6020"
+    producto: "Barbijo respirador"
+    tipo_modelo: "Libre mantenimiento P2"
+    marca: "3M"
+    posee_certificacion: true
+    certificacion: "IRAM 80057"
+    unidad: "unidad"
+    vida_util_dias: 15
+
+  - codigo: "6035"
+    producto: "Gorro tipo legionario"
+    tipo_modelo: "Con protección de nuca, verano"
+    marca: "Ombú"
+    posee_certificacion: false
+    certificacion: null
+    unidad: "unidad"
+    vida_util_dias: 365

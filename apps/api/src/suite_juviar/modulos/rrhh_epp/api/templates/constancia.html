@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Constancia {{ e.id }} — Entrega de ropa de trabajo y EPP</title>
+<style>
+  body{background:#e9ecef;margin:0;font-family:"Segoe UI",Roboto,system-ui,Helvetica,Arial,sans-serif;color:#141a1f}
+  .hoja{background:#fff;max-width:900px;margin:24px auto;padding:28px;border:1px solid #adb5bd}
+  .prueba{background:#a8400c;color:#fff;padding:12px 16px;font-weight:600;max-width:900px;margin:24px auto -24px}
+  .encabezado{display:flex;justify-content:space-between;border:1px solid #141a1f;padding:12px 14px;align-items:center;gap:16px}
+  .encabezado h1{font-size:19px;margin:0}
+  .encabezado .empresa{font-size:22px;font-weight:700}
+  .encabezado .ref{font-size:13px;text-align:right;line-height:1.6}
+  .datos{border:1px solid #141a1f;border-top:0;padding:12px 14px;font-size:15px;line-height:1.9}
+  .datos b{font-weight:600}
+  table{width:100%;border-collapse:collapse;margin-top:0;font-size:14px}
+  th,td{border:1px solid #141a1f;padding:8px 9px;text-align:left}
+  th{background:#f1f3f5;font-weight:600;font-size:13px}
+  td.num{width:34px;text-align:center;color:#5a6672}
+  .firma{border:1px solid #141a1f;border-top:0;padding:14px;display:flex;gap:30px;flex-wrap:wrap}
+  .firma img{max-height:110px;border:1px dashed #adb5bd;background:#fff}
+  .firma .meta{font-size:13px;color:#495057;line-height:1.8}
+  .obs{font-size:12px;color:#495057;margin-top:12px;line-height:1.7}
+  @media print{ body{background:#fff} .hoja{border:0;margin:0} .prueba{margin:0} }
+</style>
+</head>
+<body>
+
+{% if modo_simulado or e.firma_trabajador.simulada %}
+<div class="prueba">
+  Documento de prueba. No tiene validez legal: falta la firma digital del empleador
+  y el legajo no proviene de Nexus.
+</div>
+{% endif %}
+
+<div class="hoja">
+  <div class="encabezado">
+    <div class="empresa">{{ e.legajo.empresa }}</div>
+    <h1>ENTREGA DE ROPA DE TRABAJO Y EPP</h1>
+    <div class="ref">RD 062/11<br>Comprobante {{ e.id }}<br>{{ e.fecha_entrega.strftime('%d/%m/%Y') }}</div>
+  </div>
+
+  <div class="datos">
+    <div><b>Nombre y Apellido del Trabajador:</b> {{ e.legajo.nombre_completo }} &nbsp;&nbsp; <b>DNI:</b> {{ e.legajo.dni }} &nbsp;&nbsp; <b>Legajo:</b> {{ e.legajo.legajo }}</div>
+    <div><b>Puesto de trabajo:</b> {{ e.legajo.puesto }} &nbsp;&nbsp; <b>Sector:</b> {{ e.legajo.sector }} &nbsp;&nbsp; <b>Vínculo:</b> {{ e.legajo.tipo_vinculo|lower }}</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th class="num"></th>
+        <th>Producto</th>
+        <th>Tipo / Modelo</th>
+        <th>Marca</th>
+        <th>Posee certificación</th>
+        <th>Cantidad</th>
+        <th>Fecha de entrega</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in e.lineas %}
+      <tr>
+        <td class="num">{{ loop.index }}</td>
+        <td>{{ l.producto }}</td>
+        <td>{{ l.tipo_modelo }}</td>
+        <td>{{ l.marca }}</td>
+        <td>{{ 'SI' if l.posee_certificacion else 'NO' }}{% if l.certificacion %} — {{ l.certificacion }}{% endif %}</td>
+        <td>{{ l.cantidad }}</td>
+        <td>{{ e.fecha_entrega.strftime('%d/%m/%Y') }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="firma">
+    <div>
+      <div class="meta" style="margin-bottom:6px">Firma del trabajador</div>
+      {% if e.firma_trabajador.metodo == 'TRAZO_TABLET' and e.firma_trabajador.evidencia.startswith('data:image') %}
+        <img src="{{ e.firma_trabajador.evidencia }}" alt="Firma de {{ e.legajo.nombre_completo }}">
+      {% else %}
+        <div class="meta">Conformidad por {{ e.firma_trabajador.metodo|lower }}<br>{{ e.firma_trabajador.evidencia[:40] }}…</div>
+      {% endif %}
+    </div>
+    <div class="meta">
+      Método: {{ e.firma_trabajador.metodo|lower }}<br>
+      Sello de tiempo: {{ e.firma_trabajador.sello_tiempo.strftime('%d/%m/%Y %H:%M:%S') }}<br>
+      Registró en depósito: {{ e.usuario_deposito }}<br>
+      Firma digital del empleador: {{ e.firma_empresa or 'pendiente — motor de firma no disponible' }}
+    </div>
+  </div>
+
+  <p class="obs">
+    Observaciones: en Tipo/Modelo, Marca y Posee Certificación se consigna el N° de referencia según RD 068/11.
+    {% if e.observaciones %}<br>{{ e.observaciones }}{% endif %}
+  </p>
+</div>
+</body>
+</html>

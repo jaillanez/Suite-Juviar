@@ -1,0 +1,113 @@
+# ---------------------------------------------------------------------------
+# FUENTE SIMULADA DE LEGAJOS — NO ES NEXUS
+# ---------------------------------------------------------------------------
+# Reemplaza temporalmente a la Vista de solo lectura de Nexus (SQL Server,
+# Santa Fe) mientras no exista la conexión por VPN.
+#
+# Las claves de cada legajo son, una por una, las columnas que se le van a
+# pedir a esa Vista. Ver sql/vw_legajos_activos.sql.
+# Si Nexus devuelve otros nombres de columna, se corrige ACÁ y en la Vista,
+# nunca en el código del módulo.
+#
+# Datos ficticios. Ningún DNI corresponde a una persona real.
+# ---------------------------------------------------------------------------
+version: 1
+fuente: SIMULADA
+vista_equivalente: dbo.vw_legajos_activos
+
+legajos:
+  - legajo: "1042"
+    nombre: "Carlos Alberto"
+    apellido: "Quiroga"
+    dni: "27443110"
+    puesto_codigo: "OP-BOD"
+    puesto: "Operario de Bodega"
+    sector_codigo: "BOD"
+    sector: "Bodega"
+    empresa: "ENAV"
+    tipo_vinculo: "PERMANENTE"
+    activo: true
+
+  - legajo: "1077"
+    nombre: "Marisa Beatriz"
+    apellido: "Olivares"
+    dni: "30115982"
+    puesto_codigo: "OP-CLA"
+    puesto: "Operaria de Clarificación"
+    sector_codigo: "CLA"
+    sector: "Clarificación"
+    empresa: "ENAV"
+    tipo_vinculo: "PERMANENTE"
+    activo: true
+
+  - legajo: "1103"
+    nombre: "Héctor Daniel"
+    apellido: "Funes"
+    dni: "24880431"
+    puesto_codigo: "OP-AUT"
+    puesto: "Operador de Autoelevador"
+    sector_codigo: "DEP"
+    sector: "Depósito"
+    empresa: "ENAV"
+    tipo_vinculo: "PERMANENTE"
+    activo: true
+
+  - legajo: "1210"
+    nombre: "Silvina Rosa"
+    apellido: "Aciar"
+    dni: "33902774"
+    puesto_codigo: "OP-DEP"
+    puesto: "Personal de Depósito"
+    sector_codigo: "DEP"
+    sector: "Depósito"
+    empresa: "JUBIAR"
+    tipo_vinculo: "PERMANENTE"
+    activo: true
+
+  - legajo: "1444"
+    nombre: "Ramón Ignacio"
+    apellido: "Villegas"
+    dni: "41220567"
+    puesto_codigo: "OP-VIN"
+    puesto: "Cosechero"
+    sector_codigo: "VIN"
+    sector: "Viña"
+    empresa: "JUBIAR"
+    tipo_vinculo: "TEMPORARIO"
+    activo: true
+
+  - legajo: "1501"
+    nombre: "Lucía Andrea"
+    apellido: "Molina"
+    dni: "36555121"
+    puesto_codigo: "CAP-VIN"
+    puesto: "Capataz de Viña"
+    sector_codigo: "VIN"
+    sector: "Viña"
+    empresa: "JUBIAR"
+    tipo_vinculo: "PERMANENTE"
+    activo: true
+
+  - legajo: "1601"
+    nombre: "Diego Martín"
+    apellido: "Sosa"
+    dni: "35110442"
+    puesto_codigo: "OP-BAS"
+    puesto: "Operador de Báscula"
+    sector_codigo: "BAS"
+    sector: "Báscula"
+    empresa: "ENAV"
+    tipo_vinculo: "PERMANENTE"
+    activo: true
+
+  - legajo: "0988"
+    nombre: "Juan Manuel"
+    apellido: "Páez"
+    dni: "22003411"
+    puesto_codigo: "OP-CAL"
+    puesto: "Calderista"
+    sector_codigo: "CAL"
+    sector: "Calderas"
+    empresa: "ENAV"
+    tipo_vinculo: "PERMANENTE"
+    activo: false   # dado de baja: sirve para probar el rechazo por inactivo
