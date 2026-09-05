@@ -7,7 +7,7 @@
     "dev:mobile": "pnpm --filter @suite-juviar/mobile dev",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
-    "api:lint-arch": "cd apps/api && lint-imports",
+    "api:lint-arch": "cd apps/api && PYTHONPATH=../.. lint-imports",
     "api:dev": "cd apps/api && uvicorn suite_juviar.main:app --reload",
     "api:worker": "cd apps/api && python -m suite_juviar.workers.outbox_worker"
   },

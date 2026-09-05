@@ -13,8 +13,10 @@ from decimal import Decimal
 
 import pytest
 
+from suite_juviar.modulos.comercial.ingesta import IngestaSolicitudes
 from suite_juviar.modulos.recepcion.domain.entidades import OrigenPeso, Pesada, Romaneo
 from suite_juviar.plataforma.identidad.domain.puertos import RepositorioLegajos
+from suite_juviar.plataforma.terceros.domain.entidades import Tercero, TipoTercero
 
 
 def _pesada(kg: str) -> Pesada:
@@ -65,3 +67,49 @@ def test_recepcion_no_conoce_dinero():
 def test_recepcion_no_conoce_legajos_de_terceros():
     campos = {f.name for f in dataclasses.fields(Romaneo)}
     assert "legajo" not in campos and "productor_legajo" not in campos
+
+
+def test_comprador_exterior_puede_ingresar_sin_identificacion_fiscal():
+    comprador = Tercero(
+        cuit=None,
+        razon_social="Importador GmbH",
+        tipo=TipoTercero.COMPRADOR_EXTERIOR,
+        pais="DE",
+        email="compras@example.de",
+    )
+
+    assert comprador.clave_registro == ("EMAIL", "compras@example.de")
+
+
+def test_identificacion_fiscal_reemplaza_email_como_clave_del_comprador():
+    comprador = Tercero(
+        cuit=None,
+        razon_social="Importador GmbH",
+        tipo=TipoTercero.COMPRADOR_EXTERIOR,
+        pais="de",
+        identificacion_fiscal=" de-12345 ",
+        email="compras@example.de",
+    )
+
+    assert comprador.clave_registro == ("DE", "DE-12345")
+
+
+@pytest.mark.parametrize(
+    ("linea", "certificaciones", "planta", "sitio"),
+    [
+        ("bulk_wine", [], "JUVIAR", "Lavalle"),
+        ("jcu_decolourised", [], "JUVIAR", "Planta concentradora Lavalle"),
+        ("jcu_standard", ["Organic_Letis"], "ENAV", "Chimbas"),
+        ("jcu_standard", [], "ENAV", "Media Agua"),
+        ("jcu_virgin", [], None, None),
+    ],
+)
+def test_enrutamiento_comercial_se_recalcula_en_el_servidor(
+    linea: str,
+    certificaciones: list[str],
+    planta: str | None,
+    sitio: str | None,
+):
+    carga = {"product_line": linea, "certifications_required": certificaciones}
+
+    assert IngestaSolicitudes._enrutar(carga) == {"planta": planta, "sitio": sitio}

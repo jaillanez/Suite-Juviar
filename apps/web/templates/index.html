@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vitivinícola Argentina — JUVIAR &amp; ENAV · Döhler</title>
+<meta name="description" content="Vino a granel de Mendoza y jugo de uva concentrado de San Juan. Trazabilidad digital de viñedo a flexitank.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/landing.css">
+<script src="/static/js/landing.js" defer></script>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top">Vitivinícola Argentina <span>· JUVIAR &amp; ENAV · Döhler</span></a>
+    <nav class="nav-links">
+      <a href="#grupo" data-en="The group">El grupo</a>
+      <a href="#vinos" data-en="Bulk wine">Vino a granel</a>
+      <a href="#jugos" data-en="Concentrates">Jugos concentrados</a>
+      <a href="#muestras" class="nav-cta" data-en="Request a sample">Pedir muestra</a>
+    </nav>
+    <div class="lang" role="group" aria-label="Idioma / Language">
+      <button type="button" id="btn-es" aria-pressed="true">ES</button>
+      <button type="button" id="btn-en" aria-pressed="false">EN</button>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+<!-- HERO -->
+<div class="hero">
+  <svg class="art" id="heroart" viewBox="0 0 1440 760" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#2B1026"/>
+        <stop offset="42%" stop-color="#5E1B33"/>
+        <stop offset="70%" stop-color="#A8582A"/>
+        <stop offset="100%" stop-color="#D89543"/>
+      </linearGradient>
+      <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#4A2B22"/>
+        <stop offset="100%" stop-color="#170C13"/>
+      </linearGradient>
+      <linearGradient id="rows" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#2C4A2E" stop-opacity=".95"/>
+        <stop offset="100%" stop-color="#0E1710" stop-opacity=".2"/>
+      </linearGradient>
+    </defs>
+    <rect width="1440" height="760" fill="url(#sky)"/>
+    <circle cx="1075" cy="352" r="46" fill="#F5D79B" opacity=".55"/>
+    <path d="M0 372 L118 318 L196 348 L292 268 L372 318 L470 236 L560 300 L648 250 L742 312 L836 262 L930 322 L1032 276 L1128 332 L1236 288 L1330 336 L1440 300 L1440 420 L0 420 Z" fill="#3D1A31" opacity=".92"/>
+    <path d="M0 404 L140 372 L268 400 L392 358 L520 398 L640 366 L768 404 L900 372 L1030 406 L1170 376 L1300 408 L1440 384 L1440 470 L0 470 Z" fill="#2A1024" opacity=".95"/>
+    <rect x="0" y="452" width="1440" height="308" fill="url(#ground)"/>
+    <g id="vineyard" stroke="url(#rows)" stroke-width="2.4" fill="none"></g>
+    <g id="posts" fill="#0D0710" opacity=".55"></g>
+  </svg>
+  <div class="hero-veil"></div>
+  <div class="hero-in">
+    <div class="wrap">
+      <span class="hero-tag" data-en="JUVIAR · Mendoza  —  ENAV · San Juan  —  part of Döhler Group">JUVIAR · Mendoza — ENAV · San Juan — parte de Döhler Group</span>
+      <h1 data-en="Every lot ships with its analysis attached.">Cada lote sale con su análisis adjunto.</h1>
+      <p data-en="<strong>110 million kilos</strong> of grape a season between Lavalle, Chimbas and Media Agua. Bulk wine, and white grape juice concentrate in four grades — with lab data, certificates and vineyard traceability travelling with every drum, bin and flexitank."><strong>110 millones de kilos</strong> de uva por temporada entre Lavalle, Chimbas y Media Agua. Vino a granel y jugo de uva concentrado en cuatro calidades — con la analítica, los certificados y la trazabilidad de viñedo viajando junto a cada tambor, bin y flexitank.</p>
+    </div>
+  </div>
+</div>
+
+<!-- franja de líquidos -->
+<div class="liquids" role="list">
+  <div class="liq" role="listitem"><div class="liq-fill" style="background:linear-gradient(180deg,#7A1C3C,#3A0A1E)"></div>
+    <div class="liq-meta"><span class="liq-name">Malbec</span><span class="liq-val" data-en="Bulk wine · WBWE Gold">Vino a granel · Oro WBWE</span></div></div>
+  <div class="liq" role="listitem"><div class="liq-fill" style="background:linear-gradient(180deg,#8A2440,#4A0F24)"></div>
+    <div class="liq-meta"><span class="liq-name">Bonarda</span><span class="liq-val" data-en="Bulk wine · WBWE Gold">Vino a granel · Oro WBWE</span></div></div>
+  <div class="liq" role="listitem"><div class="liq-fill" style="background:linear-gradient(180deg,#E4D48C,#C9AE5A)"></div>
+    <div class="liq-meta"><span class="liq-name">Torrontés</span><span class="liq-val" data-en="Bulk white wine">Vino blanco a granel</span></div></div>
+  <div class="liq" role="listitem"><div class="liq-fill" style="background:linear-gradient(180deg,#E0A63A,#9C5F14)"></div>
+    <div class="liq-meta"><span class="liq-name" data-en="Standard concentrate">Mosto estándar</span><span class="liq-val">68 °Bx</span></div></div>
+  <div class="liq" role="listitem"><div class="liq-fill" style="background:linear-gradient(180deg,#EBC97E,#C08A2A)"></div>
+    <div class="liq-meta"><span class="liq-name" data-en="Virgin must">Mosto virgen</span><span class="liq-val">68 °Bx · SO₂ 0</span></div></div>
+  <div class="liq" role="listitem"><div class="liq-fill" style="background:linear-gradient(180deg,#F1E7CE,#DCCCA4)"></div>
+    <div class="liq-meta"><span class="liq-name" data-en="Decolourised juice">Mosto descolorido</span><span class="liq-val" data-en="Clean label">Clean label</span></div></div>
+</div>
+
+<!-- GRUPO -->
+<section id="grupo">
+  <div class="wrap">
+    <div class="split">
+      <div>
+        <h2 class="sec-h" data-en="Two provinces, one supply capacity">Dos provincias, una sola capacidad de abastecimiento</h2>
+        <p class="sec-lede" data-en="JUVIAR was founded in 2017 on an agro-industrial complex northeast of Mendoza — a winery, a concentration plant and 1.470 hectares of farmland. ENAV has been concentrating grape juice in San Juan since well before that, certified without interruption since 2003. Both are part of Döhler Group.">JUVIAR nació en 2017 sobre un complejo agroindustrial al noreste de Mendoza: bodega, planta concentradora y 1.470 hectáreas de finca. ENAV concentra jugo de uva en San Juan desde mucho antes, con certificaciones ininterrumpidas desde 2003. Ambas integran Döhler Group.</p>
+        <table class="ledger">
+          <tbody>
+            <tr><td class="m">110.000.000 kg</td><td class="l" data-en="Grape crushed per season">Uva molida por temporada</td><td class="s" data-en="60.000 t JUVIAR + ENAV San Juan">60.000 t JUVIAR + ENAV San Juan</td></tr>
+            <tr><td class="m">148.000.000 L</td><td class="l" data-en="Total storage capacity">Capacidad total de almacenamiento</td><td class="s">108M JUVIAR · 40M ENAV</td></tr>
+            <tr><td class="m">30.000.000 L</td><td class="l" data-en="Wine capacity (10M L bulk wine produced)">Capacidad de vino (10M L de granel producidos)</td><td class="s" data-en="Reds, whites, rosés">Tintos, blancos, rosados</td></tr>
+            <tr><td class="m">40.000 t</td><td class="l" data-en="Installed concentrate capacity per year">Capacidad instalada de concentrado por año</td><td class="s" data-en="25.000 t JUVIAR · 15.000 t produced">25.000 t JUVIAR · 15.000 t producidas</td></tr>
+            <tr><td class="m">1.470 ha</td><td class="l" data-en="Own vineyards, 100% drip irrigation">Fincas propias, 100 % riego por goteo</td><td class="s" data-en="329,45 ha in production">329,45 ha en producción</td></tr>
+            <tr><td class="m">1.200 t</td><td class="l" data-en="Peak crushing per day">Molienda diaria en pico de vendimia</td><td class="s" data-en="Weighing under 60 s per truck">Pesaje &lt;60 s por camión</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <div class="slot r43" data-art="vineyard">
+          <div class="cap"><b data-en="Finca San José — box pruning system">Finca San José — sistema de poda en caja</b>
+          <span>juviar.com.ar · wineyards/img-wineyards-01.png</span></div>
+        </div>
+        <div style="height:2px"></div>
+        <div class="slot r43" data-art="tanks">
+          <div class="cap"><b data-en="Winery, Lavalle">Bodega, Lavalle</b>
+          <span>juviar.com.ar · facility/img-facility-02.png</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SITIOS -->
+<section style="padding-top:0">
+  <div class="wrap">
+    <h3 class="sec-h" style="font-size:24px" data-en="Three sites">Tres sitios</h3>
+    <div class="sites">
+      <div class="site"><h4>Lavalle</h4><p class="prov">Mendoza · JUVIAR</p>
+        <p data-en="Winery, concentration plant and 1.470 ha of own vineyards. Ruta Provincial 34, Costa de Araujo.">Bodega, planta concentradora y 1.470 ha de fincas propias. Ruta Provincial 34, Costa de Araujo.</p></div>
+      <div class="site"><h4>Chimbas</h4><p class="prov">San Juan · ENAV</p>
+        <p data-en="Grape juice concentrate and head office. Necochea 361 Norte.">Jugo de uva concentrado y administración. Necochea 361 Norte.</p></div>
+      <div class="site"><h4>Media Agua</h4><p class="prov">San Juan · ENAV</p>
+        <p data-en="Second concentration site, organic line and dispatch.">Segundo sitio de concentración, línea orgánica y despacho.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- DOS PUERTAS -->
+<section style="padding-top:0">
+  <div class="wrap">
+    <h2 class="sec-h" data-en="What are you sourcing?">¿Qué está comprando?</h2>
+    <p class="sec-lede" data-en="The two lines have different plants, specs and certifications. Pick yours and go straight to the technical detail.">Las dos líneas tienen plantas, especificaciones y certificaciones distintas. Elija la suya y vaya directo al detalle técnico.</p>
+    <div class="doors">
+      <a class="door" href="#vinos">
+        <div class="slot r169" data-art="barrel"><div class="cap"><b data-en="Fermentation hall">Sala de fermentación</b><span>juviar.com.ar · facility/img-facility-01.png</span></div></div>
+        <div class="body">
+          <h3 data-en="Bulk wine">Vino a granel</h3>
+          <p class="who" data-en="Wineries, blenders, importers, private-label bottlers">Bodegas, blenders, importadores, embotelladores de marca propia</p>
+          <p data-en="10 million litres a year, vinified in Lavalle with automated temperature control and air mixing.">10 millones de litros por año, elaborados en Lavalle con control automático de temperatura y air mixing.</p>
+          <ul>
+            <li data-en="Malbec, Bonarda, Merlot, Syrah, Tempranillo and custom blends">Malbec, Bonarda, Merlot, Syrah, Tempranillo y cortes a medida</li>
+            <li data-en="Seven medals at the World Bulk Wine Exhibition, 2019–2021">Siete medallas en la World Bulk Wine Exhibition, 2019–2021</li>
+            <li data-en="Vegan certified, BDA Sustainability, good agricultural practices">Vegano certificado, BDA Sustentabilidad, buenas prácticas agrícolas</li>
+          </ul>
+          <span class="go" data-en="See the wine range">Ver la línea de vinos</span>
+        </div>
+      </a>
+      <a class="door" href="#jugos">
+        <div class="slot r169" data-art="drums"><div class="cap"><b data-en="Aseptic filling">Llenado aséptico</b><span>enav.com.ar · galería</span></div></div>
+        <div class="body">
+          <h3 data-en="Grape juice concentrate">Jugo de uva concentrado</h3>
+          <p class="who" data-en="Beverage, food, infant nutrition and sweetener manufacturers">Industrias de bebidas, alimentos, nutrición infantil y endulzantes</p>
+          <p data-en="Standard, decolourised, virgin (SO₂-free) and alcohol-added must at 68 °Brix.">Mosto estándar, descolorido, virgen (sin SO₂) y alcoholizado a 68 °Brix.</p>
+          <ul>
+            <li data-en="FSSC 22000 by Intertek, continuously since 2013">FSSC 22000 por Intertek, ininterrumpido desde 2013</li>
+            <li data-en="Organic (Letis) and Kosher (Sociedad Israelita)">Orgánico (Letis) y Kosher (Sociedad Israelita)</li>
+            <li data-en="Unipektin evaporators, aseptic drums, bins and flexitanks">Evaporadores Unipektin, tambores, bins y flexitanks asépticos</li>
+          </ul>
+          <span class="go" data-en="See the concentrate range">Ver la línea de concentrados</span>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- JUVIAR -->
+<section class="band" id="vinos">
+  <div class="wrap">
+    <div class="unit-head">
+      <h2 class="sec-h" style="margin-bottom:0">JUVIAR</h2>
+      <span class="kicker" data-en="Bulk wine · Lavalle, Mendoza">Vino a granel · Lavalle, Mendoza</span>
+    </div>
+    <p class="sec-lede" style="margin-top:14px" data-en="A bulk buyer needs the same profile in the next container as in the last one. That is a control problem before it is a winemaking one.">Quien compra a granel necesita el mismo perfil en el próximo contenedor que en el anterior. Eso es, antes que un problema de enología, un problema de control.</p>
+
+    <div class="split">
+      <div>
+        <h3 style="font-size:20px;font-weight:700;margin:0 0 16px" data-en="Automated cap management">Manejo automático del sombrero</h3>
+        <div class="ferm">
+          <div class="ferm-row"><span class="ferm-lab" data-en="Manual pump-over">Remontaje manual</span>
+            <span class="ferm-bar"><i style="width:100%;background:#3B2C39"></i></span>
+            <span class="ferm-days" data-en="8–10 days">8–10 días</span></div>
+          <div class="ferm-row"><span class="ferm-lab" data-en="Compressed air system">Sistema de aire comprimido</span>
+            <span class="ferm-bar"><i style="width:58%;background:linear-gradient(90deg,#8A2440,#D2778F)"></i></span>
+            <span class="ferm-days" data-en="5–6 days">5–6 días</span></div>
+          <p class="note" data-en="Modulated compressed air breaks up the cap automatically. Fermentation time drops by about a third, tank turnover rises, and polyphenol extraction stops depending on who was on shift.">La inyección modulada de aire comprimido desintegra el sombrero de orujo de forma automática. El tiempo de fermentación baja alrededor de un tercio, la rotación de vasijas sube y la extracción de polifenoles deja de depender de quién estaba de turno.</p>
+        </div>
+        <table class="ledger" style="margin-top:32px">
+          <tbody>
+            <tr><td class="m">108M L</td><td class="l" data-en="Storage capacity">Capacidad de almacenamiento</td></tr>
+            <tr><td class="m">2</td><td class="l" data-en="Unipektin (Bucher) evaporators">Evaporadores Unipektin (Bucher)</td></tr>
+            <tr><td class="m">3</td><td class="l" data-en="Chilled chambers: juice stability and holding">Cámaras de frío: estabilidad de jugo y espera</td></tr>
+            <tr><td class="m">329,45 ha</td><td class="l" data-en="Vineyard in production, of 1.470 ha owned">Viñedo en producción, sobre 1.470 ha propias</td></tr>
+          </tbody>
+        </table>
+        <p class="note" data-en="Also in line: centrifuges, decanters, cross-flow filtration and cartridge filtration on the loading-out lines.">También en línea: centrífugas, decantadores, filtro tangencial y filtración por cartuchos en las líneas de carga.</p>
+      </div>
+
+      <div>
+        <div class="slot r11" data-art="tanks"><div class="cap"><b data-en="Tank farm and cooling">Parque de tanques y frío</b><span>juviar.com.ar · facility/img-facility-03.png</span></div></div>
+        <h3 style="font-size:20px;font-weight:700;margin:26px 0 16px" data-en="Range and medals">Varietales y medallero</h3>
+        <ul class="vars">
+          <li><span class="chip" style="background:#5A1230"></span><span class="vn">Malbec</span><span class="vm" data-en="Gold 2019 · Gold 2021">Oro 2019 · Oro 2021</span></li>
+          <li><span class="chip" style="background:#7A1A34"></span><span class="vn">Merlot</span><span class="vm" data-en="Grand Gold 2021">Gran Oro 2021</span></li>
+          <li><span class="chip" style="background:#66162E"></span><span class="vn">Syrah</span><span class="vm" data-en="Gold 2020">Oro 2020</span></li>
+          <li><span class="chip" style="background:#8A2440"></span><span class="vn">Bonarda</span><span class="vm" data-en="Gold 2020 · Silver 2021">Oro 2020 · Plata 2021</span></li>
+          <li><span class="chip" style="background:#912B44"></span><span class="vn">Tempranillo</span><span class="vm none" data-en="Red">Tinto</span></li>
+          <li><span class="chip" style="background:#E4D48C"></span><span class="vn">Torrontés · Moscatel</span><span class="vm none" data-en="Whites">Blancos</span></li>
+          <li><span class="chip" style="background:#E8DCA0"></span><span class="vn">Chardonnay · Chenin</span><span class="vm none" data-en="Whites">Blancos</span></li>
+          <li><span class="chip" style="background:#EDE3B8"></span><span class="vn">Pedro Giménez</span><span class="vm none" data-en="White">Blanco</span></li>
+          <li><span class="chip" style="background:#D98A8A"></span><span class="vn" data-en="Rosé: Malbec, Bonarda">Rosado: Malbec, Bonarda</span><span class="vm none" data-en="Rosé">Rosado</span></li>
+        </ul>
+        <p class="note" style="margin-top:18px" data-en="Medals awarded at the World Bulk Wine Exhibition between 2019 and 2021.">Medallas obtenidas en la World Bulk Wine Exhibition entre 2019 y 2021.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ENAV -->
+<section id="jugos">
+  <div class="wrap">
+    <div class="unit-head">
+      <h2 class="sec-h" style="margin-bottom:0">ENAV</h2>
+      <span class="kicker" data-en="Grape juice concentrate · Chimbas and Media Agua, San Juan">Jugo de uva concentrado · Chimbas y Media Agua, San Juan</span>
+    </div>
+    <p class="sec-lede" style="margin-top:14px" data-en="Four juice types, one Brix standard, and a food-safety record that starts in 2003 with GMP and HACCP and has not been interrupted since.">Cuatro tipos de jugo, un estándar de Brix, y un historial de inocuidad que arranca en 2003 con BPM y HACCP y no se interrumpió desde entonces.</p>
+
+    <div class="tablewrap">
+      <table class="juices">
+        <thead><tr>
+          <th data-en="Product">Producto</th><th>°Brix</th><th>SO₂</th>
+          <th data-en="Colour">Color</th><th data-en="Typical application">Aplicación típica</th>
+        </tr></thead>
+        <tbody>
+          <tr><td data-en="Standard white concentrate">Mosto blanco estándar</td><td>68,0</td>
+            <td data-en="Standard">Estándar</td><td data-en="Natural amber">Ámbar natural</td>
+            <td class="use" data-en="Sweetening base for juices and soft drinks">Base edulcorante para jugos y gaseosas</td></tr>
+          <tr><td data-en="De-colored concentrate">Mosto descolorido</td><td>68,0</td>
+            <td data-en="Standard">Estándar</td><td data-en="Near colourless">Casi incoloro</td>
+            <td class="use" data-en="Clean-label formulas where colour must not shift">Fórmulas clean label donde el color no debe alterarse</td></tr>
+          <tr><td data-en="Virgin, no SO₂">Mosto virgen, sin SO₂</td><td>68,0</td><td>0 ppm</td>
+            <td data-en="Natural amber">Ámbar natural</td>
+            <td class="use" data-en="Infant nutrition and sulphite-free products">Nutrición infantil y productos sin sulfitos</td></tr>
+          <tr><td data-en="Alcohol added">Alcoholizado</td><td>68,0</td>
+            <td data-en="Standard">Estándar</td><td data-en="Natural amber">Ámbar natural</td>
+            <td class="use" data-en="Industrial fermentation and derivatives">Fermentación industrial y derivados</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="strip" style="margin-top:34px">
+      <div class="slot r43" data-art="drums"><div class="cap"><b data-en="Aseptic drums">Tambores asépticos</b><span>enav.com.ar · galería</span></div></div>
+      <div class="slot r43" data-art="evap"><div class="cap"><b data-en="Concentration line">Línea de concentración</b><span>enav.com.ar · galería</span></div></div>
+      <div class="slot r43" data-art="vineyard"><div class="cap"><b data-en="Organic growers, San Juan">Productores orgánicos, San Juan</b><span>enav.com.ar · RSE</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FORMATOS -->
+<section style="padding-top:0">
+  <div class="wrap">
+    <h3 class="sec-h" style="font-size:24px" data-en="Shipping formats">Formatos de despacho</h3>
+    <div class="formats">
+      <div class="fmt">
+        <svg width="46" height="52" viewBox="0 0 46 52" fill="none" aria-hidden="true">
+          <ellipse cx="23" cy="8" rx="17" ry="6" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M6 8v36c0 3.3 7.6 6 17 6s17-2.7 17-6V8" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M6 20c0 3.3 7.6 6 17 6s17-2.7 17-6M6 32c0 3.3 7.6 6 17 6s17-2.7 17-6" stroke="currentColor" stroke-width="1" opacity=".5"/>
+        </svg>
+        <h4 data-en="Drums">Tambores</h4><p class="cap2">303 kg</p>
+        <p data-en="60 gallons, aseptic. Trials and small volumes.">60 galones, asépticos. Pruebas y volúmenes chicos.</p>
+      </div>
+      <div class="fmt">
+        <svg width="56" height="52" viewBox="0 0 56 52" fill="none" aria-hidden="true">
+          <path d="M4 12h48v32H4z" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 12l6-6h36l6 6" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M4 24h48M4 34h48" stroke="currentColor" stroke-width="1" opacity=".5"/>
+          <path d="M14 44v6M42 44v6" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        <h4 data-en="Wooden bins">Bins de madera</h4><p class="cap2" data-en="up to 1.560 kg">hasta 1.560 kg</p>
+        <p data-en="For intermediate industrial processes.">Para procesos industriales intermedios.</p>
+      </div>
+      <div class="fmt">
+        <svg width="66" height="52" viewBox="0 0 66 52" fill="none" aria-hidden="true">
+          <path d="M3 14h60v28H3z" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M9 20c8 14 40 14 48 0v18c-8 6-40 6-48 0V20z" fill="currentColor" opacity=".18"/>
+          <path d="M9 20c8 14 40 14 48 0" stroke="currentColor" stroke-width="1.2" opacity=".6"/>
+          <path d="M14 42v6M52 42v6" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        <h4>Flexitanks</h4><p class="cap2" data-en="up to 23.700 kg">hasta 23.700 kg</p>
+        <p data-en="Full-container loads, aseptic.">Cargas de contenedor completo, asépticas.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CERTIFICACIONES -->
+<section style="padding-top:14px">
+  <div class="wrap">
+    <h2 class="sec-h" data-en="Certifications, by unit">Certificaciones, por unidad</h2>
+    <p class="sec-lede" data-en="Current certificates are published as downloadable PDFs on each company's site and, per lot, in the customer portal.">Los certificados vigentes se publican como PDF descargables en el sitio de cada empresa y, por lote, en el portal de clientes.</p>
+    <div class="certs">
+      <div><h4>JUVIAR</h4>
+        <ul>
+          <li><span>FSSC 22000</span><em>GFSI · UKAS</em></li>
+          <li><span data-en="Vegan">Vegano</span><em data-en="For wine">Para vino</em></li>
+          <li><span data-en="Good agricultural practices">Buenas prácticas agrícolas</span><em data-en="Own vineyards">Fincas propias</em></li>
+          <li><span>BDA</span><em data-en="Sustainability">Sustentabilidad</em></li>
+          <li><span>SMETA 4-Pillars</span><em>Sedex</em></li>
+          <li><span>Halal</span><em data-en="For concentrate">Para concentrado</em></li>
+          <li><span data-en="Sellos Argentinos">Sellos Argentinos</span><em data-en="For concentrate">Para concentrado</em></li>
+        </ul>
+      </div>
+      <div><h4>ENAV</h4>
+        <ul>
+          <li><span>FSSC 22000</span><em data-en="Intertek, since 2013">Intertek, desde 2013</em></li>
+          <li><span data-en="Organic">Orgánico</span><em>Letis</em></li>
+          <li><span>Kosher</span><em data-en="Sociedad Israelita">Sociedad Israelita</em></li>
+          <li><span>ISO 9001</span><em data-en="Since 2009">Desde 2009</em></li>
+          <li><span>HACCP · BPM</span><em data-en="Since 2003">Desde 2003</em></li>
+          <li><span>FPA</span><em data-en="Since 2008">Desde 2008</em></li>
+        </ul>
+      </div>
+      <div><h4 data-en="Group">Grupo</h4>
+        <ul>
+          <li><span>Döhler Group</span><em data-en="Global ingredients">Ingredientes globales</em></li>
+          <li><span data-en="Vineyard traceability">Trazabilidad de viñedo</span><em data-en="Lot to plot">De lote a cuartel</em></li>
+          <li><span data-en="INV registration">Registro INV</span><em data-en="Both wineries">Ambas bodegas</em></li>
+          <li><span data-en="Phytosanitary records">Registro fitosanitario</span><em data-en="Harvest clearance">Habilitación de cosecha</em></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INV 2026 -->
+<section class="band">
+  <div class="wrap">
+    <div class="split">
+      <div>
+        <h2 class="sec-h" data-en="The paperwork travels digitally">La documentación viaja en digital</h2>
+        <p class="sec-lede" data-en="From 2026 the Argentine wine authority drops the paper transit certificate. Volume, alcohol, sugar and homogenisation status are declared digitally at dispatch. That changes what a buyer receives with each lot.">Desde 2026 el INV elimina el certificado de tránsito en papel. Volumen, grado alcohólico, azúcar y estado de homogeneización se declaran en digital al momento del despacho. Eso cambia lo que recibe el comprador con cada lote.</p>
+        <div class="inv">
+          <p data-en="<strong>Batch passport.</strong> Each lot has a page with its lab sheet, vineyard of origin, phytosanitary record and certificates, reachable from the QR on the shipping note."><strong>Pasaporte de lote.</strong> Cada lote tiene una página con su ficha de laboratorio, su viñedo de origen, su registro fitosanitario y sus certificados, accesible desde el QR del remito.</p>
+          <p data-en="<strong>30-day objection window.</strong> The receiver has 30 days to raise a formal objection; after that the lot is accepted by default and stock can no longer be corrected. The portal notifies you when the window opens and again before it closes."><strong>Ventana de objeción de 30 días.</strong> El receptor tiene 30 días para manifestar objeción formal; pasado ese plazo el lote queda aceptado tácitamente y ya no se puede rectificar stock. El portal avisa cuando la ventana se abre y otra vez antes de que cierre.</p>
+          <p data-en="<strong>Audit-ready.</strong> Certificates, analyses and audit reports export as one pack for your own customers and auditors."><strong>Listo para auditoría.</strong> Certificados, análisis y reportes se exportan en un solo paquete para sus propios clientes y auditores.</p>
+        </div>
+      </div>
+      <div>
+        <h3 style="font-size:18px;font-weight:700;margin:0 0 16px" data-en="What every dispatch declares">Qué declara cada despacho</h3>
+        <ul class="vars">
+          <li><span class="vn" data-en="Lot and vineyard of origin">Lote y viñedo de origen</span><span class="vm none">CIU / CEC / MV</span></li>
+          <li><span class="vn" data-en="Net volume">Volumen neto</span><span class="vm none">L</span></li>
+          <li><span class="vn" data-en="Alcohol by volume">Grado alcohólico</span><span class="vm none">% vol</span></li>
+          <li><span class="vn" data-en="Real sugar">Azúcar real</span><span class="vm none">g/L</span></li>
+          <li><span class="vn" data-en="Homogenised">Homogeneizado</span><span class="vm none" data-en="yes / no">sí / no</span></li>
+          <li><span class="vn" data-en="Certificates attached">Certificados adjuntos</span><span class="vm none">PDF</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MUESTRAS -->
+<section id="muestras">
+  <div class="wrap">
+    <h2 class="sec-h" data-en="Request a technical sample">Solicitar muestra técnica</h2>
+    <p class="sec-lede" data-en="Give us the spec you need to hit and we prepare a sample against it, with its certificate of analysis. Fields marked with an asterisk are required.">Díganos la especificación que necesita alcanzar y preparamos una muestra contra ella, con su certificado de análisis. Los campos con asterisco son obligatorios.</p>
+
+    <div class="formgrid">
+      <form id="lead" novalidate data-endpoint="/api/muestras" data-token="{{ csrf_token }}">
+        <fieldset>
+          <legend data-en="Company">Empresa</legend>
+          <div class="f2">
+            <div><label for="company" data-en="Company name *">Razón social *</label><input type="text" id="company" required></div>
+            <div><label for="email" data-en="Work email *">Correo corporativo *</label><input type="email" id="email" required></div>
+            <div><label for="country" data-en="Destination country *">País de destino *</label><input type="text" id="country" required></div>
+            <div><label for="segment" data-en="Industry">Industria</label>
+              <select id="segment">
+                <option value="Beverage_Manufacturing" data-en="Beverages">Bebidas</option>
+                <option value="Food_Ingredients" data-en="Food ingredients">Ingredientes alimentarios</option>
+                <option value="Infant_Nutrition" data-en="Infant nutrition">Nutrición infantil</option>
+                <option value="Winery_Bottler" data-en="Winery / bottler">Bodega / embotellador</option>
+                <option value="Trader_Importer" data-en="Trader / importer">Trader / importador</option>
+              </select></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend data-en="Product">Producto</legend>
+          <div class="radios">
+            {% for lp in lineas_producto %}
+            <label><input type="radio" name="product" value="{{ lp.codigo }}"{% if loop.first %} checked{% endif %}> <span data-en="{{ lp.nombre_en }}">{{ lp.nombre_es }}</span></label>
+            {% endfor %}
+          </div>
+          <div class="f2" style="margin-top:16px">
+            <div><label for="volume" data-en="Projected annual volume (t)">Volumen anual proyectado (t)</label>
+              <input type="number" id="volume" min="0" step="1" value="800"></div>
+            <div><label for="format" data-en="Shipping format">Formato de despacho</label>
+              <select id="format">
+                {% for f in formatos_despacho %}
+                <option value="{{ f.codigo }}"{% if f.nombre_en %} data-en="{{ f.nombre_en }}"{% endif %}>{{ f.nombre_es }}</option>
+                {% endfor %}
+              </select></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend data-en="Target specification">Especificación objetivo</legend>
+          <div class="f2">
+            <div><label for="brix">°Brix</label><input type="number" id="brix" step="0.1" value="68.0"></div>
+            <div><label for="ph">pH</label><input type="number" id="ph" step="0.01" value="3.45"></div>
+            <div><label for="acidity" data-en="Total acidity (g/L)">Acidez total (g/L)</label><input type="number" id="acidity" step="0.01" value="0.85"></div>
+            <div><label for="so2" data-en="Free SO₂ (ppm)">SO₂ libre (ppm)</label><input type="number" id="so2" step="1" value="0"></div>
+            <div class="wine-only"><label for="abv" data-en="Alcohol (% vol)">Grado alcohólico (% vol)</label><input type="number" id="abv" step="0.1" value="13.5"></div>
+            <div class="wine-only"><label for="colour" data-en="Optical density 420/520">Densidad óptica 420/520</label>
+              <input type="text" id="colour" placeholder="0.42 / 0.58" data-en-ph="0.42 / 0.58"></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend data-en="Required certifications">Certificaciones requeridas</legend>
+          <div class="checks">
+            {% for c in certificaciones %}
+            <label><input type="checkbox" name="cert" value="{{ c.codigo }}"> <span data-en="{{ c.nombre_en }}">{{ c.nombre_es }}</span></label>
+            {% endfor %}
+          </div>
+        </fieldset>
+
+        <button type="submit" class="submit" data-en="Send request">Enviar solicitud</button>
+        <p id="formmsg" class="smallnote" style="margin-top:14px" role="status" aria-live="polite"></p>
+      </form>
+
+      <aside class="panel" aria-label="Enrutamiento">
+        <h3 data-en="Where this request goes">Adónde va esta solicitud</h3>
+        <p class="sub" data-en="Routed live from what you selected, using the group's routing rules.">Se enruta en vivo según lo que seleccionó, con las reglas de derivación del grupo.</p>
+        <div class="route"><span class="k" data-en="Plant">Planta</span><span class="v" id="r-plant">JUVIAR S.A.</span></div>
+        <div class="route"><span class="k" data-en="Site">Sitio</span><span class="v" id="r-site">Lavalle, Mendoza</span></div>
+        <div class="route"><span class="k" data-en="Sample lead time">Plazo de muestra</span><span class="v" id="r-eta">5–7 días</span></div>
+        <div class="route" style="border-bottom:1px solid var(--band-line)"><span class="k" data-en="Reference">Referencia</span><span class="v" id="r-ref">B2B-2026-000</span></div>
+        <pre id="payload" aria-label="JSON"></pre>
+        <button type="button" class="copy" id="copybtn" data-en="Copy JSON">Copiar JSON</button>
+        <p class="sub" style="margin:12px 0 0;font-size:12.5px" data-en="This is the record created in the CRM/ERP. It is shown here so the technical team can check the schema before the integration goes live.">Este es el registro que se crea en el CRM/ERP. Se muestra acá para que el equipo técnico verifique el esquema antes de que la integración esté en línea.</p>
+      </aside>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <div>
+        <h4 data-en="Vitivinícola Argentina">Vitivinícola Argentina</h4>
+        <p style="margin:0;max-width:40ch" data-en="Bulk wine from Mendoza and grape juice concentrate from San Juan, under one commercial and traceability structure. Part of Döhler Group.">Vino a granel de Mendoza y jugo de uva concentrado de San Juan, bajo una sola estructura comercial y de trazabilidad. Parte de Döhler Group.</p>
+      </div>
+      <div><h4>JUVIAR S.A.</h4>
+        <ul>
+          <li>Ruta Provincial 34 s/n (5535)</li>
+          <li data-en="Costa de Araujo, Lavalle, Mendoza">Costa de Araujo, Lavalle, Mendoza</li>
+          <li>+54 261 476 8990</li>
+          <li>juviar.com.ar</li>
+        </ul>
+      </div>
+      <div><h4>ENAV S.A.</h4>
+        <ul>
+          <li>Necochea 361 Norte (5413)</li>
+          <li>Chimbas, San Juan</li>
+          <li>+54 264 431 1857</li>
+          <li>enav.com.ar</li>
+        </ul>
+      </div>
+    </div>
+    <p class="legal" data-en="Draft for internal review. Figures, medals and certifications are taken from juviar.com.ar and enav.com.ar. Photographic slots are marked with the source file that goes in each one; the final images must be supplied by the companies. Döhler is named as stated on juviar.com.ar; confirm use of the mark before publishing.">Borrador para revisión interna. Las cifras, medallas y certificaciones se tomaron de juviar.com.ar y enav.com.ar. Las ranuras fotográficas indican qué archivo va en cada una; las imágenes finales las tienen que aportar las empresas. Döhler se nombra según lo declarado en juviar.com.ar; confirmar el uso de la marca antes de publicar.</p>
+  </div>
+</footer>
+</body>
+</html>

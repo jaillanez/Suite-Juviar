@@ -13,6 +13,7 @@ dependencies = [
     "pydantic-settings>=2.10",
     "cryptography>=45.0",
     "geoalchemy2>=0.17",
+    "psycopg[binary]>=3.2",
 ]
 
 [project.optional-dependencies]
@@ -35,7 +36,7 @@ packages = ["src/suite_juviar"]
 # import-linter: la arquitectura se verifica en CI, no se confía en la disciplina
 # ---------------------------------------------------------------------------
 [tool.importlinter]
-root_package = "suite_juviar"
+root_packages = ["suite_juviar", "apps"]
 include_external_packages = true
 
 [[tool.importlinter.contracts]]
@@ -120,6 +121,18 @@ forbidden_modules = [
     "suite_juviar.modulos.cosecha.domain",
     "suite_juviar.modulos.recepcion.domain",
 ]
+
+[[tool.importlinter.contracts]]
+name = "apps.web no toca la suite"
+type = "forbidden"
+source_modules = ["apps.web"]
+forbidden_modules = ["suite_juviar.modulos", "suite_juviar.plataforma"]
+
+[[tool.importlinter.contracts]]
+name = "La suite no depende del sitio público"
+type = "forbidden"
+source_modules = ["suite_juviar.modulos", "suite_juviar.plataforma"]
+forbidden_modules = ["apps.web"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
