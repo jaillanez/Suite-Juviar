@@ -1,0 +1,130 @@
+[project]
+name = "suite-juviar-api"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.118",
+    "uvicorn[standard]>=0.37",
+    "sqlalchemy[asyncio]>=2.0.43",
+    "asyncpg>=0.30",
+    "alembic>=1.16",
+    "redis>=6.0",
+    "pydantic>=2.11",
+    "pydantic-settings>=2.10",
+    "cryptography>=45.0",
+    "geoalchemy2>=0.17",
+]
+
+[project.optional-dependencies]
+dev = [
+    "import-linter>=2.3",
+    "ruff>=0.9",
+    "pytest>=8.4",
+    "pytest-asyncio>=1.0",
+    "mypy>=1.17",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/suite_juviar"]
+
+# ---------------------------------------------------------------------------
+# import-linter: la arquitectura se verifica en CI, no se confía en la disciplina
+# ---------------------------------------------------------------------------
+[tool.importlinter]
+root_package = "suite_juviar"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Capas dentro de cada módulo de negocio"
+type = "layers"
+layers = ["api", "infrastructure", "application", "domain"]
+containers = [
+    "suite_juviar.modulos.turnos",
+    "suite_juviar.modulos.rrhh_epp",
+    "suite_juviar.modulos.cosecha",
+    "suite_juviar.modulos.recepcion",
+    "suite_juviar.modulos.ddjj",
+]
+
+[[tool.importlinter.contracts]]
+name = "Capas dentro de cada servicio de plataforma"
+type = "layers"
+layers = ["api", "infrastructure", "application", "domain"]
+containers = [
+    "suite_juviar.plataforma.identidad",
+    "suite_juviar.plataforma.terceros",
+    "suite_juviar.plataforma.firma",
+    "suite_juviar.plataforma.bitacora",
+    "suite_juviar.plataforma.outbox",
+    "suite_juviar.plataforma.parametria",
+]
+
+[[tool.importlinter.contracts]]
+name = "Los módulos de negocio no se conocen entre sí"
+type = "independence"
+modules = [
+    "suite_juviar.modulos.turnos",
+    "suite_juviar.modulos.rrhh_epp",
+    "suite_juviar.modulos.cosecha",
+    "suite_juviar.modulos.recepcion",
+    "suite_juviar.modulos.ddjj",
+]
+
+[[tool.importlinter.contracts]]
+name = "El dominio es Python puro"
+type = "forbidden"
+source_modules = [
+    "suite_juviar.modulos.turnos.domain",
+    "suite_juviar.modulos.rrhh_epp.domain",
+    "suite_juviar.modulos.cosecha.domain",
+    "suite_juviar.modulos.recepcion.domain",
+    "suite_juviar.modulos.ddjj.domain",
+    "suite_juviar.plataforma.identidad.domain",
+    "suite_juviar.plataforma.terceros.domain",
+    "suite_juviar.plataforma.firma.domain",
+    "suite_juviar.plataforma.bitacora.domain",
+    "suite_juviar.plataforma.outbox.domain",
+    "suite_juviar.plataforma.parametria.domain",
+]
+forbidden_modules = ["sqlalchemy", "fastapi", "asyncpg", "redis", "alembic", "pydantic"]
+
+[[tool.importlinter.contracts]]
+name = "La aplicación no conoce implementaciones"
+type = "forbidden"
+source_modules = [
+    "suite_juviar.modulos.turnos.application",
+    "suite_juviar.modulos.rrhh_epp.application",
+    "suite_juviar.modulos.cosecha.application",
+    "suite_juviar.modulos.recepcion.application",
+    "suite_juviar.modulos.ddjj.application",
+]
+forbidden_modules = ["sqlalchemy", "fastapi", "asyncpg"]
+
+[[tool.importlinter.contracts]]
+name = "La plataforma no depende de los módulos"
+type = "forbidden"
+source_modules = ["suite_juviar.plataforma"]
+forbidden_modules = ["suite_juviar.modulos", "suite_juviar.composicion"]
+
+[[tool.importlinter.contracts]]
+name = "Solo composicion cruza módulos"
+type = "forbidden"
+source_modules = ["suite_juviar.workers"]
+forbidden_modules = [
+    "suite_juviar.modulos.turnos.domain",
+    "suite_juviar.modulos.rrhh_epp.domain",
+    "suite_juviar.modulos.cosecha.domain",
+    "suite_juviar.modulos.recepcion.domain",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"

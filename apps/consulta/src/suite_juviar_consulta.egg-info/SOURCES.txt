@@ -1,0 +1,13 @@
+pyproject.toml
+src/__init__.py
+src/consulta_publica/__init__.py
+src/consulta_publica/main.py
+src/consulta_publica/api/__init__.py
+src/consulta_publica/api/router.py
+src/consulta_publica/lectura/__init__.py
+src/consulta_publica/lectura/modelos.py
+src/suite_juviar_consulta.egg-info/PKG-INFO
+src/suite_juviar_consulta.egg-info/SOURCES.txt
+src/suite_juviar_consulta.egg-info/dependency_links.txt
+src/suite_juviar_consulta.egg-info/requires.txt
+src/suite_juviar_consulta.egg-info/top_level.txt

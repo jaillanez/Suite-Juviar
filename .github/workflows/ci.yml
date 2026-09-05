@@ -1,0 +1,32 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.15.0 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm build
+
+  arquitectura:
+    # Si alguien importa un módulo desde otro, o mete SQLAlchemy en el dominio,
+    # el build se cae acá. La arquitectura no es una convención escrita: se verifica.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.14" }
+      - run: pip install -e "apps/api[dev]"
+      - name: Contratos de importación
+        run: cd apps/api && lint-imports
+      - run: cd apps/api && ruff check .
+      - run: cd apps/api && pytest

@@ -1,0 +1,21 @@
+{
+  "name": "suite-juviar",
+  "private": true,
+  "packageManager": "pnpm@10.15.0",
+  "scripts": {
+    "dev:web": "pnpm --filter @suite-juviar/web dev",
+    "dev:mobile": "pnpm --filter @suite-juviar/mobile dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "api:lint-arch": "cd apps/api && lint-imports",
+    "api:dev": "cd apps/api && uvicorn suite_juviar.main:app --reload",
+    "api:worker": "cd apps/api && python -m suite_juviar.workers.outbox_worker"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.9.0",
+    "prettier": "^3.6.0"
+  }
+}

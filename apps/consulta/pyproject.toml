@@ -1,0 +1,8 @@
+[project]
+name = "suite-juviar-consulta"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = ["fastapi>=0.118", "uvicorn[standard]>=0.37", "sqlalchemy[asyncio]>=2.0.43", "asyncpg>=0.30"]
+
+# Deliberadamente NO depende de suite-juviar-api. Si algún día lo importa,
+# el bot pasó a tener acceso al dominio completo y se rompió el aislamiento.

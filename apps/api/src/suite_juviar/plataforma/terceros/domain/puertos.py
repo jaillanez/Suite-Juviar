@@ -1,0 +1,15 @@
+from __future__ import annotations
+
+from typing import Protocol
+
+from .entidades import CUIT, Chofer, Patente, Tercero, Vehiculo
+
+
+class RepositorioTerceros(Protocol):
+    async def obtener(self, cuit: CUIT) -> Tercero | None: ...
+
+    async def guardar(self, tercero: Tercero) -> None: ...
+
+    async def obtener_chofer(self, dni: str) -> Chofer | None: ...
+
+    async def obtener_vehiculo(self, patente: Patente) -> Vehiculo | None: ...

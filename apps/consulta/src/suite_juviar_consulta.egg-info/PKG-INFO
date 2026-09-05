@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: suite-juviar-consulta
+Version: 0.1.0
+Requires-Python: >=3.14
+Requires-Dist: fastapi>=0.118
+Requires-Dist: uvicorn[standard]>=0.37
+Requires-Dist: sqlalchemy[asyncio]>=2.0.43
+Requires-Dist: asyncpg>=0.30

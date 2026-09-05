@@ -1,0 +1,154 @@
+suite-juviar/
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+├── apps/
+│   ├── api/
+│   │   ├── migrations/
+│   │   │   └── versions/
+│   │   ├── src/
+│   │   │   └── suite_juviar/
+│   │   │       ├── composicion/
+│   │   │       │   ├── entrega_epp.py
+│   │   │       │   └── recepcion_uva_terceros.py
+│   │   │       ├── modulos/
+│   │   │       │   ├── cosecha/
+│   │   │       │   │   ├── api/
+│   │   │       │   │   ├── application/
+│   │   │       │   │   ├── domain/
+│   │   │       │   │   │   └── entidades.py
+│   │   │       │   │   └── infrastructure/
+│   │   │       │   ├── ddjj/
+│   │   │       │   │   ├── api/
+│   │   │       │   │   ├── application/
+│   │   │       │   │   ├── domain/
+│   │   │       │   │   │   └── entidades.py
+│   │   │       │   │   └── infrastructure/
+│   │   │       │   ├── recepcion/
+│   │   │       │   │   ├── api/
+│   │   │       │   │   │   └── router.py
+│   │   │       │   │   ├── application/
+│   │   │       │   │   │   └── casos_uso.py
+│   │   │       │   │   ├── domain/
+│   │   │       │   │   │   ├── entidades.py
+│   │   │       │   │   │   ├── eventos.py
+│   │   │       │   │   │   └── puertos.py
+│   │   │       │   │   └── infrastructure/
+│   │   │       │   │       ├── dependencias.py
+│   │   │       │   │       └── repositorio.py
+│   │   │       │   ├── rrhh_epp/
+│   │   │       │   │   ├── api/
+│   │   │       │   │   ├── application/
+│   │   │       │   │   ├── domain/
+│   │   │       │   │   │   ├── entidades.py
+│   │   │       │   │   │   └── puertos.py
+│   │   │       │   │   └── infrastructure/
+│   │   │       │   └── turnos/
+│   │   │       │       ├── api/
+│   │   │       │       ├── application/
+│   │   │       │       ├── domain/
+│   │   │       │       │   └── entidades.py
+│   │   │       │       └── infrastructure/
+│   │   │       ├── plataforma/
+│   │   │       │   ├── bitacora/
+│   │   │       │   │   ├── api/
+│   │   │       │   │   ├── application/
+│   │   │       │   │   ├── domain/
+│   │   │       │   │   │   ├── entidades.py
+│   │   │       │   │   │   └── puertos.py
+│   │   │       │   │   └── infrastructure/
+│   │   │       │   │       └── repositorio.py
+│   │   │       │   ├── cripto/
+│   │   │       │   │   ├── domain/
+│   │   │       │   │   ├── infrastructure/
+│   │   │       │   │   ├── adaptador.py
+│   │   │       │   │   └── puertos.py
+│   │   │       │   ├── db/
+│   │   │       │   │   └── base.py
+│   │   │       │   ├── firma/
+│   │   │       │   │   ├── api/
+│   │   │       │   │   ├── application/
+│   │   │       │   │   ├── domain/
+│   │   │       │   │   │   ├── entidades.py
+│   │   │       │   │   │   └── puertos.py
+│   │   │       │   │   └── infrastructure/
+│   │   │       │   ├── identidad/
+│   │   │       │   │   ├── api/
+│   │   │       │   │   ├── application/
+│   │   │       │   │   ├── domain/
+│   │   │       │   │   │   ├── entidades.py
+│   │   │       │   │   │   └── puertos.py
+│   │   │       │   │   └── infrastructure/
+│   │   │       │   │       └── repositorio.py
+│   │   │       │   ├── outbox/
+│   │   │       │   │   ├── api/
+│   │   │       │   │   ├── application/
+│   │   │       │   │   ├── domain/
+│   │   │       │   │   │   ├── entidades.py
+│   │   │       │   │   │   └── puertos.py
+│   │   │       │   │   └── infrastructure/
+│   │   │       │   │       └── repositorio.py
+│   │   │       │   ├── parametria/
+│   │   │       │   │   ├── api/
+│   │   │       │   │   ├── application/
+│   │   │       │   │   ├── domain/
+│   │   │       │   │   │   ├── entidades.py
+│   │   │       │   │   │   └── puertos.py
+│   │   │       │   │   └── infrastructure/
+│   │   │       │   └── terceros/
+│   │   │       │       ├── api/
+│   │   │       │       ├── application/
+│   │   │       │       ├── domain/
+│   │   │       │       │   ├── entidades.py
+│   │   │       │       │   └── puertos.py
+│   │   │       │       └── infrastructure/
+│   │   │       ├── workers/
+│   │   │       │   └── outbox_worker.py
+│   │   │       ├── config.py
+│   │   │       └── main.py
+│   │   ├── tests/
+│   │   │   └── test_invariantes.py
+│   │   └── pyproject.toml
+│   ├── consulta/
+│   │   ├── src/
+│   │   │   └── consulta_publica/
+│   │   │       ├── api/
+│   │   │       │   └── router.py
+│   │   │       ├── lectura/
+│   │   │       │   └── modelos.py
+│   │   │       └── main.py
+│   │   └── pyproject.toml
+│   ├── mobile/
+│   │   ├── src/
+│   │   │   └── perfiles.ts
+│   │   ├── capacitor.config.ts
+│   │   └── package.json
+│   └── web/
+│       ├── src/
+│       │   └── app/
+│       └── package.json
+├── docs/
+│   ├── adr/
+│   │   ├── 0001-monolito-modular.md
+│   │   ├── 0002-bitacora-inmutable-en-el-motor.md
+│   │   └── 0003-datos-personales-en-dos-columnas.md
+│   ├── ARQUITECTURA.md
+│   └── ESTRUCTURA.txt
+├── ops/
+├── packages/
+│   ├── config/
+│   ├── contratos/
+│   │   ├── src/
+│   │   │   └── index.ts
+│   │   └── package.json
+│   └── ui/
+│       ├── src/
+│       └── package.json
+├── sql/
+│   ├── 00_roles.sql
+│   ├── 10_bitacora_inmutable.sql
+│   └── 20_datos_personales.sql
+├── .gitignore
+├── README.md
+├── package.json
+└── pnpm-workspace.yaml
