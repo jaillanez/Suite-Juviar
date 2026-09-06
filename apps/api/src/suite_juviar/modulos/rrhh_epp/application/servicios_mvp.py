@@ -91,7 +91,16 @@ class RegistrarEntrega:
         usuario_deposito: str,
         observaciones: str = "",
         fecha: date | None = None,
+        id_entrega: str | None = None,
+        entregada_en: datetime | None = None,
     ) -> Entrega:
+        # El identificador nace en la tablet. Si la respuesta se perdió y la cola
+        # reintenta, devolvemos el registro existente sin volver a firmar ni auditar.
+        id_entrega = id_entrega or uuid.uuid4().hex[:12].upper()
+        existente = self._entregas.obtener(id_entrega)
+        if existente is not None:
+            return existente
+
         persona = self._legajos.obtener(numero_legajo)
         if persona is None:
             raise LegajoInexistente(f"El legajo {numero_legajo} no existe en {self._legajos.fuente}.")
@@ -137,25 +146,38 @@ class RegistrarEntrega:
                 f"Habilitados: {', '.join(self._firma.metodos_habilitados)}."
             )
 
-        id_entrega = uuid.uuid4().hex[:12].upper()
+        momento_entrega = entregada_en or datetime.now(UTC)
+        if momento_entrega.tzinfo is None:
+            momento_entrega = momento_entrega.replace(tzinfo=UTC)
         documento = {
             "id": id_entrega,
             "legajo": persona.legajo,
             "dni": persona.dni,
             "lineas": [l.__dict__ for l in lineas],
+            "entregada_en": momento_entrega.isoformat(),
+            "usuario_deposito": usuario_deposito,
         }
-        firma = self._firma.firmar_trabajador(metodo_firma, evidencia_firma, documento)
+        firma = self._firma.firmar_trabajador(
+            metodo_firma,
+            evidencia_firma,
+            documento,
+            sello_tiempo=momento_entrega,
+        )
 
         entrega = Entrega(
             id=id_entrega,
             legajo=persona,
             lineas=tuple(lineas),
-            fecha_entrega=fecha or datetime.now(UTC).date(),
+            fecha_entrega=fecha or momento_entrega.date(),
             firma_trabajador=firma,
             usuario_deposito=usuario_deposito,
             observaciones=observaciones,
         )
-        self._entregas.guardar(entrega)
+        if not self._entregas.guardar(entrega):
+            existente = self._entregas.obtener(id_entrega)
+            if existente is not None:
+                return existente
+            raise RuntimeError("La entrega duplicada no pudo recuperarse del repositorio.")
         self._bitacora.registrar(
             evento="ENTREGA_EPP_REGISTRADA",
             usuario=usuario_deposito,

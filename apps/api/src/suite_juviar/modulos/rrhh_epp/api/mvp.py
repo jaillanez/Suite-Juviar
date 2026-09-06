@@ -6,6 +6,7 @@ resuelve del lado servidor desde Parametría, pero parte de esa identidad no
 autenticada hasta que ``plataforma/identidad`` esté operativo.
 """
 
+from datetime import datetime
 from ipaddress import ip_address
 from pathlib import Path
 from typing import Annotated
@@ -71,6 +72,14 @@ class EntregaEntrada(BaseModel):
     metodo_firma: str = "TRAZO_TABLET"
     evidencia_firma: str = Field(default="", max_length=2_000_000)
     observaciones: str = Field(default="", max_length=1_000)
+    id_cliente: str | None = Field(
+        default=None,
+        min_length=8,
+        max_length=64,
+        pattern=r"^[A-Za-z0-9_-]+$",
+    )
+    entregada_en: datetime | None = None
+    actor_declarado: str | None = Field(default=None, min_length=1, max_length=30)
 
 
 def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
@@ -260,6 +269,8 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             evidencia_firma=entrada.evidencia_firma,
             usuario_deposito=usuario.legajo,
             observaciones=entrada.observaciones,
+            id_entrega=entrada.id_cliente,
+            entregada_en=entrada.entregada_en,
         )
         return {
             "id": entrega.id,

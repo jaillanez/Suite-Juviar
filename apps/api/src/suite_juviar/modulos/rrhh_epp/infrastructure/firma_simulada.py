@@ -1,6 +1,6 @@
 """Motor de firma SIMULADO.
 
-Guarda el trazo o el PIN y le pone la hora del servidor. Nada más.
+Guarda el trazo o el PIN y conserva la hora real declarada por la tablet. Nada más.
 
 Lo que NO hace, y por eso ninguna constancia generada acá tiene validez legal:
 
@@ -32,13 +32,19 @@ class FirmaSimulada:
     def metodos_habilitados(self) -> tuple[str, ...]:
         return self._metodos
 
-    def firmar_trabajador(self, metodo: str, evidencia: str, documento: dict) -> Firma:
+    def firmar_trabajador(
+        self,
+        metodo: str,
+        evidencia: str,
+        documento: dict,
+        sello_tiempo: datetime | None = None,
+    ) -> Firma:
         if metodo == "PIN":
             # Nunca se guarda el PIN en claro, ni siquiera en la prueba.
             evidencia = "sha256:" + hashlib.sha256(evidencia.encode("utf-8")).hexdigest()
         return Firma(
             metodo=metodo,
             evidencia=evidencia,
-            sello_tiempo=datetime.now(UTC),
+            sello_tiempo=sello_tiempo or datetime.now(UTC),
             simulada=True,
         )

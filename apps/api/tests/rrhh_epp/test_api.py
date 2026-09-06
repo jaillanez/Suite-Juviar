@@ -1,3 +1,6 @@
+from datetime import UTC, datetime
+
+
 def test_estado_avisa_que_es_simulado(cliente):
     d = cliente.get("/estado").json()
     assert d["modo_simulado"] is True
@@ -211,3 +214,46 @@ def test_api_expone_alertas_sin_bloquear_entregas(cliente):
         "evidencia_firma": "data:image/png;base64,AAAA",
     })
     assert entrega.status_code == 200
+
+
+def test_reenviar_la_misma_entrega_genera_un_solo_registro(cliente):
+    cuerpo = {
+        "id_cliente": "tablet-20260906-0001",
+        "legajo": "1103",
+        "items": [{"codigo": "62", "cantidad": 1}],
+        "metodo_firma": "TRAZO_TABLET",
+        "evidencia_firma": "data:image/png;base64,AAAA",
+        "entregada_en": "2026-09-06T13:45:12-03:00",
+        "actor_declarado": "1210",
+    }
+
+    primera = cliente.post("/entregas", json=cuerpo)
+    segunda = cliente.post("/entregas", json=cuerpo)
+
+    assert primera.status_code == 200
+    assert segunda.status_code == 200
+    assert primera.json()["id"] == segunda.json()["id"] == cuerpo["id_cliente"]
+    ficha = cliente.get("/legajos/1103").json()
+    assert [e["id"] for e in ficha["historial"]] == [cuerpo["id_cliente"]]
+    eventos = cliente.get("/bitacora?n=10").json()
+    assert [e["detalle"]["id_entrega"] for e in eventos] == [cuerpo["id_cliente"]]
+
+
+def test_el_servidor_conserva_el_sello_real_de_la_tablet(cliente, contenedor):
+    sello = datetime(2026, 9, 6, 16, 45, 12, tzinfo=UTC)
+    r = cliente.post(
+        "/entregas",
+        json={
+            "id_cliente": "tablet-20260906-0002",
+            "legajo": "1103",
+            "items": [{"codigo": "62", "cantidad": 1}],
+            "evidencia_firma": "data:image/png;base64,AAAA",
+            "entregada_en": sello.isoformat(),
+            "actor_declarado": "1210",
+        },
+    )
+
+    assert r.status_code == 200
+    guardada = contenedor.entregas.obtener("tablet-20260906-0002")
+    assert guardada is not None
+    assert guardada.firma_trabajador.sello_tiempo == sello

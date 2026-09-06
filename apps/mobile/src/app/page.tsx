@@ -1,6 +1,15 @@
 "use client";
 
-import { FormEvent, PointerEvent, useRef, useState } from "react";
+import { FormEvent, PointerEvent, useCallback, useEffect, useRef, useState } from "react";
+import {
+  AlmacenIndexedDB,
+  type ConfirmacionEntrega,
+  type EntregaOffline,
+  motivoBloqueo,
+  POLITICA_COLA,
+  registrarConCola,
+  sincronizarCola,
+} from "../offline";
 import { ContextoMovil, DATOS_PERFIL } from "../perfiles";
 
 const API = process.env.NEXT_PUBLIC_API_URL ?? "/backend/rrhh-epp";
@@ -171,6 +180,8 @@ function Firma({ alCambiar }: { alCambiar: (valor: string) => void }) {
 }
 
 function Deposito({ sesion }: { sesion: ContextoMovil }) {
+  const almacen = useRef<AlmacenIndexedDB | null>(null);
+  const sincronizacionActiva = useRef(false);
   const [consulta, setConsulta] = useState("");
   const [resultados, setResultados] = useState<Resultado[]>([]);
   const [ficha, setFicha] = useState<Ficha | null>(null);
@@ -181,9 +192,67 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
   const [buscado, setBuscado] = useState(false);
+  const [pendientes, setPendientes] = useState(0);
+  const [bloqueoCola, setBloqueoCola] = useState<string | null>(null);
+  const [colaPreparada, setColaPreparada] = useState(false);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [constancia, setConstancia] = useState<string | null>(null);
+
+  const obtenerAlmacen = useCallback(() => {
+    if (!almacen.current) almacen.current = new AlmacenIndexedDB();
+    return almacen.current;
+  }, []);
+
+  const refrescarCola = useCallback(async () => {
+    const lista = await obtenerAlmacen().listar();
+    setPendientes(lista.length);
+    setBloqueoCola(motivoBloqueo(lista));
+    setColaPreparada(true);
+  }, [obtenerAlmacen]);
+
+  const enviar = useCallback((entrega: EntregaOffline) => pedir<ConfirmacionEntrega>(
+    "/entregas",
+    sesion.legajo,
+    { method: "POST", body: JSON.stringify(entrega) },
+  ), [sesion.legajo]);
+
+  const sincronizar = useCallback(async () => {
+    if (sincronizacionActiva.current) return;
+    sincronizacionActiva.current = true;
+    setSincronizando(true);
+    try {
+      const confirmadas = await sincronizarCola(obtenerAlmacen(), enviar);
+      await refrescarCola();
+      if (confirmadas.length > 0) {
+        const ultima = confirmadas.at(-1)!;
+        setMensaje(`Se sincronizaron ${confirmadas.length} entrega(s).`);
+        setConstancia(`${API}/constancias/${ultima.id}`);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No fue posible leer la cola local");
+    } finally {
+      sincronizacionActiva.current = false;
+      setSincronizando(false);
+    }
+  }, [enviar, obtenerAlmacen, refrescarCola]);
+
+  useEffect(() => {
+    void sincronizar();
+    const alRecuperarConexion = () => void sincronizar();
+    window.addEventListener("online", alRecuperarConexion);
+    const temporizador = window.setInterval(() => void sincronizar(), 30_000);
+    return () => {
+      window.removeEventListener("online", alRecuperarConexion);
+      window.clearInterval(temporizador);
+    };
+  }, [sincronizar]);
 
   async function buscar(evento: FormEvent) {
     evento.preventDefault();
+    if (bloqueoCola) {
+      setError(`${bloqueoCola} Recupere la conexión antes de iniciar otra entrega.`);
+      return;
+    }
     setError("");
     setCargando(true);
     setBuscado(false);
@@ -209,6 +278,7 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
       setSeleccion({});
       setCantidades(Object.fromEntries(nueva.epp_requerido.map((e) => [e.codigo, e.cantidad_sugerida])));
       setFirma("");
+      setConstancia(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No fue posible abrir el legajo");
     } finally {
@@ -218,22 +288,40 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
 
   async function registrar() {
     if (!ficha) return;
+    if (bloqueoCola) {
+      setError(`${bloqueoCola} Recupere la conexión antes de registrar otra entrega.`);
+      return;
+    }
     const items = ficha.epp_requerido
       .filter((elemento) => seleccion[elemento.codigo])
       .map((elemento) => ({ codigo: elemento.codigo, cantidad: cantidades[elemento.codigo] ?? 1 }));
     setError("");
+    setMensaje("");
+    setConstancia(null);
     setCargando(true);
     try {
-      const entrega = await pedir<{ id: string; items: number }>("/entregas", sesion.legajo, {
-        method: "POST",
-        body: JSON.stringify({
-          legajo: ficha.cabecera.legajo,
-          items,
-          metodo_firma: "TRAZO_TABLET",
-          evidencia_firma: firma,
-        }),
-      });
-      setMensaje(`Entrega ${entrega.id} registrada: ${entrega.items} elemento(s).`);
+      const entrega: EntregaOffline = {
+        id_cliente: `tablet-${globalThis.crypto.randomUUID()}`,
+        legajo: ficha.cabecera.legajo,
+        items,
+        metodo_firma: "TRAZO_TABLET",
+        evidencia_firma: firma,
+        entregada_en: new Date().toISOString(),
+        actor_declarado: sesion.legajo,
+        observaciones: "",
+      };
+      const resultado = await registrarConCola(obtenerAlmacen(), entrega, enviar);
+      await refrescarCola();
+      if (resultado.estado === "CONFIRMADA") {
+        setMensaje(
+          `Entrega ${resultado.confirmacion.id} registrada: ${resultado.confirmacion.items} elemento(s).`,
+        );
+        setConstancia(`${API}/constancias/${resultado.confirmacion.id}`);
+      } else {
+        setMensaje(
+          `Entrega ${entrega.id_cliente} pendiente de sincronizar. No se emitió constancia.`,
+        );
+      }
       setFicha(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No fue posible registrar la entrega");
@@ -247,11 +335,29 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
   return (
     <section className="flujo">
       <div className="aviso">Entorno de prueba · constancias sin validez legal</div>
+      <div
+        className={`cola-estado ${bloqueoCola ? "cola-bloqueada" : ""}`}
+        role="status"
+        aria-live="polite"
+      >
+        <strong>
+          {colaPreparada ? pendientes : "—"} entrega(s) pendiente(s) de sincronizar
+        </strong>
+        <span>
+          {sincronizando
+            ? "Intentando sincronizar…"
+            : `Política ${POLITICA_COLA.estado}: límite ${POLITICA_COLA.maximoPendientes} o 24 horas.`}
+        </span>
+        {bloqueoCola && <span>{bloqueoCola} Nuevas entregas bloqueadas.</span>}
+      </div>
       <form className="panel buscador" onSubmit={buscar}>
         <label htmlFor="buscar">Trabajador: legajo, apellido o DNI</label>
         <div className="fila">
           <input id="buscar" value={consulta} onChange={(e) => setConsulta(e.target.value)} placeholder="1042 o Quiroga" />
-          <button className="principal" disabled={!consulta.trim() || cargando}>
+          <button
+            className="principal"
+            disabled={!consulta.trim() || cargando || !colaPreparada || Boolean(bloqueoCola)}
+          >
             {cargando ? "Procesando…" : "Buscar"}
           </button>
         </div>
@@ -259,7 +365,13 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
           <p className="vacio" role="status">No encontramos trabajadores activos con ese dato.</p>
         )}
         {resultados.map((persona) => (
-          <button className="resultado" type="button" key={persona.legajo} onClick={() => elegir(persona.legajo)}>
+          <button
+            className="resultado"
+            type="button"
+            key={persona.legajo}
+            onClick={() => elegir(persona.legajo)}
+            disabled={Boolean(bloqueoCola)}
+          >
             <strong>{persona.nombre_completo}</strong>
             <span>{persona.legajo} · {persona.puesto} · {persona.empresa}</span>
           </button>
@@ -268,6 +380,11 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
 
       {error && <p className="error" role="alert">{error}</p>}
       {mensaje && <p className="exito" role="status">{mensaje}</p>}
+      {constancia && (
+        <a className="constancia" href={constancia} target="_blank" rel="noreferrer">
+          Abrir constancia confirmada
+        </a>
+      )}
 
       {ficha && (
         <div className="panel entrega">
@@ -303,7 +420,11 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
           </div>
           <h3>Conformidad del trabajador</h3>
           <Firma alCambiar={setFirma} />
-          <button className="principal confirmar" onClick={registrar} disabled={!elegidos || !firma || cargando}>
+          <button
+            className="principal confirmar"
+            onClick={registrar}
+            disabled={!elegidos || !firma || cargando || Boolean(bloqueoCola)}
+          >
             {cargando ? "Registrando…" : "Registrar entrega"}
           </button>
         </div>

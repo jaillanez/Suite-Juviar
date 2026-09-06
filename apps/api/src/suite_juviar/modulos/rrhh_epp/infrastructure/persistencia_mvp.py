@@ -69,29 +69,36 @@ class EntregasSQLite:
     def __init__(self, base: BaseLocal) -> None:
         self._cn = base.cn
 
-    def guardar(self, entrega: Entrega) -> None:
-        self._cn.execute(
-            """INSERT INTO entrega_epp
-               (id, legajo, fecha_entrega, usuario_deposito, observaciones,
-                firma_metodo, firma_evidencia, firma_sello, firma_simulada,
-                cabecera_json, lineas_json, creado_en)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (
-                entrega.id,
-                entrega.legajo.legajo,
-                entrega.fecha_entrega.isoformat(),
-                entrega.usuario_deposito,
-                entrega.observaciones,
-                entrega.firma_trabajador.metodo,
-                entrega.firma_trabajador.evidencia,
-                entrega.firma_trabajador.sello_tiempo.isoformat(),
-                int(entrega.firma_trabajador.simulada),
-                json.dumps(entrega.legajo.__dict__, ensure_ascii=False),
-                json.dumps([l.__dict__ for l in entrega.lineas], ensure_ascii=False),
-                datetime.now(UTC).isoformat(timespec="seconds"),
-            ),
-        )
+    def guardar(self, entrega: Entrega) -> bool:
+        try:
+            self._cn.execute(
+                """INSERT INTO entrega_epp
+                   (id, legajo, fecha_entrega, usuario_deposito, observaciones,
+                    firma_metodo, firma_evidencia, firma_sello, firma_simulada,
+                    cabecera_json, lineas_json, creado_en)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    entrega.id,
+                    entrega.legajo.legajo,
+                    entrega.fecha_entrega.isoformat(),
+                    entrega.usuario_deposito,
+                    entrega.observaciones,
+                    entrega.firma_trabajador.metodo,
+                    entrega.firma_trabajador.evidencia,
+                    entrega.firma_trabajador.sello_tiempo.isoformat(),
+                    int(entrega.firma_trabajador.simulada),
+                    json.dumps(entrega.legajo.__dict__, ensure_ascii=False),
+                    json.dumps([l.__dict__ for l in entrega.lineas], ensure_ascii=False),
+                    datetime.now(UTC).isoformat(timespec="seconds"),
+                ),
+            )
+        except sqlite3.IntegrityError:
+            self._cn.rollback()
+            if self.obtener(entrega.id) is not None:
+                return False
+            raise
         self._cn.commit()
+        return True
 
     @staticmethod
     def _a_entrega(fila: sqlite3.Row) -> Entrega:

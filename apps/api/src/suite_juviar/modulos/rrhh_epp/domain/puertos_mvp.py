@@ -7,6 +7,7 @@ dominio depende de estas interfaces, nunca de las implementaciones.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Protocol
 
 from .modelos_mvp import ElementoEPP, Entrega, Firma, Legajo, RequisitoEPP
@@ -53,7 +54,9 @@ class RepositorioCatalogo(Protocol):
 
 
 class RepositorioEntregas(Protocol):
-    def guardar(self, entrega: Entrega) -> None: ...
+    def guardar(self, entrega: Entrega) -> bool:
+        """Devuelve False si el identificador ya estaba persistido."""
+        ...
 
     def obtener(self, id_entrega: str) -> Entrega | None: ...
 
@@ -71,7 +74,13 @@ class MotorFirma(Protocol):
     @property
     def metodos_habilitados(self) -> tuple[str, ...]: ...
 
-    def firmar_trabajador(self, metodo: str, evidencia: str, documento: dict) -> Firma: ...
+    def firmar_trabajador(
+        self,
+        metodo: str,
+        evidencia: str,
+        documento: dict,
+        sello_tiempo: datetime | None = None,
+    ) -> Firma: ...
 
 
 class Bitacora(Protocol):

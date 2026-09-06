@@ -8,6 +8,7 @@
   --vino: #6b1f3a;
   --vino-vivo: #8b2b4e;
   --alerta: #a8400c;
+  --alerta-texto: #792d09;
   --ok: #21613f;
 }
 
@@ -35,6 +36,12 @@ h1 { margin: 0; font-size: clamp(36px, 9vw, 58px); line-height: 1; letter-spacin
 .error { margin: 6px 0 0; border-left: 5px solid var(--alerta); background: #fff0eb; color: #792d09; }
 .exito { border-left: 5px solid var(--ok); background: #edf8f1; color: #17462e; }
 .aviso { margin-top: 18px; background: var(--alerta); color: white; font-weight: 700; }
+.cola-estado { display: grid; gap: 3px; margin-top: 12px; padding: 13px 15px; border: 1px solid var(--linea); border-left: 5px solid var(--ok); border-radius: 8px; background: var(--papel); }
+.cola-estado span { color: var(--suave); font-size: 13px; }
+.cola-estado.cola-bloqueada { border-left-color: var(--alerta); }
+.cola-estado.cola-bloqueada strong, .cola-estado.cola-bloqueada span:last-child { color: var(--alerta-texto); }
+.constancia { display: inline-block; min-height: 44px; margin-top: 8px; padding: 10px 0; color: var(--vino); font-weight: 700; }
+.constancia:focus-visible { outline: 3px solid var(--vino); outline-offset: 2px; }
 .cabecera-app { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
 .cabecera-app h1 { font-size: clamp(32px, 8vw, 48px); }
 .cabecera-app p:last-child { margin: 10px 0 0; color: var(--suave); }
@@ -84,6 +91,7 @@ h1 { margin: 0; font-size: clamp(36px, 9vw, 58px); line-height: 1; letter-spacin
     --vino: #c75d86;
     --vino-vivo: #d9779c;
     --alerta: #c2571d;
+    --alerta-texto: #ffc2a8;
     --ok: #58a979;
   }
   .elemento.activo { background: #35212a; }
