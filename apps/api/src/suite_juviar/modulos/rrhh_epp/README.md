@@ -35,6 +35,10 @@ limitado al aislamiento de las pruebas automatizadas.
 - El aviso de mínimo sale por una outbox durable y un worker SMTP con reintentos. La
   casilla se configura mediante `SJ_COMPRAS_EMAIL`; servidor, remitente y credenciales
   se inyectan con `SJ_SMTP_*`, sin direcciones ni secretos fijados en el código.
+- Es un aviso, no una orden: informa ítem, disponible, mínimo y unidades efectivamente
+  entregadas en los últimos 30 días, sin proponer cuánto comprar. Mantiene un único ID
+  mientras siga pendiente; una reposición cierra el episodio y una caída posterior abre
+  otro. Un empeoramiento antes del envío actualiza el aviso existente.
 - El rol PostgreSQL `suite_rrhh_epp` queda aislado de Selección y Capacitación y se
   comprueba contra la base local con el control de §6.5.
 

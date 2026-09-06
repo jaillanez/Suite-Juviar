@@ -299,10 +299,24 @@ class StockPostgreSQL:
             )
             if disponible <= minimo:
                 cur.execute(
+                    """SELECT COALESCE(SUM((linea->>'cantidad')::integer), 0)
+                       FROM rrhh_epp.entrega_epp entrega
+                       CROSS JOIN LATERAL jsonb_array_elements(entrega.lineas_json) linea
+                       WHERE entrega.fecha_entrega >= CURRENT_DATE - 29
+                         AND linea->>'item_codigo' = %s""",
+                    (item_codigo,),
+                )
+                consumo = int(cur.fetchone()["coalesce"])
+                cur.execute(
                     """INSERT INTO rrhh_epp.aviso_compras
-                       (item_codigo, disponible, minimo)
-                       VALUES (%s,%s,%s) ON CONFLICT DO NOTHING""",
-                    (item_codigo, disponible, minimo),
+                       (item_codigo, disponible, minimo, consumo_30_dias)
+                       VALUES (%s,%s,%s,%s)
+                       ON CONFLICT (item_codigo)
+                       WHERE estado IN ('PENDIENTE', 'PROCESANDO')
+                       DO UPDATE SET disponible = EXCLUDED.disponible,
+                                     minimo = EXCLUDED.minimo,
+                                     consumo_30_dias = EXCLUDED.consumo_30_dias""",
+                    (item_codigo, disponible, minimo, consumo),
                 )
 
     def configurar(self, item_codigo: str, disponible: int, minimo: int) -> StockItem:
@@ -323,6 +337,14 @@ class StockPostgreSQL:
             fila = cur.fetchone()
             if fila is None:
                 raise StockInvalido(f"El ítem {item_codigo or '(vacío)'} no existe en el stock.")
+            if disponible > minimo:
+                cur.execute(
+                    """UPDATE rrhh_epp.aviso_compras
+                       SET estado = 'CERRADO_REPOSICION', procesando_en = NULL
+                       WHERE item_codigo = %s
+                         AND estado IN ('PENDIENTE', 'PROCESANDO')""",
+                    (item_codigo,),
+                )
             return self._a_stock(fila)
 
     def alertas_pendientes(self) -> list[dict[str, object]]:

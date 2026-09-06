@@ -12,7 +12,7 @@ credencial, aprobación o dato corporativo faltante se reemplazó por una invenc
 | 0.1 Catálogo de dos niveles | CONSTRUIDO | Los 435 ítems `SIM-*` deben reemplazarse por el Excel de HyS. |
 | 0.2 Constancia individual | CONSTRUIDO | PDF individual y versionado inmutable; firma digital real pendiente. |
 | 0.3 Dos circuitos | CONSTRUIDO | Matriz y volumen diario siguen sin validación empresarial. |
-| 0.4 Stock | CONSTRUIDO | Existencias/mínimos simulados; outbox y transporte SMTP construidos, configuración corporativa pendiente. |
+| 0.4 Stock | CONSTRUIDO | Existencias/mínimos simulados; aviso informativo con consumo real de 30 días, episodio único, outbox y SMTP construidos. Configuración corporativa pendiente. |
 | 0.5 Deuda de EPP | PARCIAL | PostgreSQL y offline construidos; identidad real y certificado de firma pendientes. |
 | 1.1 Postulante | CONSTRUIDO | Vive en Terceros, con dueño RRHH; persistencia cifrada pendiente. |
 | 1.2 Ingesta | BASE CONSTRUIDA | Originales cifrados en PostgreSQL; 20 a 30 CV por correo alcanzan para calibrar sin esperar la ruta Chimbas. |

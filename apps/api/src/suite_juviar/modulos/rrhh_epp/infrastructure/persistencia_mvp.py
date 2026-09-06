@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS aviso_compras (
     item_codigo  TEXT NOT NULL,
     disponible   INTEGER NOT NULL,
     minimo       INTEGER NOT NULL,
+    consumo_30_dias INTEGER NOT NULL DEFAULT 0,
     creado_en    TEXT NOT NULL,
     estado       TEXT NOT NULL DEFAULT 'PENDIENTE',
     intentos     INTEGER NOT NULL DEFAULT 0,
@@ -141,6 +142,7 @@ class BaseLocal:
             ("ultimo_error", "TEXT"),
             ("enviado_en", "TEXT"),
             ("procesando_en", "TEXT"),
+            ("consumo_30_dias", "INTEGER NOT NULL DEFAULT 0"),
         ):
             if nombre not in columnas_aviso:
                 self.cn.execute(f"ALTER TABLE aviso_compras ADD COLUMN {nombre} {definicion}")
@@ -373,10 +375,27 @@ class StockSQLite:
             )
             stock = self.obtener(item_codigo)
             if stock and stock.disponible <= stock.minimo:
+                hoy = datetime.now(UTC).date()
+                desde = date.fromordinal(hoy.toordinal() - 29).isoformat()
+                consumo = 0
+                for fila_entrega in self._cn.execute(
+                    "SELECT lineas_json FROM entrega_epp WHERE fecha_entrega >= ?", (desde,)
+                ).fetchall():
+                    consumo += sum(
+                        int(linea["cantidad"])
+                        for linea in json.loads(fila_entrega["lineas_json"])
+                        if linea.get("item_codigo") == item_codigo
+                    )
+                self._cn.execute(
+                    """UPDATE aviso_compras
+                       SET disponible = ?, minimo = ?, consumo_30_dias = ?
+                       WHERE item_codigo = ? AND estado IN ('PENDIENTE', 'PROCESANDO')""",
+                    (stock.disponible, stock.minimo, consumo, item_codigo),
+                )
                 self._cn.execute(
                     """INSERT INTO aviso_compras
-                       (item_codigo, disponible, minimo, creado_en, estado)
-                       SELECT ?,?,?,?,'PENDIENTE'
+                       (item_codigo, disponible, minimo, consumo_30_dias, creado_en, estado)
+                       SELECT ?,?,?,?,?,'PENDIENTE'
                        WHERE NOT EXISTS (
                            SELECT 1 FROM aviso_compras
                            WHERE item_codigo = ? AND estado IN ('PENDIENTE', 'PROCESANDO')
@@ -385,6 +404,7 @@ class StockSQLite:
                         item_codigo,
                         stock.disponible,
                         stock.minimo,
+                        consumo,
                         datetime.now(UTC).isoformat(),
                         item_codigo,
                     ),
@@ -402,6 +422,13 @@ class StockSQLite:
                WHERE item_codigo = ?""",
             (disponible, minimo, item_codigo),
         )
+        if disponible > minimo:
+            self._cn.execute(
+                """UPDATE aviso_compras
+                   SET estado = 'CERRADO_REPOSICION', procesando_en = NULL
+                   WHERE item_codigo = ? AND estado IN ('PENDIENTE', 'PROCESANDO')""",
+                (item_codigo,),
+            )
         self._cn.commit()
         return self.obtener(item_codigo)  # type: ignore[return-value]
 

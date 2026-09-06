@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS rrhh_epp.aviso_compras (
     item_codigo  text NOT NULL REFERENCES rrhh_epp.stock_item(item_codigo),
     disponible   integer NOT NULL,
     minimo       integer NOT NULL,
+    consumo_30_dias integer NOT NULL DEFAULT 0,
     creado_en    timestamptz NOT NULL DEFAULT now(),
     estado       text NOT NULL DEFAULT 'PENDIENTE',
     intentos     integer NOT NULL DEFAULT 0,
@@ -65,6 +66,8 @@ ALTER TABLE rrhh_epp.aviso_compras
     ADD COLUMN IF NOT EXISTS ultimo_error text,
     ADD COLUMN IF NOT EXISTS enviado_en timestamptz,
     ADD COLUMN IF NOT EXISTS procesando_en timestamptz;
+ALTER TABLE rrhh_epp.aviso_compras
+    ADD COLUMN IF NOT EXISTS consumo_30_dias integer NOT NULL DEFAULT 0;
 DROP INDEX IF EXISTS rrhh_epp.ux_rrhh_epp_aviso_pendiente;
 CREATE UNIQUE INDEX ux_rrhh_epp_aviso_pendiente
     ON rrhh_epp.aviso_compras (item_codigo)

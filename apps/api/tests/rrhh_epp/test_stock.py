@@ -1,5 +1,7 @@
 """Stock por ítem: descuentos, mínimos, permisos y datos inválidos."""
 
+import smtplib
+
 import pytest
 
 from suite_juviar.modulos.rrhh_epp.domain.modelos_mvp import (
@@ -68,6 +70,31 @@ def test_al_llegar_al_minimo_crea_un_solo_aviso_para_compras(contenedor):
     assert avisos[0]["item_codigo"] == "SIM-68-01"
     assert avisos[0]["disponible"] == 20
     assert avisos[0]["minimo"] == 20
+    assert avisos[0]["consumo_30_dias"] == 1
+
+
+def test_aviso_pendiente_conserva_id_y_actualiza_si_empeora(contenedor):
+    contenedor.stock.configurar("SIM-68-01", disponible=21, minimo=20)
+    _entregar(contenedor, id_entrega="TABLET-EPISODIO-0001")
+    primero = contenedor.stock.alertas_pendientes()[0]
+    _entregar(contenedor, id_entrega="TABLET-EPISODIO-0002")
+    actualizado = contenedor.stock.alertas_pendientes()[0]
+
+    assert actualizado["id"] == primero["id"]
+    assert actualizado["disponible"] == 19
+    assert actualizado["consumo_30_dias"] == 2
+
+
+def test_reposicion_cierra_aviso_y_una_nueva_caida_abre_otro(contenedor):
+    contenedor.stock.configurar("SIM-68-01", disponible=21, minimo=20)
+    _entregar(contenedor, id_entrega="TABLET-EPISODIO-0003")
+    aviso_anterior = contenedor.stock.alertas_pendientes()[0]
+
+    contenedor.stock.configurar("SIM-68-01", disponible=21, minimo=20)
+    assert contenedor.stock.alertas_pendientes() == []
+    _entregar(contenedor, id_entrega="TABLET-EPISODIO-0004")
+
+    assert contenedor.stock.alertas_pendientes()[0]["id"] != aviso_anterior["id"]
 
     # Otra entrega no duplica el aviso pendiente del mismo ítem.
     _entregar(contenedor, id_entrega="TABLET-STOCK-0003")
@@ -190,6 +217,8 @@ def test_outbox_envia_y_confirma_el_aviso(contenedor):
     assert resultado == {"enviados": 1, "fallidos": 0}
     assert enviados[0][0] == "compras@example.test"
     assert "SIM-68-01" in enviados[0][1]
+    assert "Consumo registrado en los últimos 30 días: 1 unidad" in enviados[0][2]
+    assert "No constituye un pedido" in enviados[0][2]
     assert enviados[0][3].startswith("rrhh-epp-stock-")
     assert contenedor.stock.alertas_pendientes() == []
 
@@ -213,3 +242,41 @@ def test_outbox_reintenta_sin_perder_el_aviso(contenedor):
     aviso = contenedor.stock.alertas_pendientes()[0]
     assert aviso["intentos"] == 1
     assert aviso["ultimo_error"] == "SMTP no disponible"
+
+
+@pytest.mark.parametrize(
+    ("error", "caso"),
+    [
+        (smtplib.SMTPAuthenticationError(535, b"credenciales rechazadas"), "credenciales"),
+        (
+            smtplib.SMTPRecipientsRefused(
+                {"compras@example.test": (550, b"casilla inexistente")}
+            ),
+            "casilla",
+        ),
+    ],
+)
+def test_smtp_rechazado_nunca_confirma_el_aviso(contenedor, error, caso):
+    from suite_juviar.modulos.rrhh_epp.application.avisos_compras import (
+        DespacharAvisosCompras,
+    )
+
+    identificadores = []
+
+    class SMTPRechazado:
+        def enviar(self, destinatario, asunto, cuerpo, identificador):
+            identificadores.append(identificador)
+            raise error
+
+    contenedor.stock.configurar("SIM-68-01", disponible=21, minimo=20)
+    _entregar(contenedor, id_entrega=f"TABLET-SMTP-{caso}")
+    despachador = DespacharAvisosCompras(
+        contenedor.stock, SMTPRechazado(), "compras@example.test"
+    )
+
+    assert despachador.ejecutar() == {"enviados": 0, "fallidos": 1}
+    assert despachador.ejecutar() == {"enviados": 0, "fallidos": 1}
+    aviso = contenedor.stock.alertas_pendientes()[0]
+    assert aviso["estado"] == "PENDIENTE"
+    assert aviso["intentos"] == 2
+    assert identificadores == [identificadores[0], identificadores[0]]

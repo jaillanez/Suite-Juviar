@@ -21,15 +21,20 @@ class DespacharAvisosCompras:
         for aviso in self._stock.reclamar_alertas(limite):
             aviso_id = int(aviso["id"])
             identificador = f"rrhh-epp-stock-{aviso_id}"
+            consumo = int(aviso["consumo_30_dias"])
+            unidad = "unidad" if consumo == 1 else "unidades"
             try:
                 self._transporte.enviar(
                     self._destinatario,
-                    f"Reposición de EPP requerida: {aviso['item_codigo']}",
+                    f"Aviso de stock mínimo de EPP: {aviso['item_codigo']}",
                     (
-                        "Se alcanzó el mínimo de stock de EPP.\n\n"
+                        "Aviso informativo: se alcanzó el mínimo de stock de EPP.\n"
+                        "No constituye un pedido ni recomienda una cantidad de compra.\n\n"
                         f"Ítem: {aviso['item_codigo']}\n"
                         f"Disponible: {aviso['disponible']}\n"
                         f"Mínimo: {aviso['minimo']}\n"
+                        "Consumo registrado en los últimos 30 días: "
+                        f"{consumo} {unidad}\n"
                         f"Referencia: {identificador}\n"
                     ),
                     identificador,
