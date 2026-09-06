@@ -17,6 +17,12 @@ def test_sin_identidad_declarada_rechaza(cliente):
     assert r.status_code == 401
 
 
+def test_un_sector_sin_perfil_muestra_error_sin_otorgar_permisos(cliente):
+    r = cliente.get("/sesion", headers={"X-Legajo-Usuario": "1042"})
+    assert r.status_code == 403
+    assert "no tiene un perfil móvil habilitado" in r.json()["detail"]
+
+
 def test_un_usuario_de_campo_no_puede_entregar_epp(cliente):
     cabecera = {"X-Legajo-Usuario": "1501"}
     assert cliente.get("/sesion", headers=cabecera).json()["perfil"] == "campo"

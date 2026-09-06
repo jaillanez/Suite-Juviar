@@ -27,6 +27,10 @@ class PerfilesAccesoYAML:
         datos = yaml.safe_load(self._ruta.read_text(encoding="utf-8")) or {}
         self._dueno_dato = str(datos.get("dueno_dato") or "").strip()
         self._estado = str(datos.get("estado") or "").strip().upper()
+        self._sectores_fuera_matriz = frozenset(
+            str(codigo).strip().upper()
+            for codigo in (datos.get("sectores_fuera_matriz") or {})
+        )
         if not self._dueno_dato:
             raise ErrorDeMapaPerfiles("El mapa de perfiles debe declarar dueno_dato.")
         if not self._estado:
@@ -61,6 +65,18 @@ class PerfilesAccesoYAML:
     @property
     def estado(self) -> str:
         return self._estado
+
+    @property
+    def sectores_referenciados(self) -> frozenset[str]:
+        return frozenset(
+            sector
+            for regla in self._reglas
+            for sector in regla.sectores_codigo
+        )
+
+    @property
+    def sectores_fuera_matriz(self) -> frozenset[str]:
+        return self._sectores_fuera_matriz
 
     def resolver(self, puesto_codigo: str, sector_codigo: str) -> str | None:
         puesto = puesto_codigo.strip().upper()
