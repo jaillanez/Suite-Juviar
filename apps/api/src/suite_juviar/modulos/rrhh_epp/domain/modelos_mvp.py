@@ -211,6 +211,10 @@ class ItemFueraDeCatalogo(ErrorDeEntrega):
     """El ítem no existe o no pertenece al elemento normativo informado."""
 
 
+class ItemSimuladoNoPermitido(ErrorDeEntrega):
+    """Un ítem SIM-* sólo puede producir registros descartables de prueba."""
+
+
 class CantidadInvalida(ErrorDeEntrega):
     pass
 

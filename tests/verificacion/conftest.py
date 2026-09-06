@@ -41,6 +41,10 @@ def esquemas() -> None:
     _ejecutar_sql(DSN_ADMIN_DMZ, RAIZ / "infra/002_roles_local.sql")
     _ejecutar_sql(DSN_ADMIN_DMZ, RAIZ / "infra/004_catalogos_local.sql")
     _ejecutar_sql(DSN_SUITE, RAIZ / "infra/003_suite_minima.sql")
+    _ejecutar_sql(DSN_SUITE, RAIZ / "infra/005_rrhh_epp_local.sql")
+    _ejecutar_sql(DSN_SUITE, RAIZ / "infra/006_seleccion_local.sql")
+    _ejecutar_sql(DSN_SUITE, RAIZ / "infra/007_capacitacion_local.sql")
+    _ejecutar_sql(DSN_SUITE, RAIZ / "infra/008_roles_modulos_local.sql")
 
 
 @pytest.fixture()

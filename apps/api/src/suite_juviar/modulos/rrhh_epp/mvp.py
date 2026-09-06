@@ -75,6 +75,7 @@ class Contenedor:
     entorno: str
     modo_simulado: bool
     persistencia: str
+    email_compras: str | None
 
 
 def construir(
@@ -83,19 +84,37 @@ def construir(
     ruta_base: str | None = None,
     persistencia: str | None = None,
     postgres_dsn: str | None = None,
+    email_compras: str | None = None,
 ) -> Contenedor:
     entorno = (entorno or os.getenv("SJ_ENTORNO") or os.getenv("ENTORNO") or "desarrollo").lower()
     fuente_legajos = (
         fuente_legajos or os.getenv("SJ_FUENTE_LEGAJOS") or os.getenv("FUENTE_LEGAJOS") or "yaml"
     ).lower()
+    email_compras = (email_compras or os.getenv("SJ_COMPRAS_EMAIL") or "").strip() or None
+    if email_compras is not None and (
+        "@" not in email_compras or email_compras.startswith("@") or email_compras.endswith("@")
+    ):
+        raise ErrorDeConfiguracion("SJ_COMPRAS_EMAIL no contiene una dirección válida.")
 
-    # Guarda: la fuente simulada no puede llegar a producción por descuido.
-    # Es la diferencia entre una constancia de prueba y una que alguien
-    # presente en una inspección creyendo que vale.
+    catalogo = CatalogoYAML(
+        RAIZ / "data" / "catalogo_rd068.yaml",
+        RAIZ / "data" / "matriz_sector_puesto_epp.yaml",
+        RAIZ / "data" / "vida_util_referencial.yaml",
+        RAIZ / "data" / "catalogo_items.yaml",
+    )
+
+    # Guarda de arranque: enumera cada sustituto simulado que impide producción.
     if entorno == "produccion":
+        bloqueos = [
+            "autenticación real no integrada",
+            "firma empresarial simulada",
+        ]
+        if fuente_legajos != "nexus":
+            bloqueos.append("fuente de legajos distinta de Nexus")
+        if catalogo.tiene_items_simulados:
+            bloqueos.append("catálogo con ítems SIM-*")
         raise ErrorDeConfiguracion(
-            "El MVP de RRHH/EPP no arranca en producción hasta reemplazar "
-            "autenticación local, SQLite y firma simulada por los servicios de plataforma."
+            "RRHH/EPP no arranca en producción: " + "; ".join(bloqueos) + "."
         )
 
     identidad_declarada_habilitada = os.getenv(
@@ -121,12 +140,6 @@ def construir(
             f"FUENTE_LEGAJOS='{fuente_legajos}' no es válido. Use 'yaml' o 'nexus'."
         )
 
-    catalogo = CatalogoYAML(
-        RAIZ / "data" / "catalogo_rd068.yaml",
-        RAIZ / "data" / "matriz_sector_puesto_epp.yaml",
-        RAIZ / "data" / "vida_util_referencial.yaml",
-        RAIZ / "data" / "catalogo_items.yaml",
-    )
     perfiles_acceso = PerfilesAccesoYAML(
         RAIZ_SUITE / "plataforma" / "parametria" / "data" / "perfiles_acceso.yaml"
     )
@@ -193,6 +206,7 @@ def construir(
             entregas,
             firma,
             confirmador,
+            permitir_items_simulados=entorno == "prueba",
         ),
         obtener_constancia_pdf=ObtenerConstanciaPDF(
             entregas,
@@ -202,6 +216,11 @@ def construir(
         planificar_entregas=PlanificarEntregasProgramadas(legajos, catalogo),
         stock=stock,
         entorno=entorno,
-        modo_simulado=(fuente_legajos != "nexus"),
+        modo_simulado=(
+            fuente_legajos != "nexus"
+            or catalogo.tiene_items_simulados
+            or isinstance(firma, FirmaSimulada)
+        ),
         persistencia=tipo_persistencia,
+        email_compras=email_compras,
     )

@@ -17,6 +17,8 @@ el registro se conserva y se vincula al legajo creado externamente en Nexus.
   quién definió el criterio y cuándo, y una coincidencia abierta genera un aviso simulado.
 - Originales y extracciones tienen adaptador PostgreSQL: PDF, nombre, referencia,
   valores y fragmentos se guardan cifrados; la búsqueda técnica usa HMAC.
+- El rol PostgreSQL `suite_seleccion_rrhh` puede operar únicamente este esquema;
+  el control de §6.5 demuestra en la base local que no lee EPP ni Capacitación.
 
 > El filtro por edad es una decisión de la empresa, no del sistema. El asesor legal
 > debe revisarlo antes de usarlo en una búsqueda real.
@@ -27,7 +29,8 @@ el registro se conserva y se vincula al legajo creado externamente en Nexus.
 |---|---|---|
 | Persistencia protegida del postulante | PENDIENTE | El CV y su extracción ya están cifrados; falta el repositorio PostgreSQL del registro Terceros para DNI y correo. |
 | Política de retención de CV | PENDIENTE | RRHH y asesor legal deben definir plazo, acceso y tratamiento de datos personales. |
-| Ruta de la carpeta de Chimbas | PENDIENTE | Infraestructura debe informar y habilitar la ruta real de solo lectura. |
+| Ruta de la carpeta de Chimbas | NO BLOQUEA CALIBRACIÓN | La integración definitiva sigue pendiente; para calibrar alcanza una muestra segura de 20 a 30 CV enviada por RRHH. |
+| Muestra de calibración | PENDIENTE DICIEMBRE 2026 | RRHH debe enviar 20 a 30 CV con tratamiento autorizado antes de diciembre; no hace falta esperar la ruta de Chimbas. |
 | Acceso a la bandeja de correo | SIMULADO | Reemplazar la bandeja local por un adaptador autenticado cuando RRHH entregue cuenta y credenciales. |
 | Rotación y custodia de claves | PENDIENTE | Definir KMS/secret manager y procedimiento de rotación antes de datos reales. |
 | Reglas de extracción | SIMULADO | Validar con CV reales de RRHH y sustituir o ajustar las expresiones provisorias; nunca auto-verifican ni descartan. |

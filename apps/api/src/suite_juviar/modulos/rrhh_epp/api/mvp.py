@@ -178,6 +178,8 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             "dueno_mapa_perfiles": c.perfiles_acceso.dueno_dato,
             "estado_stock": c.stock.estado,
             "dueno_stock": c.stock.dueno_dato,
+            "canal_aviso_compras": "EMAIL",
+            "email_compras_configurado": c.email_compras is not None,
             "metodos_firma": list(c.firma.metodos_habilitados),
             "perfil": usuario.perfil.value,
         }
@@ -352,7 +354,15 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
 
     @app.get("/stock/alertas")
     def alertas_stock(_usuario: OperadorDeposito) -> list[dict[str, object]]:
-        return c.stock.alertas_pendientes()
+        return [
+            {
+                **aviso,
+                "canal": "EMAIL",
+                "destinatario": c.email_compras,
+                "estado_envio": "PENDIENTE_TRANSPORTE",
+            }
+            for aviso in c.stock.alertas_pendientes()
+        ]
 
     @app.post("/entregas")
     def registrar(

@@ -14,6 +14,7 @@ from ..domain.modelos_mvp import (
     EntregaSinLineas,
     FirmaFaltante,
     ItemFueraDeCatalogo,
+    ItemSimuladoNoPermitido,
     Legajo,
     LegajoInactivo,
     LegajoInexistente,
@@ -84,12 +85,14 @@ class RegistrarEntrega:
         entregas: RepositorioEntregas,
         firma: MotorFirma,
         confirmador: ConfirmadorEntrega,
+        permitir_items_simulados: bool = True,
     ) -> None:
         self._legajos = legajos
         self._catalogo = catalogo
         self._entregas = entregas
         self._firma = firma
         self._confirmador = confirmador
+        self._permitir_items_simulados = permitir_items_simulados
 
     def ejecutar(
         self,
@@ -147,6 +150,17 @@ class RegistrarEntrega:
             if item_catalogo is None or item_catalogo.elemento_codigo != codigo:
                 raise ItemFueraDeCatalogo(
                     f"El ítem {item_codigo or '(vacío)'} no pertenece al elemento {codigo}."
+                )
+            if (
+                not self._permitir_items_simulados
+                and (
+                    item_catalogo.codigo_interno.startswith("SIM-")
+                    or item_catalogo.estado == "SIMULADO"
+                )
+            ):
+                raise ItemSimuladoNoPermitido(
+                    f"El ítem {item_catalogo.codigo_interno} es simulado. "
+                    "Sólo se puede registrar en el entorno de prueba."
                 )
             cantidad = item.get("cantidad")
             if not isinstance(cantidad, int) or isinstance(cantidad, bool) or cantidad <= 0:

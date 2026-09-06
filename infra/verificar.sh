@@ -28,13 +28,16 @@ if ! psql -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'juviar_su
   createdb juviar_suite_local
 fi
 
-echo "==> 2/5 verificacion 1: permisos del rol del sitio"
+echo "==> 2/6 verificacion 1: permisos del rol del sitio"
 python -m pytest -c apps/api/pyproject.toml tests/verificacion/test_1_permisos_rol_sitio.py -m local -q
 
-echo "==> 3/5 verificacion 2: concurrencia del worker"
+echo "==> 3/6 verificacion 2: concurrencia del worker"
 python -m pytest -c apps/api/pyproject.toml tests/verificacion/test_2_worker_concurrente.py -m local -q
 
-echo "==> 4/5 verificacion 3: rate limit CON --proxy-headers (debe pasar)"
+echo "==> 4/6 verificacion 3: permisos aplicados en modulos internos"
+python -m pytest -c apps/api/pyproject.toml tests/verificacion/test_4_permisos_modulos.py -m local -q
+
+echo "==> 5/6 verificacion 4: rate limit CON --proxy-headers (debe pasar)"
 export WEB_DSN_DMZ="$TEST_DSN_SITIO"
 export WEB_LIMITE_HORA=10
 export WEB_ENTORNO=local
@@ -45,7 +48,7 @@ python -m pytest -c apps/api/pyproject.toml tests/verificacion/test_3_rate_limit
 kill $PID; wait $PID 2>/dev/null || true
 PID=""
 
-echo "==> 5/5 control negativo: SIN --proxy-headers (test_ip_distinta DEBE fallar)"
+echo "==> 6/6 control negativo: SIN --proxy-headers (test_ip_distinta DEBE fallar)"
 uvicorn apps.web.main:app --host 127.0.0.1 --port 8080 --no-proxy-headers &
 PID=$!
 sleep 3

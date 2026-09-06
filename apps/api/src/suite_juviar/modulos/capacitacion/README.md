@@ -13,6 +13,8 @@ la marca `SIN VALIDEZ LEGAL` y también puede imprimirse para firma en papel.
   `PROPUESTA_SIN_VALIDAR` cuyo dueño declarado es RRHH.
 - Corrección sin borrado: una asistencia se anula con motivo, actor y fecha; el
   registro original permanece y deja de computar en reportes.
+- El rol PostgreSQL `suite_capacitacion_rrhh` queda aislado de EPP y Selección;
+  la prueba local de §6.5 ejecuta consultas permitidas y prohibidas bajo el rol real.
 
 ## Deuda técnica y datos pendientes
 
@@ -22,3 +24,4 @@ la marca `SIN VALIDEZ LEGAL` y también puede imprimirse para firma en papel.
 | Umbral de supervisores | PROPUESTA_SIN_VALIDAR | RRHH debe aprobar el 80% o definir otro valor. |
 | API con identidad | PENDIENTE | Exponer el repositorio PostgreSQL sólo cuando exista el perfil real autorizado. |
 | Bitácora de consultas | PENDIENTE | Registrar quién consulta planillas y reportes al incorporar la API con identidad. |
+| Transporte de avisos a supervisores | PENDIENTE | Definir destinatarios y conectar el notificador cuando exista la API con identidad. |

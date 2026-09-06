@@ -86,6 +86,13 @@ class CatalogoYAML:
     def dueno_items(self) -> str:
         return self._dueno_items
 
+    @property
+    def tiene_items_simulados(self) -> bool:
+        return any(
+            item.codigo_interno.startswith("SIM-") or item.estado == "SIMULADO"
+            for item in self._items.values()
+        )
+
     def _cargar_vida_util(self) -> None:
         if not self._ruta_vida_util or not self._ruta_vida_util.exists():
             return
@@ -155,6 +162,15 @@ class CatalogoYAML:
                 talle=str(fila.get("talle") or "SIN_DATO"),
                 color=str(fila.get("color") or "SIN_DATO"),
                 estado=str(fila.get("estado") or self._estado_items),
+            )
+        simulados = {
+            item.codigo_interno.startswith("SIM-") or item.estado == "SIMULADO"
+            for item in self._items.values()
+        }
+        if len(simulados) > 1:
+            raise ErrorDeCatalogo(
+                "El catálogo de ítems no admite una fusión de registros reales y SIM-*. "
+                "La carga aprobada por Higiene y Seguridad debe reemplazar el archivo completo."
             )
 
     def _leer_requisitos(self, filas: list[dict] | None, contexto: str) -> list[RequisitoEPP]:

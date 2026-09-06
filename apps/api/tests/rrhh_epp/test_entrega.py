@@ -8,6 +8,7 @@ from suite_juviar.modulos.rrhh_epp.domain.modelos_mvp import (
     EntregaSinLineas,
     FirmaFaltante,
     ItemFueraDeCatalogo,
+    ItemSimuladoNoPermitido,
     LegajoInactivo,
     LegajoInexistente,
     MetodoDeFirmaNoHabilitado,
@@ -137,8 +138,10 @@ def test_nada_se_guarda_cuando_la_entrega_se_rechaza(contenedor):
 
 def test_produccion_con_fuente_simulada_no_arranca(monkeypatch):
     """La fuente de prueba no puede llegar a producción por descuido."""
-    with pytest.raises(ErrorDeConfiguracion):
+    with pytest.raises(ErrorDeConfiguracion) as rechazo:
         construir(entorno="produccion", fuente_legajos="yaml", ruta_base=":memory:")
+    assert "distinta de Nexus" in str(rechazo.value)
+    assert "ítems SIM-*" in str(rechazo.value)
 
 
 def test_produccion_con_nexus_sin_cadena_de_conexion_no_arranca(monkeypatch):
@@ -168,3 +171,11 @@ def test_control_negativo_de_la_guarda(monkeypatch):
     monkeypatch.setenv("SJ_HABILITAR_IDENTIDAD_DECLARADA", "SI")
     c = construir(entorno="desarrollo", fuente_legajos="yaml", ruta_base=":memory:")
     assert c.modo_simulado is True
+
+
+def test_fuera_de_prueba_no_registra_items_simulados(monkeypatch):
+    monkeypatch.setenv("SJ_HABILITAR_IDENTIDAD_DECLARADA", "SI")
+    c = construir(entorno="desarrollo", fuente_legajos="yaml", ruta_base=":memory:")
+    with pytest.raises(ItemSimuladoNoPermitido, match=r"SIM-68-01.*entorno de prueba"):
+        entregar(c)
+    assert c.entregas.listar_por_legajo("1042") == []

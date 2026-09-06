@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -28,6 +29,12 @@ class Memoria implements AlmacenCola {
     this.registros.delete(id);
   }
 }
+
+test("la pantalla conserva la franja roja de entorno sin validez legal", () => {
+  const pagina = readFileSync(new URL("../src/app/page.tsx", import.meta.url), "utf8");
+  assert.match(pagina, /className="aviso"/);
+  assert.match(pagina, /Entorno de prueba · constancias sin validez legal/);
+});
 
 function entrega(id = "tablet-00000001"): EntregaOffline {
   return {

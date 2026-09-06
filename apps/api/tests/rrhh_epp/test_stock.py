@@ -147,3 +147,24 @@ def test_perfiles_ajenos_no_pueden_ver_ni_configurar_stock(cliente):
         json={"disponible": 21, "minimo": 20},
     )
     assert respuesta.status_code == 403
+
+
+def test_aviso_expone_el_canal_email_configurado():
+    from fastapi.testclient import TestClient
+
+    from suite_juviar.modulos.rrhh_epp.api.mvp import crear_app
+    from suite_juviar.modulos.rrhh_epp.mvp import construir
+
+    contenedor = construir(
+        entorno="prueba",
+        fuente_legajos="yaml",
+        ruta_base=":memory:",
+        email_compras="compras@example.test",
+    )
+    contenedor.stock.configurar("SIM-68-01", disponible=21, minimo=20)
+    _entregar(contenedor, id_entrega="TABLET-EMAIL-0001")
+    cliente = TestClient(crear_app(contenedor), headers={"X-Legajo-Usuario": "1210"})
+    aviso = cliente.get("/stock/alertas").json()[0]
+    assert aviso["canal"] == "EMAIL"
+    assert aviso["destinatario"] == "compras@example.test"
+    assert aviso["estado_envio"] == "PENDIENTE_TRANSPORTE"

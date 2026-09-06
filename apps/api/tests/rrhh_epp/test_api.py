@@ -1,4 +1,7 @@
 from datetime import UTC, datetime
+from io import BytesIO
+
+from pypdf import PdfReader
 
 
 def test_estado_avisa_que_es_simulado(cliente):
@@ -6,6 +9,8 @@ def test_estado_avisa_que_es_simulado(cliente):
     assert d["modo_simulado"] is True
     assert d["fuente_legajos"] == "SIMULADA"
     assert d["estado_matriz_epp"] == "PROPUESTA_SIN_VALIDAR"
+    assert d["canal_aviso_compras"] == "EMAIL"
+    assert d["email_compras_configurado"] is False
 
 
 def test_sesion_asigna_el_perfil_segun_el_usuario(cliente):
@@ -38,6 +43,24 @@ def test_un_usuario_de_bascula_no_puede_entregar_epp(cliente):
     assert cliente.get("/sesion", headers=cabecera).json()["perfil"] == "bascula"
     assert cliente.get("/legajos?q=Quiroga", headers=cabecera).status_code == 403
     assert cliente.get("/matriz", headers=cabecera).status_code == 403
+
+
+def test_control_negativo_confirma_que_el_403_mide_el_guard_de_perfil(
+    cliente,
+    contenedor,
+    monkeypatch,
+):
+    """Mutación equivalente a quitar el guard: el mismo pedido deja de dar 403."""
+    monkeypatch.setattr(
+        contenedor.perfiles_acceso,
+        "resolver",
+        lambda _puesto, _sector: "deposito",
+    )
+    respuesta = cliente.get(
+        "/legajos?q=Quiroga",
+        headers={"X-Legajo-Usuario": "1501"},
+    )
+    assert respuesta.status_code == 200
 
 
 def test_un_usuario_de_campo_no_puede_revisar_la_matriz(cliente):
@@ -184,6 +207,8 @@ def test_entrega_completa_y_constancia(cliente):
     assert pdf.headers["x-documento-simulado"] == "SI"
     assert pdf.content.startswith(b"%PDF-")
     assert len(pdf.content) > 2_000
+    texto_pdf = "\n".join(pagina.extract_text() or "" for pagina in PdfReader(BytesIO(pdf.content)).pages)
+    assert "SIN VALIDEZ LEGAL" in texto_pdf
     hash_original = pdf.headers["x-contenido-sha256"]
 
     segunda_descarga = cliente.get(f"/constancias/{entrega['id']}.pdf")

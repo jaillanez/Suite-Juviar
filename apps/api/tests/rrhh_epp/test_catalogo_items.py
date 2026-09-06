@@ -1,6 +1,14 @@
 from datetime import date
+from pathlib import Path
 
 import pytest
+import yaml
+
+from suite_juviar.modulos.rrhh_epp.infrastructure.catalogo_yaml import (
+    CatalogoYAML,
+    ErrorDeCatalogo,
+)
+from suite_juviar.modulos.rrhh_epp.mvp import RAIZ
 
 
 def test_catalogo_simulado_declara_dueno_estado_y_tres_items_por_elemento(contenedor):
@@ -50,3 +58,44 @@ def test_api_rechaza_item_vacio_o_nulo(cliente, valor):
         "evidencia_firma": "data:image/png;base64,AAAA",
     })
     assert respuesta.status_code == 422
+
+
+def test_catalogo_real_reemplaza_al_simulado_y_nunca_se_fusiona(tmp_path: Path):
+    ruta_items = tmp_path / "items.yaml"
+    ruta_items.write_text(
+        yaml.safe_dump(
+            {
+                "dueno_dato": "Higiene y Seguridad",
+                "estado": "APROBADO",
+                "items": [
+                    {
+                        "codigo_interno": "1580",
+                        "elemento_codigo": "8",
+                        "marca": "Marca real",
+                        "modelo": "Modelo real",
+                        "talle": "M",
+                        "color": "Azul",
+                        "estado": "APROBADO",
+                    },
+                    {
+                        "codigo_interno": "SIM-8-01",
+                        "elemento_codigo": "8",
+                        "marca": "Simulada",
+                        "modelo": "Simulado",
+                        "talle": "SIN_DATO",
+                        "color": "SIN_DATO",
+                        "estado": "SIMULADO",
+                    },
+                ],
+            },
+            allow_unicode=True,
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ErrorDeCatalogo, match="no admite una fusión"):
+        CatalogoYAML(
+            RAIZ / "data" / "catalogo_rd068.yaml",
+            RAIZ / "data" / "matriz_sector_puesto_epp.yaml",
+            RAIZ / "data" / "vida_util_referencial.yaml",
+            ruta_items,
+        )
