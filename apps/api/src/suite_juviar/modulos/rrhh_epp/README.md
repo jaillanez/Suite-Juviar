@@ -2,7 +2,8 @@
 
 Módulo único de entrega de ropa de trabajo y elementos de protección personal.
 Funciona en entorno de prueba con legajos simulados, catálogo RD 068/11 real,
-matriz `PROPUESTA_SIN_VALIDAR`, firma simulada y persistencia SQLite.
+matriz `PROPUESTA_SIN_VALIDAR`, firma simulada y PostgreSQL local. SQLite queda
+limitado al aislamiento de las pruebas automatizadas.
 
 ## Funcionalidad incorporada
 
@@ -20,12 +21,15 @@ matriz `PROPUESTA_SIN_VALIDAR`, firma simulada y persistencia SQLite.
 - Stock por ítem: cada entrega confirmada descuenta existencias y al alcanzar el mínimo
   genera automáticamente un aviso pendiente para Compras. El stock inicial es simulado
   y su dueño declarado es Depósito.
+- Persistencia PostgreSQL para entregas, constancias originales, stock, avisos y bitácora;
+  el adaptador de Nexus permanece separado y de solo lectura.
 
 ## Deuda técnica y datos pendientes
 
 | Deuda o dato | Estado | Para resolverla |
 |---|---|---|
-| Persistencia concurrente en PostgreSQL | PENDIENTE | Reemplazar SQLite antes de usar más de una tablet. |
+| Transacción única entrega-stock-bitácora | PENDIENTE | Unificar las tres escrituras en una unidad de trabajo PostgreSQL antes de la prueba con varias tablets. |
+| Protección criptográfica de DNI y legajo en RRHH/EPP | PENDIENTE | Aplicar HMAC + AES-GCM de `plataforma/cripto` antes de cargar datos reales. |
 | Umbral offline de 20 entregas o 24 horas | PROPUESTA_SIN_VALIDAR | Confirmación de Operaciones y de Higiene y Seguridad. |
 | Identidad real del operario | PENDIENTE | Integrar `plataforma/identidad`; el header local es suplantable. |
 | Firma digital del PDF por la empresa | PENDIENTE | Certificado y motor real de `plataforma/firma`; el PDF actual sólo se imprime y firma en papel. |

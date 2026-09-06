@@ -167,6 +167,7 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
     def estado(usuario: UsuarioActual) -> dict[str, object]:
         return {
             "entorno": c.entorno,
+            "persistencia": c.persistencia,
             "fuente_legajos": c.legajos.fuente,
             "modo_simulado": c.modo_simulado,
             "estado_matriz_epp": c.catalogo.estado_matriz,

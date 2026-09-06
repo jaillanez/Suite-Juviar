@@ -21,6 +21,13 @@ from suite_juviar.plataforma.parametria.infrastructure.perfiles_acceso_yaml impo
 from .application.constancias import ObtenerConstanciaPDF
 from .application.programadas import PlanificarEntregasProgramadas
 from .application.servicios_mvp import ConsultarLegajo, RegistrarEntrega
+from .domain.puertos_mvp import (
+    Bitacora,
+    MotorFirma,
+    RepositorioConstancias,
+    RepositorioEntregas,
+    RepositorioStock,
+)
 from .infrastructure.catalogo_yaml import CatalogoYAML
 from .infrastructure.constancia_pdf import GeneradorConstanciaPDFSimulada
 from .infrastructure.firma_simulada import FirmaSimulada
@@ -32,6 +39,14 @@ from .infrastructure.persistencia_mvp import (
     ConstanciasSQLite,
     EntregasSQLite,
     StockSQLite,
+)
+from .infrastructure.persistencia_postgres import (
+    BasePostgreSQL,
+    BitacoraPostgreSQL,
+    ConstanciasPostgreSQL,
+    EntregasPostgreSQL,
+    EsquemaPostgreSQLFaltante,
+    StockPostgreSQL,
 )
 
 RAIZ = Path(__file__).resolve().parent
@@ -47,22 +62,25 @@ class Contenedor:
     legajos: object
     perfiles_acceso: MapaPerfilesAcceso
     catalogo: CatalogoYAML
-    entregas: EntregasSQLite
-    firma: FirmaSimulada
-    bitacora: BitacoraSQLite
+    entregas: RepositorioEntregas
+    firma: MotorFirma
+    bitacora: Bitacora
     consultar_legajo: ConsultarLegajo
     registrar_entrega: RegistrarEntrega
     obtener_constancia_pdf: ObtenerConstanciaPDF
     planificar_entregas: PlanificarEntregasProgramadas
-    stock: StockSQLite
+    stock: RepositorioStock
     entorno: str
     modo_simulado: bool
+    persistencia: str
 
 
 def construir(
     entorno: str | None = None,
     fuente_legajos: str | None = None,
     ruta_base: str | None = None,
+    persistencia: str | None = None,
+    postgres_dsn: str | None = None,
 ) -> Contenedor:
     entorno = (entorno or os.getenv("SJ_ENTORNO") or os.getenv("ENTORNO") or "desarrollo").lower()
     fuente_legajos = (
@@ -110,18 +128,47 @@ def construir(
     perfiles_acceso = PerfilesAccesoYAML(
         RAIZ_SUITE / "plataforma" / "parametria" / "data" / "perfiles_acceso.yaml"
     )
-    ruta_sqlite = (
-        ruta_base
-        or os.getenv("SJ_RRHH_EPP_BASE_LOCAL")
-        or Path.cwd() / "var" / "rrhh_epp" / "entregas_prueba.sqlite3"
-    )
-    base = BaseLocal(ruta_sqlite)
-    entregas = EntregasSQLite(base)
-    bitacora = BitacoraSQLite(base)
-    constancias = ConstanciasSQLite(base)
+    tipo_persistencia = (
+        persistencia
+        or os.getenv("SJ_RRHH_EPP_PERSISTENCIA")
+        or ("sqlite" if entorno == "prueba" or ruta_base is not None else "postgresql")
+    ).lower()
+    constancias: RepositorioConstancias
+    if tipo_persistencia == "sqlite":
+        if entorno != "prueba" and ruta_base is None:
+            raise ErrorDeConfiguracion(
+                "SQLite quedó limitado a pruebas automatizadas. Use PostgreSQL en desarrollo local."
+            )
+        ruta_sqlite = ruta_base or ":memory:"
+        base_sqlite = BaseLocal(ruta_sqlite)
+        entregas = EntregasSQLite(base_sqlite)
+        bitacora = BitacoraSQLite(base_sqlite)
+        constancias = ConstanciasSQLite(base_sqlite)
+        stock = StockSQLite(base_sqlite, RAIZ / "data" / "stock_inicial_simulado.yaml")
+    elif tipo_persistencia == "postgresql":
+        dsn = (
+            postgres_dsn
+            or os.getenv("SJ_RRHH_EPP_DATABASE_URL")
+            or "postgresql:///juviar_suite_local"
+        )
+        try:
+            base_postgres = BasePostgreSQL(dsn)
+        except EsquemaPostgreSQLFaltante as exc:
+            raise ErrorDeConfiguracion(str(exc)) from exc
+        entregas = EntregasPostgreSQL(base_postgres)
+        bitacora = BitacoraPostgreSQL(base_postgres)
+        constancias = ConstanciasPostgreSQL(base_postgres)
+        stock = StockPostgreSQL(
+            base_postgres,
+            RAIZ / "data" / "stock_inicial_simulado.yaml",
+        )
+    else:
+        raise ErrorDeConfiguracion(
+            f"SJ_RRHH_EPP_PERSISTENCIA='{tipo_persistencia}' no es válida. "
+            "Use 'postgresql' o 'sqlite' sólo en pruebas."
+        )
     firma = FirmaSimulada()
     generador_constancia = GeneradorConstanciaPDFSimulada()
-    stock = StockSQLite(base, RAIZ / "data" / "stock_inicial_simulado.yaml")
 
     return Contenedor(
         legajos=legajos,
@@ -148,4 +195,5 @@ def construir(
         stock=stock,
         entorno=entorno,
         modo_simulado=(fuente_legajos != "nexus"),
+        persistencia=tipo_persistencia,
     )
