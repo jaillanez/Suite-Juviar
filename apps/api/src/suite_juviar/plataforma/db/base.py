@@ -19,6 +19,8 @@ ESQUEMAS = (
     "bitacora",
     "turnos",
     "rrhh_epp",
+    "seleccion",
+    "capacitacion",
     "cosecha",
     "recepcion",
     "ddjj",

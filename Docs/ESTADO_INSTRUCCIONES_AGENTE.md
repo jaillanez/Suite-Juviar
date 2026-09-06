@@ -15,8 +15,8 @@ credencial, aprobación o dato corporativo faltante se reemplazó por una invenc
 | 0.4 Stock | CONSTRUIDO | Existencias/mínimos simulados; canal corporativo a Compras pendiente. |
 | 0.5 Deuda de EPP | PARCIAL | PostgreSQL y offline construidos; identidad real y certificado de firma pendientes. |
 | 1.1 Postulante | CONSTRUIDO | Vive en Terceros, con dueño RRHH; persistencia cifrada pendiente. |
-| 1.2 Ingesta | BASE CONSTRUIDA | Ruta Chimbas y credenciales de correo pendientes; originales aún sin repositorio durable. |
-| 1.3 Extracción | BASE CONSTRUIDA | Reglas marcadas simuladas; OCR y validación con CV reales pendientes. |
+| 1.2 Ingesta | BASE CONSTRUIDA | Originales cifrados en PostgreSQL; ruta Chimbas y credenciales de correo pendientes. |
+| 1.3 Extracción | BASE CONSTRUIDA | Campos y fragmentos cifrados; OCR y validación con CV reales pendientes. |
 | 1.4 Ranking | BASE CONSTRUIDA | Criterios y notificador simulados; perfil real de acceso RRHH pendiente. |
 | 2 Capacitaciones | BASE CONSTRUIDA | Persistencia/API/perfil real y motor de firma con certificado pendientes. |
 
