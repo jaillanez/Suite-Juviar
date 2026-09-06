@@ -18,12 +18,19 @@ from suite_juviar.plataforma.parametria.infrastructure.perfiles_acceso_yaml impo
     PerfilesAccesoYAML,
 )
 
+from .application.constancias import ObtenerConstanciaPDF
 from .application.servicios_mvp import ConsultarLegajo, RegistrarEntrega
 from .infrastructure.catalogo_yaml import CatalogoYAML
+from .infrastructure.constancia_pdf import GeneradorConstanciaPDFSimulada
 from .infrastructure.firma_simulada import FirmaSimulada
 from .infrastructure.legajos_nexus import LegajosNexusSQLServer
 from .infrastructure.legajos_yaml import LegajosYAML
-from .infrastructure.persistencia_mvp import BaseLocal, BitacoraSQLite, EntregasSQLite
+from .infrastructure.persistencia_mvp import (
+    BaseLocal,
+    BitacoraSQLite,
+    ConstanciasSQLite,
+    EntregasSQLite,
+)
 
 RAIZ = Path(__file__).resolve().parent
 RAIZ_SUITE = RAIZ.parents[1]
@@ -43,6 +50,7 @@ class Contenedor:
     bitacora: BitacoraSQLite
     consultar_legajo: ConsultarLegajo
     registrar_entrega: RegistrarEntrega
+    obtener_constancia_pdf: ObtenerConstanciaPDF
     entorno: str
     modo_simulado: bool
 
@@ -110,7 +118,9 @@ def construir(
     base = BaseLocal(ruta_sqlite)
     entregas = EntregasSQLite(base)
     bitacora = BitacoraSQLite(base)
+    constancias = ConstanciasSQLite(base)
     firma = FirmaSimulada()
+    generador_constancia = GeneradorConstanciaPDFSimulada()
 
     return Contenedor(
         legajos=legajos,
@@ -121,6 +131,11 @@ def construir(
         bitacora=bitacora,
         consultar_legajo=ConsultarLegajo(legajos, catalogo, entregas),
         registrar_entrega=RegistrarEntrega(legajos, catalogo, entregas, firma, bitacora),
+        obtener_constancia_pdf=ObtenerConstanciaPDF(
+            entregas,
+            constancias,
+            generador_constancia,
+        ),
         entorno=entorno,
         modo_simulado=(fuente_legajos != "nexus"),
     )

@@ -10,7 +10,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Protocol
 
-from .modelos_mvp import ElementoEPP, Entrega, Firma, ItemCatalogo, Legajo, RequisitoEPP
+from .modelos_mvp import (
+    DocumentoConstancia,
+    ElementoEPP,
+    Entrega,
+    Firma,
+    ItemCatalogo,
+    Legajo,
+    RequisitoEPP,
+)
 
 
 class RepositorioLegajos(Protocol):
@@ -85,6 +93,16 @@ class MotorFirma(Protocol):
         documento: dict,
         sello_tiempo: datetime | None = None,
     ) -> Firma: ...
+
+
+class GeneradorConstancia(Protocol):
+    def generar(self, entrega: Entrega) -> DocumentoConstancia: ...
+
+
+class RepositorioConstancias(Protocol):
+    def obtener(self, id_entrega: str) -> DocumentoConstancia | None: ...
+
+    def guardar_original(self, documento: DocumentoConstancia) -> None: ...
 
 
 class Bitacora(Protocol):

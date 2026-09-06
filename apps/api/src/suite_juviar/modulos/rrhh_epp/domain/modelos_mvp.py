@@ -138,6 +138,18 @@ class Entrega:
         return sum(l.cantidad for l in self.lineas)
 
 
+@dataclass(frozen=True)
+class DocumentoConstancia:
+    """Archivo original inmutable; se devuelve, nunca se regenera para mostrarlo."""
+
+    id_entrega: str
+    contenido: bytes
+    sha256: str
+    generado_en: datetime
+    firmado: bool
+    simulado: bool
+
+
 # --------------------------------------------------------------------------
 # Errores del dominio
 # --------------------------------------------------------------------------

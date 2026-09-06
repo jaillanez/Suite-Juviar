@@ -235,7 +235,7 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
       if (confirmadas.length > 0) {
         const ultima = confirmadas.at(-1)!;
         setMensaje(`Se sincronizaron ${confirmadas.length} entrega(s).`);
-        setConstancia(`${API}/constancias/${ultima.id}`);
+        setConstancia(`${API}/constancias/${ultima.id}.pdf`);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "No fue posible leer la cola local");
@@ -330,7 +330,7 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
         setMensaje(
           `Entrega ${resultado.confirmacion.id} registrada: ${resultado.confirmacion.items} elemento(s).`,
         );
-        setConstancia(`${API}/constancias/${resultado.confirmacion.id}`);
+        setConstancia(`${API}/constancias/${resultado.confirmacion.id}.pdf`);
       } else {
         setMensaje(
           `Entrega ${entrega.id_cliente} pendiente de sincronizar. No se emitió constancia.`,

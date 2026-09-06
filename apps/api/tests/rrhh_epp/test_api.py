@@ -178,6 +178,18 @@ def test_entrega_completa_y_constancia(cliente):
     assert "Documento de prueba" in constancia.text
     assert "validez legal" in constancia.text
 
+    pdf = cliente.get(f"/constancias/{entrega['id']}.pdf")
+    assert pdf.status_code == 200
+    assert pdf.headers["content-type"] == "application/pdf"
+    assert pdf.headers["x-documento-simulado"] == "SI"
+    assert pdf.content.startswith(b"%PDF-")
+    assert len(pdf.content) > 2_000
+    hash_original = pdf.headers["x-contenido-sha256"]
+
+    segunda_descarga = cliente.get(f"/constancias/{entrega['id']}.pdf")
+    assert segunda_descarga.content == pdf.content
+    assert segunda_descarga.headers["x-contenido-sha256"] == hash_original
+
 
 def test_la_segunda_consulta_muestra_la_entrega_anterior(cliente):
     cliente.post("/entregas", json={

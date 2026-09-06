@@ -17,7 +17,7 @@ import sqlite3
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from ..domain.modelos_mvp import Entrega, Firma, Legajo, LineaEntrega
+from ..domain.modelos_mvp import DocumentoConstancia, Entrega, Firma, Legajo, LineaEntrega
 
 ESQUEMA = """
 CREATE TABLE IF NOT EXISTS entrega_epp (
@@ -35,6 +35,15 @@ CREATE TABLE IF NOT EXISTS entrega_epp (
     creado_en         TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_entrega_legajo ON entrega_epp (legajo);
+
+CREATE TABLE IF NOT EXISTS constancia_original (
+    id_entrega   TEXT PRIMARY KEY REFERENCES entrega_epp(id),
+    contenido    BLOB NOT NULL,
+    sha256       TEXT NOT NULL,
+    generado_en  TEXT NOT NULL,
+    firmado      INTEGER NOT NULL,
+    simulado     INTEGER NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS bitacora (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -163,3 +172,40 @@ class BitacoraSQLite:
             }
             for f in filas
         ]
+
+
+class ConstanciasSQLite:
+    def __init__(self, base: BaseLocal) -> None:
+        self._cn = base.cn
+
+    def obtener(self, id_entrega: str) -> DocumentoConstancia | None:
+        fila = self._cn.execute(
+            "SELECT * FROM constancia_original WHERE id_entrega = ?",
+            (id_entrega,),
+        ).fetchone()
+        if fila is None:
+            return None
+        return DocumentoConstancia(
+            id_entrega=fila["id_entrega"],
+            contenido=bytes(fila["contenido"]),
+            sha256=fila["sha256"],
+            generado_en=datetime.fromisoformat(fila["generado_en"]),
+            firmado=bool(fila["firmado"]),
+            simulado=bool(fila["simulado"]),
+        )
+
+    def guardar_original(self, documento: DocumentoConstancia) -> None:
+        self._cn.execute(
+            """INSERT OR IGNORE INTO constancia_original
+               (id_entrega, contenido, sha256, generado_en, firmado, simulado)
+               VALUES (?,?,?,?,?,?)""",
+            (
+                documento.id_entrega,
+                documento.contenido,
+                documento.sha256,
+                documento.generado_en.isoformat(),
+                int(documento.firmado),
+                int(documento.simulado),
+            ),
+        )
+        self._cn.commit()

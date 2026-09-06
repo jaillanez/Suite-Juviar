@@ -13,7 +13,7 @@ from typing import Annotated
 from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -299,8 +299,26 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             "fecha": entrega.fecha_entrega.isoformat(),
             "items": entrega.cantidad_items,
             "firma_simulada": entrega.firma_trabajador.simulada,
-            "constancia": f"/api/v1/rrhh-epp/constancias/{entrega.id}",
+            "constancia": f"/api/v1/rrhh-epp/constancias/{entrega.id}.pdf",
         }
+
+    @app.get("/constancias/{id_entrega}.pdf")
+    def constancia_pdf(
+        id_entrega: str,
+        _usuario: OperadorDeposito,
+    ) -> Response:
+        documento = c.obtener_constancia_pdf.ejecutar(id_entrega)
+        if documento is None:
+            raise HTTPException(status_code=404, detail="No existe esa constancia.")
+        return Response(
+            content=documento.contenido,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'inline; filename="constancia-{id_entrega}.pdf"',
+                "X-Contenido-SHA256": documento.sha256,
+                "X-Documento-Simulado": "SI" if documento.simulado else "NO",
+            },
+        )
 
     @app.get("/constancias/{id_entrega}", response_class=HTMLResponse)
     def constancia(
