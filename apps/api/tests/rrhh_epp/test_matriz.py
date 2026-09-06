@@ -11,8 +11,25 @@ from suite_juviar.modulos.rrhh_epp.mvp import RAIZ
 
 def test_estan_los_19_sectores_del_esquema_de_enav(contenedor):
     esperados = {
-        "BOD", "COL", "CLA", "FIL", "CON", "EFL", "FVA", "ENV", "LIM", "MEC",
-        "ELE", "CAL", "LAB", "ADM", "BAS", "MAE", "PAN", "LAG", "PRE",
+        "BOD",
+        "COL",
+        "CLA",
+        "FIL",
+        "CON",
+        "EFL",
+        "FVA",
+        "ENV",
+        "LIM",
+        "MEC",
+        "ELE",
+        "CAL",
+        "LAB",
+        "ADM",
+        "BAS",
+        "MAE",
+        "PAN",
+        "LAG",
+        "PRE",
     }
     assert set(contenedor.catalogo.sectores_conocidos) == esperados
 
@@ -96,17 +113,33 @@ def test_la_faja_lumbar_no_figura_en_ninguna_combinacion(contenedor):
     for sector in contenedor.catalogo.sectores_conocidos:
         for puesto in puestos:
             codigos = {
-                requisito.codigo
-                for requisito in contenedor.catalogo.requisitos_de(sector, puesto)
+                requisito.codigo for requisito in contenedor.catalogo.requisitos_de(sector, puesto)
             }
             assert "33" not in codigos, f"la faja aparece en {sector}/{puesto}"
 
 
 def test_el_dielectrico_nunca_sale_sin_sobreguante(contenedor):
     for sector in contenedor.catalogo.sectores_conocidos:
-        codigos = {
-            requisito.codigo
-            for requisito in contenedor.catalogo.requisitos_de(sector, "")
-        }
+        codigos = {requisito.codigo for requisito in contenedor.catalogo.requisitos_de(sector, "")}
         if "71" in codigos or "134" in codigos:
             assert "72" in codigos, f"{sector} entrega dieléctrico sin sobreguante"
+
+
+def test_la_vida_util_referencial_aplica_excepcion_antes_que_familia(contenedor):
+    casco = contenedor.catalogo.obtener_elemento("84")
+    assert casco is not None and casco.vida_util_dias == 1825
+    dielectrico = contenedor.catalogo.obtener_elemento("71")
+    assert dielectrico is not None and dielectrico.vida_util_dias == 180
+    assert "IEC/EN 60903" in dielectrico.criterio_vida_util
+    faja = contenedor.catalogo.obtener_elemento("33")
+    assert faja is not None and faja.vida_util_dias is None
+    assert contenedor.catalogo.estado_vida_util == "REFERENCIAL_INVESTIGADO"
+
+
+def test_el_catalogo_detecta_las_27_alertas_esperadas(contenedor):
+    alertas = {alerta["codigo"]: alerta["motivos"] for alerta in contenedor.catalogo.alertas()}
+    assert len(alertas) == 27
+    for codigo in ("12", "13", "25"):
+        assert any("sin marca" in motivo for motivo in alertas[codigo])
+    for codigo in ("105", "106", "107", "108", "121", "122", "128"):
+        assert any("referencia derogada" in motivo for motivo in alertas[codigo])

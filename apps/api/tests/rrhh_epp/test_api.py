@@ -42,6 +42,11 @@ def test_un_usuario_de_campo_no_puede_revisar_la_matriz(cliente):
     assert r.status_code == 403
 
 
+def test_un_usuario_de_campo_no_puede_leer_alertas_del_catalogo(cliente):
+    r = cliente.get("/alertas-catalogo", headers={"X-Legajo-Usuario": "1501"})
+    assert r.status_code == 403
+
+
 def test_el_cliente_no_puede_suplantar_al_operador(cliente):
     r = cliente.post("/entregas", json={
         "legajo": "1103",
@@ -189,4 +194,20 @@ def test_pantalla_de_revision_de_matriz_es_solo_lectura(cliente):
     assert "Clarificación" in r.text and "Calderas" in r.text
     assert "a definir con HyS" in r.text
     assert "el catálogo declara" in r.text
+    assert "27" in r.text
+    assert "REFERENCIAL_INVESTIGADO" in r.text
     assert "Aprobar" not in r.text
+
+
+def test_api_expone_alertas_sin_bloquear_entregas(cliente):
+    r = cliente.get("/alertas-catalogo")
+    assert r.status_code == 200
+    assert r.json()["cantidad"] == 27
+    assert r.json()["estado_vida_util"] == "REFERENCIAL_INVESTIGADO"
+
+    entrega = cliente.post("/entregas", json={
+        "legajo": "1103",
+        "items": [{"codigo": "105", "cantidad": 1}],
+        "evidencia_firma": "data:image/png;base64,AAAA",
+    })
+    assert entrega.status_code == 200

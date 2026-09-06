@@ -96,6 +96,7 @@ def construir(
     catalogo = CatalogoYAML(
         RAIZ / "data" / "catalogo_rd068.yaml",
         RAIZ / "data" / "matriz_sector_puesto_epp.yaml",
+        RAIZ / "data" / "vida_util_referencial.yaml",
     )
     perfiles_acceso = PerfilesAccesoYAML(
         RAIZ_SUITE / "plataforma" / "parametria" / "data" / "perfiles_acceso.yaml"

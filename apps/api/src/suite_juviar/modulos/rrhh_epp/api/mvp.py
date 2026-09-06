@@ -151,6 +151,7 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             "fuente_legajos": c.legajos.fuente,
             "modo_simulado": c.modo_simulado,
             "estado_matriz_epp": c.catalogo.estado_matriz,
+            "estado_vida_util": c.catalogo.estado_vida_util,
             "estado_mapa_perfiles": c.perfiles_acceso.estado,
             "dueno_mapa_perfiles": c.perfiles_acceso.dueno_dato,
             "metodos_firma": list(c.firma.metodos_habilitados),
@@ -237,7 +238,12 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
                 "tipo_modelo": elemento.tipo_modelo,
                 "marca": elemento.marca,
                 "posee_certificacion": elemento.posee_certificacion,
+                "certificacion": elemento.certificacion,
                 "unidad": elemento.unidad,
+                "familia": elemento.familia,
+                "destino_declarado": elemento.destino_declarado,
+                "vida_util_dias": elemento.vida_util_dias,
+                "criterio_vida_util": elemento.criterio_vida_util,
             }
             for elemento in c.catalogo.listar_elementos()
         ]
@@ -286,6 +292,15 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
     ) -> list[dict]:
         return c.bitacora.ultimos(n)
 
+    @app.get("/alertas-catalogo")
+    def alertas_catalogo(_usuario: OperadorDeposito) -> dict[str, object]:
+        alertas = c.catalogo.alertas()
+        return {
+            "estado_vida_util": c.catalogo.estado_vida_util,
+            "cantidad": len(alertas),
+            "alertas": alertas,
+        }
+
     @app.get("/matriz", response_class=HTMLResponse)
     def revisar_matriz(
         request: Request,
@@ -293,6 +308,7 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
     ) -> HTMLResponse:
         """Revisión de sólo lectura; aprobar exige identidad real."""
         senales = ("PROPUESTA", "CONFIRMAR", "VERIFICAR", "REVISAR", "FALTA")
+        alertas_catalogo = c.catalogo.alertas()
         sectores: list[dict[str, object]] = []
         total = 0
         a_revisar = 0
@@ -342,6 +358,8 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
                 "a_revisar": a_revisar,
                 "por_origen": por_origen,
                 "version_norma": c.catalogo.version_norma,
+                "cantidad_alertas_catalogo": len(alertas_catalogo),
+                "estado_vida_util": c.catalogo.estado_vida_util,
             },
         )
 
