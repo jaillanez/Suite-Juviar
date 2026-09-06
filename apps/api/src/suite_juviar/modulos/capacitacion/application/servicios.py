@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
-from datetime import date
+from datetime import UTC, date, datetime
 from uuid import UUID, uuid5
 
 from suite_juviar.plataforma.firma.domain.entidades import MetodoFirmaElectronica
 from suite_juviar.plataforma.firma.domain.puertos import MotorDeFirma
 
-from ..domain.modelos import AlertaSupervisor, Asistencia, Participante
+from ..domain.modelos import AlertaSupervisor, AnulacionAsistencia, Asistencia, Participante
 from ..domain.puertos import ConfiguracionAsistencia, RepositorioCapacitacion
 
 ESPACIO_DOCUMENTOS = UUID("aa1d75e7-1789-4ff5-b7d6-e5c3e040c6ce")
@@ -119,6 +119,38 @@ class ReportesCapacitacion:
         if not registros:
             return 0.0
         return round(100 * sum(registro.presente for registro in registros) / len(registros), 2)
+
+
+class AnularAsistencia:
+    def __init__(self, repositorio: RepositorioCapacitacion) -> None:
+        self._repositorio = repositorio
+
+    def ejecutar(
+        self,
+        dictado_id: str,
+        legajo: str,
+        motivo: str,
+        actor: str,
+    ) -> AnulacionAsistencia:
+        existente = next(
+            (
+                asistencia
+                for asistencia in self._repositorio.asistencias_del_dictado(dictado_id)
+                if asistencia.participante.legajo == legajo
+            ),
+            None,
+        )
+        if existente is None:
+            raise ValueError("No existe la asistencia que se intenta anular")
+        anulacion = AnulacionAsistencia(
+            dictado_id=dictado_id,
+            legajo=legajo,
+            motivo=motivo,
+            anulada_por=actor,
+            anulada_en=datetime.now(UTC),
+        )
+        self._repositorio.anular_asistencia(anulacion)
+        return anulacion
 
 
 def planilla_imprimible(tema: str, fecha: date) -> str:

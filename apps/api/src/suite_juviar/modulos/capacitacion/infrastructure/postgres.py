@@ -9,7 +9,7 @@ from psycopg.rows import dict_row
 
 from suite_juviar.plataforma.cripto.puertos import ProtectorDatosPersonales
 
-from ..domain.modelos import Asistencia, Dictado, Participante, Tema
+from ..domain.modelos import AnulacionAsistencia, Asistencia, Dictado, Participante, Tema
 
 
 class EsquemaCapacitacionFaltante(RuntimeError):
@@ -71,6 +71,55 @@ class CapacitacionPostgreSQL:
                 ),
             )
 
+    def anular_asistencia(self, anulacion: AnulacionAsistencia) -> None:
+        legajo_hmac = self._protector.indice(anulacion.legajo)
+        with self._conectar() as cn, cn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO capacitacion.asistencia_anulacion
+                   (asistencia_id, motivo, anulada_por_hmac, anulada_por_cif, anulada_en)
+                   SELECT id, %s, %s, %s, %s FROM capacitacion.asistencia
+                   WHERE dictado_id = %s AND legajo_hmac = %s
+                   ON CONFLICT (asistencia_id) DO NOTHING RETURNING asistencia_id""",
+                (
+                    anulacion.motivo,
+                    self._protector.indice(anulacion.anulada_por),
+                    self._protector.cifrar(anulacion.anulada_por),
+                    anulacion.anulada_en,
+                    anulacion.dictado_id,
+                    legajo_hmac,
+                ),
+            )
+            if cur.fetchone() is None and self.obtener_anulacion(
+                anulacion.dictado_id,
+                anulacion.legajo,
+            ) is None:
+                raise ValueError("No existe la asistencia")
+
+    def obtener_anulacion(
+        self,
+        dictado_id: str,
+        legajo: str,
+    ) -> AnulacionAsistencia | None:
+        with self._conectar(filas_dict=True) as cn, cn.cursor() as cur:
+            cur.execute(
+                """SELECT a.dictado_id, a.legajo_cif, x.motivo,
+                          x.anulada_por_cif, x.anulada_en
+                   FROM capacitacion.asistencia a
+                   JOIN capacitacion.asistencia_anulacion x ON x.asistencia_id = a.id
+                   WHERE a.dictado_id = %s AND a.legajo_hmac = %s""",
+                (dictado_id, self._protector.indice(legajo)),
+            )
+            fila = cur.fetchone()
+            if fila is None:
+                return None
+            return AnulacionAsistencia(
+                dictado_id=str(fila["dictado_id"]),
+                legajo=self._protector.descifrar(bytes(fila["legajo_cif"])),
+                motivo=str(fila["motivo"]),
+                anulada_por=self._protector.descifrar(bytes(fila["anulada_por_cif"])),
+                anulada_en=fila["anulada_en"],  # type: ignore[arg-type]
+            )
+
     def obtener_tema(self, tema_id: str) -> Tema | None:
         with self._conectar(filas_dict=True) as cn, cn.cursor() as cur:
             cur.execute("SELECT * FROM capacitacion.tema WHERE id = %s", (tema_id,))
@@ -94,14 +143,20 @@ class CapacitacionPostgreSQL:
     def asistencias_del_dictado(self, dictado_id: str) -> list[Asistencia]:
         with self._conectar(filas_dict=True) as cn, cn.cursor() as cur:
             cur.execute(
-                "SELECT * FROM capacitacion.asistencia WHERE dictado_id = %s ORDER BY id",
+                """SELECT a.* FROM capacitacion.asistencia a
+                   LEFT JOIN capacitacion.asistencia_anulacion x ON x.asistencia_id = a.id
+                   WHERE a.dictado_id = %s AND x.asistencia_id IS NULL ORDER BY a.id""",
                 (dictado_id,),
             )
             return [self._asistencia(fila) for fila in cur.fetchall()]
 
     def todas_las_asistencias(self) -> list[Asistencia]:
         with self._conectar(filas_dict=True) as cn, cn.cursor() as cur:
-            cur.execute("SELECT * FROM capacitacion.asistencia ORDER BY id")
+            cur.execute(
+                """SELECT a.* FROM capacitacion.asistencia a
+                   LEFT JOIN capacitacion.asistencia_anulacion x ON x.asistencia_id = a.id
+                   WHERE x.asistencia_id IS NULL ORDER BY a.id"""
+            )
             return [self._asistencia(fila) for fila in cur.fetchall()]
 
     @staticmethod

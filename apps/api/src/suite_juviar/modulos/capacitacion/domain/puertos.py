@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from .modelos import Asistencia, Dictado, Tema
+from .modelos import AnulacionAsistencia, Asistencia, Dictado, Tema
 
 
 class RepositorioCapacitacion(Protocol):
@@ -11,6 +11,14 @@ class RepositorioCapacitacion(Protocol):
     def guardar_dictado(self, dictado: Dictado) -> None: ...
 
     def guardar_asistencia(self, asistencia: Asistencia) -> None: ...
+
+    def anular_asistencia(self, anulacion: AnulacionAsistencia) -> None: ...
+
+    def obtener_anulacion(
+        self,
+        dictado_id: str,
+        legajo: str,
+    ) -> AnulacionAsistencia | None: ...
 
     def obtener_tema(self, tema_id: str) -> Tema | None: ...
 
@@ -32,4 +40,3 @@ class ConfiguracionAsistencia(Protocol):
 
     @property
     def umbral_supervisor(self) -> float: ...
-

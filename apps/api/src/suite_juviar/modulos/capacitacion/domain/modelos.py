@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 
 
@@ -69,3 +69,17 @@ class AlertaSupervisor:
     porcentaje: float
     umbral: float
 
+
+@dataclass(frozen=True, slots=True)
+class AnulacionAsistencia:
+    dictado_id: str
+    legajo: str
+    motivo: str
+    anulada_por: str
+    anulada_en: datetime
+
+    def __post_init__(self) -> None:
+        _obligatorio("El dictado", self.dictado_id)
+        _obligatorio("El legajo", self.legajo)
+        _obligatorio("El motivo", self.motivo)
+        _obligatorio("El actor", self.anulada_por)

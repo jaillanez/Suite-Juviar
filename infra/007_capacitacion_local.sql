@@ -30,6 +30,13 @@ CREATE TABLE IF NOT EXISTS capacitacion.asistencia (
     UNIQUE (dictado_id, legajo_hmac)
 );
 
+CREATE TABLE IF NOT EXISTS capacitacion.asistencia_anulacion (
+    asistencia_id  bigint PRIMARY KEY REFERENCES capacitacion.asistencia(id),
+    motivo         text NOT NULL,
+    anulada_por_hmac char(64) NOT NULL,
+    anulada_por_cif bytea NOT NULL,
+    anulada_en     timestamptz NOT NULL
+);
+
 COMMENT ON SCHEMA capacitacion IS 'Dueño funcional y de maestros: RRHH';
 COMMENT ON TABLE capacitacion.tema IS 'Maestro de temas. Dueño del dato: RRHH.';
-

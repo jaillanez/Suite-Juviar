@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from suite_juviar.modulos.capacitacion.application.servicios import (
+    AnularAsistencia,
     RegistrarAsistencia,
     ReportesCapacitacion,
     planilla_imprimible,
@@ -121,3 +122,30 @@ def test_configuracion_declara_dueno_y_estado():
     assert datos.dueno_dato == "RRHH"
     assert datos.estado == "PROPUESTA_SIN_VALIDAR"
     assert datos.umbral_supervisor == 80
+
+
+@pytest.mark.asyncio
+async def test_asistencia_mal_cargada_se_anula_sin_borrar_el_original():
+    repo = repositorio()
+    persona = Participante("1001", "Ana Pérez")
+    await RegistrarAsistencia(repo, MotorFirmaSimulado()).ejecutar("SEG-1", persona, True)
+    anulacion = AnularAsistencia(repo).ejecutar(
+        "SEG-1",
+        "1001",
+        "Se marcó presente por error",
+        "rrhh-01",
+    )
+    assert anulacion.motivo == "Se marcó presente por error"
+    assert repo.obtener_anulacion("SEG-1", "1001") == anulacion
+    assert ("SEG-1", "1001") in repo.asistencias
+    assert repo.asistencias_del_dictado("SEG-1") == []
+
+
+@pytest.mark.parametrize("motivo", ["", None])
+def test_rechaza_anulacion_con_motivo_vacio_o_nulo(motivo):
+    from datetime import UTC, datetime
+
+    from suite_juviar.modulos.capacitacion.domain.modelos import AnulacionAsistencia
+
+    with pytest.raises(ValueError, match="motivo"):
+        AnulacionAsistencia("SEG-1", "1001", motivo, "rrhh-01", datetime.now(UTC))

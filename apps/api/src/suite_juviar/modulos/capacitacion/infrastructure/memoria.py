@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..domain.modelos import Asistencia, Dictado, Tema
+from ..domain.modelos import AnulacionAsistencia, Asistencia, Dictado, Tema
 
 
 class CapacitacionEnMemoria:
@@ -8,6 +8,7 @@ class CapacitacionEnMemoria:
         self.temas: dict[str, Tema] = {}
         self.dictados: dict[str, Dictado] = {}
         self.asistencias: dict[tuple[str, str], Asistencia] = {}
+        self.anulaciones: dict[tuple[str, str], AnulacionAsistencia] = {}
 
     def guardar_tema(self, tema: Tema) -> None:
         self.temas[tema.id] = tema
@@ -18,7 +19,23 @@ class CapacitacionEnMemoria:
         self.dictados[dictado.id] = dictado
 
     def guardar_asistencia(self, asistencia: Asistencia) -> None:
-        self.asistencias[(asistencia.dictado_id, asistencia.participante.legajo)] = asistencia
+        clave = (asistencia.dictado_id, asistencia.participante.legajo)
+        if clave in self.asistencias:
+            return
+        self.asistencias[clave] = asistencia
+
+    def anular_asistencia(self, anulacion: AnulacionAsistencia) -> None:
+        clave = (anulacion.dictado_id, anulacion.legajo)
+        if clave not in self.asistencias:
+            raise ValueError("No existe la asistencia")
+        self.anulaciones.setdefault(clave, anulacion)
+
+    def obtener_anulacion(
+        self,
+        dictado_id: str,
+        legajo: str,
+    ) -> AnulacionAsistencia | None:
+        return self.anulaciones.get((dictado_id, legajo))
 
     def obtener_tema(self, tema_id: str) -> Tema | None:
         return self.temas.get(tema_id)
@@ -34,7 +51,12 @@ class CapacitacionEnMemoria:
             asistencia
             for asistencia in self.asistencias.values()
             if asistencia.dictado_id == dictado_id
+            and (asistencia.dictado_id, asistencia.participante.legajo) not in self.anulaciones
         ]
 
     def todas_las_asistencias(self) -> list[Asistencia]:
-        return list(self.asistencias.values())
+        return [
+            asistencia
+            for asistencia in self.asistencias.values()
+            if (asistencia.dictado_id, asistencia.participante.legajo) not in self.anulaciones
+        ]

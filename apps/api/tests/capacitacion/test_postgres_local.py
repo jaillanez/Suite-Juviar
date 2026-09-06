@@ -1,9 +1,15 @@
-from datetime import date
+from datetime import UTC, date, datetime
 from uuid import uuid4
 
 import pytest
 
-from suite_juviar.modulos.capacitacion.domain.modelos import Asistencia, Dictado, Participante, Tema
+from suite_juviar.modulos.capacitacion.domain.modelos import (
+    AnulacionAsistencia,
+    Asistencia,
+    Dictado,
+    Participante,
+    Tema,
+)
 from suite_juviar.modulos.capacitacion.infrastructure.postgres import (
     CapacitacionPostgreSQL,
     asistencia_visible,
@@ -37,3 +43,15 @@ def test_capacitacion_postgresql_cifra_identidad_y_recupera_asistencia():
     assert len(visibles) == 1
     assert "1901" not in repr(visibles)
     assert "Persona de Prueba" not in repr(visibles)
+
+    anulacion = AnulacionAsistencia(
+        dictado.id,
+        "1901",
+        "Carga de prueba incorrecta",
+        "rrhh-local",
+        datetime.now(UTC),
+    )
+    repositorio.anular_asistencia(anulacion)
+    assert repositorio.obtener_anulacion(dictado.id, "1901") == anulacion
+    assert repositorio.asistencias_del_dictado(dictado.id) == []
+    assert len(asistencia_visible(dsn, dictado.id)) == 1
