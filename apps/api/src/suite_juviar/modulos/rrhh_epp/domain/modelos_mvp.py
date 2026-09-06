@@ -129,6 +129,8 @@ class Entrega:
     fecha_entrega: date
     firma_trabajador: Firma
     usuario_deposito: str
+    circuito: str = "ESPONTANEA"
+    motivo: str = "DESGASTE"
     firma_empresa: str | None = None   # la firma digital del empleador la pone
                                        # el motor de la base, todavía no existe
     observaciones: str = ""
@@ -148,6 +150,14 @@ class DocumentoConstancia:
     generado_en: datetime
     firmado: bool
     simulado: bool
+
+
+@dataclass(frozen=True)
+class EntregaProgramada:
+    fecha: date
+    temporada: str
+    trabajador: Legajo
+    requisitos: tuple[RequisitoEPP, ...]
 
 
 # --------------------------------------------------------------------------
@@ -187,4 +197,12 @@ class FirmaFaltante(ErrorDeEntrega):
 
 
 class MetodoDeFirmaNoHabilitado(ErrorDeEntrega):
+    pass
+
+
+class CircuitoEntregaInvalido(ErrorDeEntrega):
+    pass
+
+
+class MotivoReposicionInvalido(ErrorDeEntrega):
     pass

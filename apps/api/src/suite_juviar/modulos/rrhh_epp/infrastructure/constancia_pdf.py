@@ -143,6 +143,7 @@ class GeneradorConstanciaPDFSimulada:
             Table(
                 [[self._firma(entrega), Paragraph(
                     f"<b>Método:</b> {entrega.firma_trabajador.metodo}<br/>"
+                    f"<b>Circuito:</b> {entrega.circuito} - {entrega.motivo}<br/>"
                     f"<b>Sello:</b> {entrega.firma_trabajador.sello_tiempo.isoformat()}<br/>"
                     f"<b>Registró:</b> {entrega.usuario_deposito}<br/>"
                     "<b>Firma digital empresa:</b> PENDIENTE - motor real no disponible",

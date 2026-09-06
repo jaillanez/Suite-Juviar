@@ -60,6 +60,12 @@ class LegajosNexusSQLServer:
             fila = cursor.fetchone()
             return self._a_legajo(fila) if fila else None
 
+    def listar_activos(self) -> list[Legajo]:
+        with self._conectar() as cn:
+            cursor = cn.cursor()
+            cursor.execute(CONSULTA_BASE + " WHERE activo = 1 ORDER BY apellido, nombre")
+            return [self._a_legajo(fila) for fila in cursor.fetchall()]
+
     def buscar(self, texto: str, limite: int = 20) -> list[Legajo]:
         patron = f"%{(texto or '').strip()}%"
         with self._conectar() as cn:

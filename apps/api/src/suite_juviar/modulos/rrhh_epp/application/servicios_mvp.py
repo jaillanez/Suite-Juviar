@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime
 
 from ..domain.modelos_mvp import (
     CantidadInvalida,
+    CircuitoEntregaInvalido,
     CodigoFueraDeCatalogo,
     ElementoEPP,
     Entrega,
@@ -18,6 +19,7 @@ from ..domain.modelos_mvp import (
     LegajoInexistente,
     LineaEntrega,
     MetodoDeFirmaNoHabilitado,
+    MotivoReposicionInvalido,
     RequisitoEPP,
 )
 from ..domain.puertos_mvp import (
@@ -94,6 +96,8 @@ class RegistrarEntrega:
         fecha: date | None = None,
         id_entrega: str | None = None,
         entregada_en: datetime | None = None,
+        circuito: str = "ESPONTANEA",
+        motivo: str = "DESGASTE",
     ) -> Entrega:
         # El identificador nace en la tablet. Si la respuesta se perdió y la cola
         # reintenta, devolvemos el registro existente sin volver a firmar ni auditar.
@@ -101,6 +105,16 @@ class RegistrarEntrega:
         existente = self._entregas.obtener(id_entrega)
         if existente is not None:
             return existente
+
+        if circuito not in {"PROGRAMADA", "ESPONTANEA"}:
+            raise CircuitoEntregaInvalido("El circuito debe ser PROGRAMADA o ESPONTANEA.")
+        motivos_habilitados = (
+            {"ENTREGA_ESTACIONAL"} if circuito == "PROGRAMADA" else {"ROTURA", "DESGASTE"}
+        )
+        if motivo not in motivos_habilitados:
+            raise MotivoReposicionInvalido(
+                f"El motivo {motivo or '(vacío)'} no corresponde al circuito {circuito}."
+            )
 
         persona = self._legajos.obtener(numero_legajo)
         if persona is None:
@@ -182,6 +196,8 @@ class RegistrarEntrega:
             fecha_entrega=fecha or momento_entrega.date(),
             firma_trabajador=firma,
             usuario_deposito=usuario_deposito,
+            circuito=circuito,
+            motivo=motivo,
             observaciones=observaciones,
         )
         if not self._entregas.guardar(entrega):
@@ -199,6 +215,8 @@ class RegistrarEntrega:
                 "items": len(lineas),
                 "metodo_firma": firma.metodo,
                 "firma_simulada": firma.simulada,
+                "circuito": circuito,
+                "motivo": motivo,
             },
         )
         return entrega

@@ -40,6 +40,8 @@ class RepositorioLegajos(Protocol):
         """Busca por número de legajo, apellido o DNI. Sólo activos."""
         ...
 
+    def listar_activos(self) -> list[Legajo]: ...
+
 
 class RepositorioCatalogo(Protocol):
     """Catálogo RD 068/11 y matriz Puesto vs. EPP."""

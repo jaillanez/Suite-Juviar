@@ -71,6 +71,12 @@ class LegajosYAML:
     def obtener(self, legajo: str) -> Legajo | None:
         return self._por_numero.get(str(legajo).strip())
 
+    def listar_activos(self) -> list[Legajo]:
+        return sorted(
+            (persona for persona in self._por_numero.values() if persona.activo),
+            key=lambda persona: (persona.apellido, persona.nombre),
+        )
+
     def buscar(self, texto: str, limite: int = 20) -> list[Legajo]:
         t = (texto or "").strip().lower()
         if not t:

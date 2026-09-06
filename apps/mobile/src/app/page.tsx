@@ -54,6 +54,18 @@ type Ficha = {
   historial: Array<{ id: string; fecha: string; items: number }>;
 };
 
+type PlanProgramado = {
+  fecha: string;
+  temporada: "VERANO" | "INVIERNO";
+  legajo: string;
+  nombre_completo: string;
+  puesto: string;
+  sector: string;
+  elementos: Array<{ codigo: string; cantidad: number }>;
+  fuente_legajo: string;
+  estado_matriz: string;
+};
+
 async function pedir<T>(ruta: string, legajo: string, opciones?: RequestInit): Promise<T> {
   const respuesta = await fetch(`${API}${ruta}`, {
     ...opciones,
@@ -206,6 +218,11 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
   const [colaPreparada, setColaPreparada] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
   const [constancia, setConstancia] = useState<string | null>(null);
+  const [circuito, setCircuito] = useState<"ESPONTANEA" | "PROGRAMADA">("ESPONTANEA");
+  const [motivo, setMotivo] = useState<"" | "ROTURA" | "DESGASTE">("");
+  const [temporada, setTemporada] = useState<"VERANO" | "INVIERNO">("VERANO");
+  const [fechaProgramada, setFechaProgramada] = useState("");
+  const [programadas, setProgramadas] = useState<PlanProgramado[]>([]);
 
   const obtenerAlmacen = useCallback(() => {
     if (!almacen.current) almacen.current = new AlmacenIndexedDB();
@@ -275,7 +292,7 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
     }
   }
 
-  async function elegir(numero: string) {
+  async function elegir(numero: string, codigosProgramados: string[] = []) {
     setError("");
     setMensaje("");
     setCargando(true);
@@ -284,13 +301,29 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
       setFicha(nueva);
       setResultados([]);
       setBuscado(false);
-      setSeleccion({});
+      setSeleccion(Object.fromEntries(codigosProgramados.map((codigo) => [codigo, true])));
       setCantidades(Object.fromEntries(nueva.epp_requerido.map((e) => [e.codigo, e.cantidad_sugerida])));
       setItemsElegidos({});
       setFirma("");
       setConstancia(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No fue posible abrir el legajo");
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function cargarProgramadas(evento: FormEvent) {
+    evento.preventDefault();
+    setError("");
+    setCargando(true);
+    try {
+      setProgramadas(await pedir<PlanProgramado[]>(
+        `/entregas-programadas?temporada=${temporada}&fecha=${fechaProgramada}`,
+        sesion.legajo,
+      ));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No fue posible armar la entrega programada");
     } finally {
       setCargando(false);
     }
@@ -323,6 +356,8 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
         entregada_en: new Date().toISOString(),
         actor_declarado: sesion.legajo,
         observaciones: "",
+        circuito,
+        motivo: circuito === "PROGRAMADA" ? "ENTREGA_ESTACIONAL" : motivo as "ROTURA" | "DESGASTE",
       };
       const resultado = await registrarConCola(obtenerAlmacen(), entrega, enviar);
       await refrescarCola();
@@ -367,7 +402,50 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
         </span>
         {bloqueoCola && <span>{bloqueoCola} Nuevas entregas bloqueadas.</span>}
       </div>
-      <form className="panel buscador" onSubmit={buscar}>
+      <div className="panel selector-circuito">
+        <span>Tipo de entrega</span>
+        <div className="fila">
+          <button
+            type="button"
+            aria-pressed={circuito === "ESPONTANEA"}
+            onClick={() => { setCircuito("ESPONTANEA"); setFicha(null); }}
+          >
+            Espontánea · rotura o desgaste
+          </button>
+          <button
+            type="button"
+            aria-pressed={circuito === "PROGRAMADA"}
+            onClick={() => { setCircuito("PROGRAMADA"); setFicha(null); }}
+          >
+            Programada · temporada
+          </button>
+        </div>
+      </div>
+      {circuito === "PROGRAMADA" && (
+        <form className="panel programa" onSubmit={cargarProgramadas}>
+          <label htmlFor="temporada">Temporada</label>
+          <select id="temporada" value={temporada} onChange={(e) => setTemporada(e.target.value as "VERANO" | "INVIERNO")}>
+            <option value="VERANO">Verano</option>
+            <option value="INVIERNO">Invierno</option>
+          </select>
+          <label htmlFor="fecha-programada">Fecha fija de entrega</label>
+          <input id="fecha-programada" type="date" value={fechaProgramada} onChange={(e) => setFechaProgramada(e.target.value)} />
+          <button className="principal" disabled={!fechaProgramada || cargando}>Armar lista por sector</button>
+          {programadas.map((plan) => (
+            <button
+              className="resultado"
+              type="button"
+              key={plan.legajo}
+              onClick={() => elegir(plan.legajo, plan.elementos.map((e) => e.codigo))}
+            >
+              <strong>{plan.nombre_completo}</strong>
+              <span>{plan.sector} · {plan.puesto} · {plan.elementos.length} elemento(s)</span>
+              <small>{plan.fuente_legajo} · {plan.estado_matriz}</small>
+            </button>
+          ))}
+        </form>
+      )}
+      {circuito === "ESPONTANEA" && <form className="panel buscador" onSubmit={buscar}>
         <label htmlFor="buscar">Trabajador: legajo, apellido o DNI</label>
         <div className="fila">
           <input id="buscar" value={consulta} onChange={(e) => setConsulta(e.target.value)} placeholder="1042 o Quiroga" />
@@ -393,7 +471,7 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
             <span>{persona.legajo} · {persona.puesto} · {persona.empresa}</span>
           </button>
         ))}
-      </form>
+      </form>}
 
       {error && <p className="error" role="alert">{error}</p>}
       {mensaje && <p className="exito" role="status">{mensaje}</p>}
@@ -410,6 +488,16 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
             <p>Legajo {ficha.cabecera.legajo} · DNI {ficha.cabecera.dni}</p>
             <p>{ficha.cabecera.puesto} · {ficha.cabecera.sector}</p>
           </div>
+          {circuito === "ESPONTANEA" && (
+            <label htmlFor="motivo-reposicion">
+              Motivo de la reposición
+              <select id="motivo-reposicion" value={motivo} onChange={(e) => setMotivo(e.target.value as "" | "ROTURA" | "DESGASTE")}>
+                <option value="">Elegir motivo</option>
+                <option value="ROTURA">Rotura</option>
+                <option value="DESGASTE">Desgaste</option>
+              </select>
+            </label>
+          )}
           <div className="elementos">
             {ficha.epp_requerido.map((elemento) => (
               <div className={`elemento ${seleccion[elemento.codigo] ? "activo" : ""}`} key={elemento.codigo}>
@@ -460,7 +548,7 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
           <button
             className="principal confirmar"
             onClick={registrar}
-            disabled={!elegidos || !seleccionCompleta || !firma || cargando || Boolean(bloqueoCola)}
+            disabled={!elegidos || !seleccionCompleta || !firma || cargando || Boolean(bloqueoCola) || (circuito === "ESPONTANEA" && !motivo)}
           >
             {cargando ? "Registrando…" : "Registrar entrega"}
           </button>

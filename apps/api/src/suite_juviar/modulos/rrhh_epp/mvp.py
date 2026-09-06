@@ -19,6 +19,7 @@ from suite_juviar.plataforma.parametria.infrastructure.perfiles_acceso_yaml impo
 )
 
 from .application.constancias import ObtenerConstanciaPDF
+from .application.programadas import PlanificarEntregasProgramadas
 from .application.servicios_mvp import ConsultarLegajo, RegistrarEntrega
 from .infrastructure.catalogo_yaml import CatalogoYAML
 from .infrastructure.constancia_pdf import GeneradorConstanciaPDFSimulada
@@ -51,6 +52,7 @@ class Contenedor:
     consultar_legajo: ConsultarLegajo
     registrar_entrega: RegistrarEntrega
     obtener_constancia_pdf: ObtenerConstanciaPDF
+    planificar_entregas: PlanificarEntregasProgramadas
     entorno: str
     modo_simulado: bool
 
@@ -136,6 +138,7 @@ def construir(
             constancias,
             generador_constancia,
         ),
+        planificar_entregas=PlanificarEntregasProgramadas(legajos, catalogo),
         entorno=entorno,
         modo_simulado=(fuente_legajos != "nexus"),
     )

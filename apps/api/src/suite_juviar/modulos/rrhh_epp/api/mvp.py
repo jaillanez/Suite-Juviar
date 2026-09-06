@@ -6,7 +6,7 @@ resuelve del lado servidor desde Parametría, pero parte de esa identidad no
 autenticada hasta que ``plataforma/identidad`` esté operativo.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from ipaddress import ip_address
 from pathlib import Path
 from typing import Annotated
@@ -81,6 +81,8 @@ class EntregaEntrada(BaseModel):
     )
     entregada_en: datetime | None = None
     actor_declarado: str | None = Field(default=None, min_length=1, max_length=30)
+    circuito: str = Field(default="ESPONTANEA", min_length=1, max_length=20)
+    motivo: str = Field(default="DESGASTE", min_length=1, max_length=30)
 
 
 def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
@@ -247,10 +249,42 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
                     "fecha": entrega.fecha_entrega.isoformat(),
                     "items": entrega.cantidad_items,
                     "usuario": entrega.usuario_deposito,
+                    "circuito": entrega.circuito,
+                    "motivo": entrega.motivo,
                 }
                 for entrega in historial
             ],
         }
+
+    @app.get("/entregas-programadas")
+    def entregas_programadas(
+        fecha: date,
+        _usuario: OperadorDeposito,
+        temporada: str,
+        sector: str | None = None,
+    ) -> list[dict[str, object]]:
+        return [
+            {
+                "fecha": plan.fecha.isoformat(),
+                "temporada": plan.temporada,
+                "legajo": plan.trabajador.legajo,
+                "nombre_completo": plan.trabajador.nombre_completo,
+                "puesto": plan.trabajador.puesto,
+                "sector_codigo": plan.trabajador.sector_codigo,
+                "sector": plan.trabajador.sector,
+                "elementos": [
+                    {
+                        "codigo": requisito.codigo,
+                        "cantidad": requisito.cantidad,
+                        "origen": requisito.origen,
+                    }
+                    for requisito in plan.requisitos
+                ],
+                "fuente_legajo": c.legajos.fuente,
+                "estado_matriz": c.catalogo.estado_matriz,
+            }
+            for plan in c.planificar_entregas.ejecutar(temporada, fecha, sector)
+        ]
 
     @app.get("/catalogo")
     def catalogo(_usuario: OperadorDeposito) -> list[dict[str, object]]:
@@ -292,6 +326,8 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             observaciones=entrada.observaciones,
             id_entrega=entrada.id_cliente,
             entregada_en=entrada.entregada_en,
+            circuito=entrada.circuito,
+            motivo=entrada.motivo,
         )
         return {
             "id": entrega.id,

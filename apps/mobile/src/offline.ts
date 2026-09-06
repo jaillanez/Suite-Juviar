@@ -13,6 +13,8 @@ export type EntregaOffline = {
   entregada_en: string;
   actor_declarado: string;
   observaciones: string;
+  circuito: "PROGRAMADA" | "ESPONTANEA";
+  motivo: "ENTREGA_ESTACIONAL" | "ROTURA" | "DESGASTE";
 };
 
 export type EntregaEnCola = {

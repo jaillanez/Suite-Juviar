@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS entrega_epp (
     legajo            TEXT NOT NULL,
     fecha_entrega     TEXT NOT NULL,
     usuario_deposito  TEXT NOT NULL,
+    circuito          TEXT NOT NULL DEFAULT 'ESPONTANEA',
+    motivo            TEXT NOT NULL DEFAULT 'DESGASTE',
     observaciones     TEXT NOT NULL DEFAULT '',
     firma_metodo      TEXT NOT NULL,
     firma_evidencia   TEXT NOT NULL,
@@ -71,6 +73,17 @@ class BaseLocal:
             Path(ruta).parent.mkdir(parents=True, exist_ok=True)
         self.cn = _conectar(ruta)
         self.cn.executescript(ESQUEMA)
+        columnas = {
+            fila[1] for fila in self.cn.execute("PRAGMA table_info(entrega_epp)").fetchall()
+        }
+        if "circuito" not in columnas:
+            self.cn.execute(
+                "ALTER TABLE entrega_epp ADD COLUMN circuito TEXT NOT NULL DEFAULT 'ESPONTANEA'"
+            )
+        if "motivo" not in columnas:
+            self.cn.execute(
+                "ALTER TABLE entrega_epp ADD COLUMN motivo TEXT NOT NULL DEFAULT 'DESGASTE'"
+            )
         self.cn.commit()
 
 
@@ -82,15 +95,17 @@ class EntregasSQLite:
         try:
             self._cn.execute(
                 """INSERT INTO entrega_epp
-                   (id, legajo, fecha_entrega, usuario_deposito, observaciones,
+                   (id, legajo, fecha_entrega, usuario_deposito, circuito, motivo, observaciones,
                     firma_metodo, firma_evidencia, firma_sello, firma_simulada,
                     cabecera_json, lineas_json, creado_en)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     entrega.id,
                     entrega.legajo.legajo,
                     entrega.fecha_entrega.isoformat(),
                     entrega.usuario_deposito,
+                    entrega.circuito,
+                    entrega.motivo,
                     entrega.observaciones,
                     entrega.firma_trabajador.metodo,
                     entrega.firma_trabajador.evidencia,
@@ -125,6 +140,8 @@ class EntregasSQLite:
                 simulada=bool(fila["firma_simulada"]),
             ),
             usuario_deposito=fila["usuario_deposito"],
+            circuito=fila["circuito"],
+            motivo=fila["motivo"],
             observaciones=fila["observaciones"],
         )
 
