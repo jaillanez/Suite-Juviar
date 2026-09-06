@@ -1,0 +1,2 @@
+"""Dominio puro de capacitaciones."""
+
