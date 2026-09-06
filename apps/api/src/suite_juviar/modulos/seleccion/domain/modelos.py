@@ -44,3 +44,34 @@ class CVOriginal:
     incorporado_en: datetime
     dueno_dato: str = DUENO_DATO
     fuente_simulada: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class CampoExtraido:
+    nombre: str
+    valor: str
+    fragmento_fuente: str
+    verificado: bool = False
+
+    def __post_init__(self) -> None:
+        if not self.nombre or not self.nombre.strip():
+            raise ValueError("El nombre del campo extraído no puede estar vacío")
+        if not self.valor or not self.valor.strip():
+            raise ValueError("El valor extraído no puede estar vacío")
+        if not self.fragmento_fuente or not self.fragmento_fuente.strip():
+            raise ValueError("Todo campo extraído requiere un fragmento de evidencia")
+        if self.verificado:
+            raise ValueError("La extracción automática no puede marcar un campo como verificado")
+
+
+@dataclass(frozen=True, slots=True)
+class ExtraccionCV:
+    id_original: str
+    campos: tuple[CampoExtraido, ...]
+    campos_pendientes: tuple[str, ...]
+    extraido_en: datetime
+    estado: str = "NO_VERIFICADO"
+
+    @property
+    def requiere_revision(self) -> bool:
+        return bool(self.campos_pendientes)
