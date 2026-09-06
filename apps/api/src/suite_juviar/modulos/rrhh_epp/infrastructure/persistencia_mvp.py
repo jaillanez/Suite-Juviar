@@ -56,7 +56,10 @@ CREATE TABLE IF NOT EXISTS constancia_original (
     sha256       TEXT NOT NULL,
     generado_en  TEXT NOT NULL,
     firmado      INTEGER NOT NULL,
-    simulado     INTEGER NOT NULL
+    simulado     INTEGER NOT NULL,
+    version      INTEGER NOT NULL DEFAULT 1,
+    anula_a      TEXT,
+    entregas_json TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS stock_item (
@@ -112,6 +115,19 @@ class BaseLocal:
         if "motivo" not in columnas:
             self.cn.execute(
                 "ALTER TABLE entrega_epp ADD COLUMN motivo TEXT NOT NULL DEFAULT 'DESGASTE'"
+            )
+        columnas_constancia = {
+            fila[1] for fila in self.cn.execute("PRAGMA table_info(constancia_original)").fetchall()
+        }
+        if "version" not in columnas_constancia:
+            self.cn.execute(
+                "ALTER TABLE constancia_original ADD COLUMN version INTEGER NOT NULL DEFAULT 1"
+            )
+        if "anula_a" not in columnas_constancia:
+            self.cn.execute("ALTER TABLE constancia_original ADD COLUMN anula_a TEXT")
+        if "entregas_json" not in columnas_constancia:
+            self.cn.execute(
+                "ALTER TABLE constancia_original ADD COLUMN entregas_json TEXT NOT NULL DEFAULT '[]'"
             )
         self.cn.commit()
 
@@ -236,13 +252,17 @@ class ConstanciasSQLite:
             generado_en=datetime.fromisoformat(fila["generado_en"]),
             firmado=bool(fila["firmado"]),
             simulado=bool(fila["simulado"]),
+            version=int(fila["version"]),
+            anula_a=fila["anula_a"],
+            entregas_incluidas=tuple(json.loads(fila["entregas_json"])),
         )
 
     def guardar_original(self, documento: DocumentoConstancia) -> None:
         self._cn.execute(
             """INSERT OR IGNORE INTO constancia_original
-               (id_entrega, contenido, sha256, generado_en, firmado, simulado)
-               VALUES (?,?,?,?,?,?)""",
+               (id_entrega, contenido, sha256, generado_en, firmado, simulado,
+                version, anula_a, entregas_json)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
             (
                 documento.id_entrega,
                 documento.contenido,
@@ -250,6 +270,9 @@ class ConstanciasSQLite:
                 documento.generado_en.isoformat(),
                 int(documento.firmado),
                 int(documento.simulado),
+                documento.version,
+                documento.anula_a,
+                json.dumps(documento.entregas_incluidas),
             ),
         )
         self._cn.commit()

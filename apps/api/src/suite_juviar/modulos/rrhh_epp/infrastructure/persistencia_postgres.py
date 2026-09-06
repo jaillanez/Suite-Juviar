@@ -169,14 +169,19 @@ class ConstanciasPostgreSQL:
                 generado_en=fila["generado_en"],  # type: ignore[arg-type]
                 firmado=bool(fila["firmado"]),
                 simulado=bool(fila["simulado"]),
+                version=int(fila["version"]),
+                anula_a=str(fila["anula_a"]) if fila["anula_a"] else None,
+                entregas_incluidas=tuple(fila["entregas_json"]),
             )
 
     def guardar_original(self, documento: DocumentoConstancia) -> None:
         with self._base.conectar() as cn, cn.cursor() as cur:
             cur.execute(
                 """INSERT INTO rrhh_epp.constancia_original
-                   (id_entrega, contenido, sha256, generado_en, firmado, simulado)
-                   VALUES (%s,%s,%s,%s,%s,%s) ON CONFLICT (id_entrega) DO NOTHING""",
+                   (id_entrega, contenido, sha256, generado_en, firmado, simulado,
+                    version, anula_a, entregas_json)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb)
+                   ON CONFLICT (id_entrega) DO NOTHING""",
                 (
                     documento.id_entrega,
                     documento.contenido,
@@ -184,6 +189,9 @@ class ConstanciasPostgreSQL:
                     documento.generado_en,
                     documento.firmado,
                     documento.simulado,
+                    documento.version,
+                    documento.anula_a,
+                    json.dumps(documento.entregas_incluidas),
                 ),
             )
 

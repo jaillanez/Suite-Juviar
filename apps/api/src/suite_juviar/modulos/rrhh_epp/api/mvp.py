@@ -378,6 +378,9 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             circuito=entrada.circuito,
             motivo=entrada.motivo,
         )
+        documento = c.obtener_constancia_pdf.ejecutar(entrega.id)
+        if documento is None:
+            raise HTTPException(status_code=500, detail="No se pudo conservar la constancia.")
         return {
             "id": entrega.id,
             "legajo": entrega.legajo.legajo,
@@ -385,6 +388,8 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             "items": entrega.cantidad_items,
             "firma_simulada": entrega.firma_trabajador.simulada,
             "constancia": f"/api/v1/rrhh-epp/constancias/{entrega.id}.pdf",
+            "version_constancia": documento.version,
+            "anula_a": documento.anula_a,
         }
 
     @app.get("/constancias/{id_entrega}.pdf")

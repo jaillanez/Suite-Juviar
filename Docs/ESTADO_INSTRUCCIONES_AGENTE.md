@@ -10,7 +10,7 @@ credencial, aprobación o dato corporativo faltante se reemplazó por una invenc
 | Ola / paso | Estado del código | Límite operativo visible |
 |---|---|---|
 | 0.1 Catálogo de dos niveles | CONSTRUIDO | Los 435 ítems `SIM-*` deben reemplazarse por el Excel de HyS. |
-| 0.2 Constancia individual | PARCIAL | PDF individual e inmutable construido; firma digital real y versionado de reposiciones pendientes. |
+| 0.2 Constancia individual | CONSTRUIDO | PDF individual y versionado inmutable; firma digital real pendiente. |
 | 0.3 Dos circuitos | CONSTRUIDO | Matriz y volumen diario siguen sin validación empresarial. |
 | 0.4 Stock | CONSTRUIDO | Existencias/mínimos simulados; canal corporativo a Compras pendiente. |
 | 0.5 Deuda de EPP | PARCIAL | PostgreSQL y offline construidos; identidad real y certificado de firma pendientes. |
@@ -47,4 +47,3 @@ externa de sólo lectura y ningún componente escribe en Nexus o Time.
 La Base Común v0.4 y los otros dos documentos que estas instrucciones declaran
 como lectura conjunta no están presentes en el repositorio ni en los archivos
 entregados. Por eso no se modificó §6.2 ni se reconstruyeron decisiones ausentes.
-

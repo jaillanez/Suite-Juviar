@@ -153,6 +153,17 @@ class DocumentoConstancia:
     generado_en: datetime
     firmado: bool
     simulado: bool
+    version: int = 1
+    anula_a: str | None = None
+    entregas_incluidas: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class SolicitudConstancia:
+    entrega_actual: Entrega
+    entregas_incluidas: tuple[Entrega, ...]
+    version: int
+    anula_a: str | None = None
 
 
 @dataclass(frozen=True)

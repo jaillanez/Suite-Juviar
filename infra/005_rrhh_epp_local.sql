@@ -29,8 +29,16 @@ CREATE TABLE IF NOT EXISTS rrhh_epp.constancia_original (
     sha256       text NOT NULL,
     generado_en  timestamptz NOT NULL,
     firmado      boolean NOT NULL,
-    simulado     boolean NOT NULL
+    simulado     boolean NOT NULL,
+    version      integer NOT NULL DEFAULT 1,
+    anula_a      text,
+    entregas_json jsonb NOT NULL DEFAULT '[]'::jsonb
 );
+
+ALTER TABLE rrhh_epp.constancia_original
+    ADD COLUMN IF NOT EXISTS version integer NOT NULL DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS anula_a text,
+    ADD COLUMN IF NOT EXISTS entregas_json jsonb NOT NULL DEFAULT '[]'::jsonb;
 
 CREATE TABLE IF NOT EXISTS rrhh_epp.stock_item (
     item_codigo  text PRIMARY KEY,
@@ -63,4 +71,3 @@ COMMENT ON SCHEMA rrhh_epp IS
     'Dueño funcional: RRHH; stock y mínimos: Depósito; catálogo: Higiene y Seguridad';
 COMMENT ON TABLE rrhh_epp.stock_item IS
     'Maestro operativo de existencias. Dueño del dato: Depósito.';
-

@@ -18,6 +18,7 @@ from .modelos_mvp import (
     ItemCatalogo,
     Legajo,
     RequisitoEPP,
+    SolicitudConstancia,
     StockItem,
 )
 
@@ -99,7 +100,7 @@ class MotorFirma(Protocol):
 
 
 class GeneradorConstancia(Protocol):
-    def generar(self, entrega: Entrega) -> DocumentoConstancia: ...
+    def generar(self, solicitud: SolicitudConstancia) -> DocumentoConstancia: ...
 
 
 class RepositorioConstancias(Protocol):

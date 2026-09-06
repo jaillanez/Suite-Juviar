@@ -24,13 +24,14 @@ from reportlab.platypus import (
     TableStyle,
 )
 
-from ..domain.modelos_mvp import DocumentoConstancia, Entrega
+from ..domain.modelos_mvp import DocumentoConstancia, Entrega, SolicitudConstancia
 
 
 class GeneradorConstanciaPDFSimulada:
     """Genera un original imprimible; no aplica firma digital de la empresa."""
 
-    def generar(self, entrega: Entrega) -> DocumentoConstancia:
+    def generar(self, solicitud: SolicitudConstancia) -> DocumentoConstancia:
+        entrega = solicitud.entrega_actual
         salida = BytesIO()
         documento = SimpleDocTemplate(
             salida,
@@ -73,8 +74,16 @@ class GeneradorConstanciaPDFSimulada:
             Spacer(1, 3 * mm),
             Paragraph("<b>ENTREGA DE ROPA DE TRABAJO Y EPP</b>", titulo),
             Paragraph(
-                f"RD 062/11 - Comprobante {entrega.id} - "
+                f"RD 062/11 - Comprobante {entrega.id} - Versión {solicitud.version} - "
                 f"{entrega.fecha_entrega.strftime('%d/%m/%Y')}",
+                centro,
+            ),
+            Paragraph(
+                (
+                    f"Reemplaza al comprobante {solicitud.anula_a}; el original anterior se conserva."
+                    if solicitud.anula_a
+                    else "Primera versión de la constancia vigente."
+                ),
                 centro,
             ),
             Spacer(1, 3 * mm),
@@ -117,25 +126,27 @@ class GeneradorConstanciaPDFSimulada:
                 Paragraph("<b>Fecha</b>", centro),
             ]
         ]
-        for linea in entrega.lineas:
-            filas.append(
-                [
-                    Paragraph(linea.producto, normal),
-                    Paragraph(
-                        f"{linea.item_codigo}<br/>{linea.tipo_modelo}<br/><b>{linea.estado_item}</b>",
-                        normal,
-                    ),
-                    Paragraph(linea.marca, normal),
-                    Paragraph(f"{linea.talle} / {linea.color}", normal),
-                    Paragraph(
-                        ("SI" if linea.posee_certificacion else "NO")
-                        + (f" - {linea.certificacion}" if linea.certificacion else ""),
-                        normal,
-                    ),
-                    Paragraph(str(linea.cantidad), centro),
-                    Paragraph(entrega.fecha_entrega.strftime("%d/%m/%Y"), centro),
-                ]
-            )
+        for entrega_incluida in solicitud.entregas_incluidas:
+            for linea in entrega_incluida.lineas:
+                filas.append(
+                    [
+                        Paragraph(linea.producto, normal),
+                        Paragraph(
+                            f"{linea.item_codigo}<br/>{linea.tipo_modelo}<br/>"
+                            f"<b>{linea.estado_item}</b>",
+                            normal,
+                        ),
+                        Paragraph(linea.marca, normal),
+                        Paragraph(f"{linea.talle} / {linea.color}", normal),
+                        Paragraph(
+                            ("SI" if linea.posee_certificacion else "NO")
+                            + (f" - {linea.certificacion}" if linea.certificacion else ""),
+                            normal,
+                        ),
+                        Paragraph(str(linea.cantidad), centro),
+                        Paragraph(entrega_incluida.fecha_entrega.strftime("%d/%m/%Y"), centro),
+                    ]
+                )
         historia.append(
             Table(
                 filas,
@@ -195,6 +206,11 @@ class GeneradorConstanciaPDFSimulada:
             generado_en=datetime.now(UTC),
             firmado=False,
             simulado=True,
+            version=solicitud.version,
+            anula_a=solicitud.anula_a,
+            entregas_incluidas=tuple(
+                incluida.id for incluida in solicitud.entregas_incluidas
+            ),
         )
 
     @staticmethod
