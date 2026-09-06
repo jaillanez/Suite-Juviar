@@ -18,7 +18,7 @@ credencial, aprobación o dato corporativo faltante se reemplazó por una invenc
 | 1.2 Ingesta | BASE CONSTRUIDA | Originales cifrados en PostgreSQL; ruta Chimbas y credenciales de correo pendientes. |
 | 1.3 Extracción | BASE CONSTRUIDA | Campos y fragmentos cifrados; OCR y validación con CV reales pendientes. |
 | 1.4 Ranking | BASE CONSTRUIDA | Criterios y notificador simulados; perfil real de acceso RRHH pendiente. |
-| 2 Capacitaciones | BASE CONSTRUIDA | Persistencia/API/perfil real y motor de firma con certificado pendientes. |
+| 2 Capacitaciones | BASE CONSTRUIDA | Persistencia PostgreSQL cifrada; API/perfil real y motor con certificado pendientes. |
 
 `apps/web` y `apps/consulta` no fueron modificados. Nexus continúa como fuente
 externa de sólo lectura y ningún componente escribe en Nexus o Time.

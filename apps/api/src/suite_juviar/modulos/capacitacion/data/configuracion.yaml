@@ -1,0 +1,6 @@
+# PROPUESTA PARA PRUEBAS - RRHH DEBE VALIDARLA
+version: 1
+dueno_dato: RRHH
+estado: PROPUESTA_SIN_VALIDAR
+umbral_asistencia_supervisor: 80
+

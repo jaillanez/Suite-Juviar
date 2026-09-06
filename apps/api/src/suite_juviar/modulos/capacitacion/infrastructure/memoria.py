@@ -38,10 +38,3 @@ class CapacitacionEnMemoria:
 
     def todas_las_asistencias(self) -> list[Asistencia]:
         return list(self.asistencias.values())
-
-
-class ConfiguracionSimulada:
-    estado = "PROPUESTA_SIN_VALIDAR"
-    dueno_dato = "RRHH"
-    umbral_supervisor = 80.0
-

@@ -1,4 +1,5 @@
 from datetime import date
+from pathlib import Path
 
 import pytest
 
@@ -8,12 +9,21 @@ from suite_juviar.modulos.capacitacion.application.servicios import (
     planilla_imprimible,
 )
 from suite_juviar.modulos.capacitacion.domain.modelos import Dictado, Participante, Tema
-from suite_juviar.modulos.capacitacion.infrastructure.memoria import (
-    CapacitacionEnMemoria,
-    ConfiguracionSimulada,
+from suite_juviar.modulos.capacitacion.infrastructure.configuracion_yaml import (
+    ConfiguracionCapacitacionYAML,
 )
+from suite_juviar.modulos.capacitacion.infrastructure.memoria import CapacitacionEnMemoria
 from suite_juviar.plataforma.firma.domain.entidades import MetodoFirmaElectronica
 from suite_juviar.plataforma.firma.infrastructure.simulada import MotorFirmaSimulado
+
+CONFIGURACION = (
+    Path(__file__).resolve().parents[2]
+    / "src/suite_juviar/modulos/capacitacion/data/configuracion.yaml"
+)
+
+
+def configuracion() -> ConfiguracionCapacitacionYAML:
+    return ConfiguracionCapacitacionYAML(CONFIGURACION)
 
 
 def repositorio() -> CapacitacionEnMemoria:
@@ -75,7 +85,7 @@ async def test_reportes_suman_dictados_por_tema_persona_y_anio():
     await caso.ejecutar("SEG-1", persona, True)
     await caso.ejecutar("SEG-2", persona, True)
     await caso.ejecutar("SEG-3", persona, False)
-    reportes = ReportesCapacitacion(repo, ConfiguracionSimulada())
+    reportes = ReportesCapacitacion(repo, configuracion())
     assert reportes.porcentaje_tema("SEG") == 66.67
     assert reportes.porcentaje_persona("1001") == 66.67
     assert reportes.horas_por_persona("1001", 2026) == 4
@@ -90,7 +100,7 @@ async def test_alerta_solo_supervisores_con_asistencia_baja():
     for persona in (supervisor, operario):
         await caso.ejecutar("SEG-1", persona, True)
         await caso.ejecutar("SEG-2", persona, False)
-    alertas = ReportesCapacitacion(repo, ConfiguracionSimulada()).alertas_supervisores()
+    alertas = ReportesCapacitacion(repo, configuracion()).alertas_supervisores()
     assert [(alerta.legajo, alerta.porcentaje) for alerta in alertas] == [("2001", 50.0)]
 
 
@@ -104,3 +114,10 @@ def test_rechaza_tema_con_nombre_vacio_o_nulo(valor):
 def test_rechaza_horas_vacias_o_invalidas(horas):
     with pytest.raises(ValueError, match="mayores a cero"):
         Tema("SEG", "Seguridad", horas)
+
+
+def test_configuracion_declara_dueno_y_estado():
+    datos = configuracion()
+    assert datos.dueno_dato == "RRHH"
+    assert datos.estado == "PROPUESTA_SIN_VALIDAR"
+    assert datos.umbral_supervisor == 80
