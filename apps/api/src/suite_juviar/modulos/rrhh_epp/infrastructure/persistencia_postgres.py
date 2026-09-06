@@ -333,6 +333,44 @@ class StockPostgreSQL:
             )
             return list(cur.fetchall())
 
+    def reclamar_alertas(self, limite: int = 20) -> list[dict[str, object]]:
+        with self._base.conectar(filas_dict=True) as cn, cn.cursor() as cur:
+            cur.execute(
+                """WITH elegidos AS (
+                       SELECT id FROM rrhh_epp.aviso_compras
+                       WHERE estado = 'PENDIENTE'
+                          OR (estado = 'PROCESANDO' AND procesando_en < now() - interval '15 minutes')
+                       ORDER BY id
+                       FOR UPDATE SKIP LOCKED LIMIT %s
+                   )
+                   UPDATE rrhh_epp.aviso_compras AS aviso
+                   SET estado = 'PROCESANDO', procesando_en = now()
+                   FROM elegidos WHERE aviso.id = elegidos.id
+                   RETURNING aviso.*""",
+                (limite,),
+            )
+            return list(cur.fetchall())
+
+    def confirmar_alerta(self, aviso_id: int) -> None:
+        with self._base.conectar() as cn, cn.cursor() as cur:
+            cur.execute(
+                """UPDATE rrhh_epp.aviso_compras
+                   SET estado = 'ENVIADO', enviado_en = now(), procesando_en = NULL,
+                       ultimo_error = NULL
+                   WHERE id = %s AND estado = 'PROCESANDO'""",
+                (aviso_id,),
+            )
+
+    def reintentar_alerta(self, aviso_id: int, error: str) -> None:
+        with self._base.conectar() as cn, cn.cursor() as cur:
+            cur.execute(
+                """UPDATE rrhh_epp.aviso_compras
+                   SET estado = 'PENDIENTE', procesando_en = NULL,
+                       intentos = intentos + 1, ultimo_error = %s
+                   WHERE id = %s AND estado = 'PROCESANDO'""",
+                (error[:1000], aviso_id),
+            )
+
 
 class ConfirmadorEntregaPostgreSQL:
     def __init__(self, base: BasePostgreSQL, stock: StockPostgreSQL) -> None:

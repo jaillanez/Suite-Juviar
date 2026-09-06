@@ -168,3 +168,48 @@ def test_aviso_expone_el_canal_email_configurado():
     assert aviso["canal"] == "EMAIL"
     assert aviso["destinatario"] == "compras@example.test"
     assert aviso["estado_envio"] == "PENDIENTE_TRANSPORTE"
+
+
+def test_outbox_envia_y_confirma_el_aviso(contenedor):
+    from suite_juviar.modulos.rrhh_epp.application.avisos_compras import (
+        DespacharAvisosCompras,
+    )
+
+    enviados = []
+
+    class Transporte:
+        def enviar(self, destinatario, asunto, cuerpo, identificador):
+            enviados.append((destinatario, asunto, cuerpo, identificador))
+
+    contenedor.stock.configurar("SIM-68-01", disponible=21, minimo=20)
+    _entregar(contenedor, id_entrega="TABLET-OUTBOX-0001")
+    resultado = DespacharAvisosCompras(
+        contenedor.stock, Transporte(), "compras@example.test"
+    ).ejecutar()
+
+    assert resultado == {"enviados": 1, "fallidos": 0}
+    assert enviados[0][0] == "compras@example.test"
+    assert "SIM-68-01" in enviados[0][1]
+    assert enviados[0][3].startswith("rrhh-epp-stock-")
+    assert contenedor.stock.alertas_pendientes() == []
+
+
+def test_outbox_reintenta_sin_perder_el_aviso(contenedor):
+    from suite_juviar.modulos.rrhh_epp.application.avisos_compras import (
+        DespacharAvisosCompras,
+    )
+
+    class TransporteCaido:
+        def enviar(self, *args):
+            raise OSError("SMTP no disponible")
+
+    contenedor.stock.configurar("SIM-68-01", disponible=21, minimo=20)
+    _entregar(contenedor, id_entrega="TABLET-OUTBOX-0002")
+    resultado = DespacharAvisosCompras(
+        contenedor.stock, TransporteCaido(), "compras@example.test"
+    ).ejecutar()
+
+    assert resultado == {"enviados": 0, "fallidos": 1}
+    aviso = contenedor.stock.alertas_pendientes()[0]
+    assert aviso["intentos"] == 1
+    assert aviso["ultimo_error"] == "SMTP no disponible"

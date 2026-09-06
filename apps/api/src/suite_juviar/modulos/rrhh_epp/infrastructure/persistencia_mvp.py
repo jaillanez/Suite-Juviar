@@ -76,7 +76,11 @@ CREATE TABLE IF NOT EXISTS aviso_compras (
     disponible   INTEGER NOT NULL,
     minimo       INTEGER NOT NULL,
     creado_en    TEXT NOT NULL,
-    estado       TEXT NOT NULL DEFAULT 'PENDIENTE'
+    estado       TEXT NOT NULL DEFAULT 'PENDIENTE',
+    intentos     INTEGER NOT NULL DEFAULT 0,
+    ultimo_error TEXT,
+    enviado_en   TEXT,
+    procesando_en TEXT
 );
 
 CREATE TABLE IF NOT EXISTS bitacora (
@@ -129,6 +133,17 @@ class BaseLocal:
             self.cn.execute(
                 "ALTER TABLE constancia_original ADD COLUMN entregas_json TEXT NOT NULL DEFAULT '[]'"
             )
+        columnas_aviso = {
+            fila[1] for fila in self.cn.execute("PRAGMA table_info(aviso_compras)").fetchall()
+        }
+        for nombre, definicion in (
+            ("intentos", "INTEGER NOT NULL DEFAULT 0"),
+            ("ultimo_error", "TEXT"),
+            ("enviado_en", "TEXT"),
+            ("procesando_en", "TEXT"),
+        ):
+            if nombre not in columnas_aviso:
+                self.cn.execute(f"ALTER TABLE aviso_compras ADD COLUMN {nombre} {definicion}")
         self.cn.commit()
 
 
@@ -364,7 +379,7 @@ class StockSQLite:
                        SELECT ?,?,?,?,'PENDIENTE'
                        WHERE NOT EXISTS (
                            SELECT 1 FROM aviso_compras
-                           WHERE item_codigo = ? AND estado = 'PENDIENTE'
+                           WHERE item_codigo = ? AND estado IN ('PENDIENTE', 'PROCESANDO')
                        )""",
                     (
                         item_codigo,
@@ -395,6 +410,47 @@ class StockSQLite:
             "SELECT * FROM aviso_compras WHERE estado = 'PENDIENTE' ORDER BY id"
         ).fetchall()
         return [dict(fila) for fila in filas]
+
+    def reclamar_alertas(self, limite: int = 20) -> list[dict[str, object]]:
+        self._cn.execute("BEGIN IMMEDIATE")
+        try:
+            ahora = datetime.now(UTC)
+            vencido = datetime.fromtimestamp(ahora.timestamp() - 900, UTC).isoformat()
+            filas = self._cn.execute(
+                """SELECT * FROM aviso_compras
+                   WHERE estado = 'PENDIENTE'
+                      OR (estado = 'PROCESANDO' AND procesando_en < ?)
+                   ORDER BY id LIMIT ?""",
+                (vencido, limite),
+            ).fetchall()
+            ids = [int(fila["id"]) for fila in filas]
+            self._cn.executemany(
+                "UPDATE aviso_compras SET estado = 'PROCESANDO', procesando_en = ? WHERE id = ?",
+                [(ahora.isoformat(), aviso_id) for aviso_id in ids],
+            )
+            self._cn.commit()
+            return [dict(fila) for fila in filas]
+        except Exception:
+            self._cn.rollback()
+            raise
+
+    def confirmar_alerta(self, aviso_id: int) -> None:
+        self._cn.execute(
+            "UPDATE aviso_compras SET estado = 'ENVIADO', enviado_en = ?, "
+            "procesando_en = NULL, ultimo_error = NULL "
+            "WHERE id = ? AND estado = 'PROCESANDO'",
+            (datetime.now(UTC).isoformat(), aviso_id),
+        )
+        self._cn.commit()
+
+    def reintentar_alerta(self, aviso_id: int, error: str) -> None:
+        self._cn.execute(
+            "UPDATE aviso_compras SET estado = 'PENDIENTE', procesando_en = NULL, "
+            "intentos = intentos + 1, ultimo_error = ? "
+            "WHERE id = ? AND estado = 'PROCESANDO'",
+            (error[:1000], aviso_id),
+        )
+        self._cn.commit()
 
 
 class ConfirmadorEntregaSQLite:

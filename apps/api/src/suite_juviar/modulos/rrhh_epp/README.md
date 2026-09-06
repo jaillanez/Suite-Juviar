@@ -32,8 +32,9 @@ limitado al aislamiento de las pruebas automatizadas.
   ítem simulado se rechaza antes de tocar stock, bitácora o constancia.
 - El catálogo de ítems aprobado reemplaza el YAML completo: el cargador rechaza una
   mezcla de códigos reales y `SIM-*`.
-- El aviso de mínimo sale por correo. La casilla se configura en despliegue mediante
-  `SJ_COMPRAS_EMAIL`; no se fija una dirección corporativa inventada en el código.
+- El aviso de mínimo sale por una outbox durable y un worker SMTP con reintentos. La
+  casilla se configura mediante `SJ_COMPRAS_EMAIL`; servidor, remitente y credenciales
+  se inyectan con `SJ_SMTP_*`, sin direcciones ni secretos fijados en el código.
 - El rol PostgreSQL `suite_rrhh_epp` queda aislado de Selección y Capacitación y se
   comprueba contra la base local con el control de §6.5.
 
@@ -48,4 +49,4 @@ limitado al aislamiento de las pruebas automatizadas.
 | Volumen diario de temporada alta | PENDIENTE | Observación presencial en depósito; la pantalla se diseñó como lista masiva mientras falta el dato. |
 | Ítems reales de marcas, modelos, talles y colores | SIMULADO | Reemplazar los 435 registros `SIM-*` cuando llegue el Excel maestro de Higiene y Seguridad. |
 | Existencias y mínimos reales por ítem | SIMULADO | Depósito debe sustituir las cantidades ficticias y aprobar cada mínimo antes del uso real. |
-| Transporte del correo a Compras | CANAL DEFINIDO | Canal `EMAIL`; configurar `SJ_COMPRAS_EMAIL` y el transporte SMTP/outbox del entorno. Los avisos durables hoy quedan disponibles en la API. |
+| Transporte del correo a Compras | CONSTRUIDO, NO CONFIGURADO | Outbox, reclamo concurrente, reintento y SMTP construidos. Configurar `SJ_COMPRAS_EMAIL`, `SJ_SMTP_HOST`, `SJ_SMTP_REMITENTE` y, si corresponde, `SJ_SMTP_USUARIO`, `SJ_SMTP_CLAVE`, `SJ_SMTP_PUERTO` y `SJ_SMTP_TLS`; ejecutar `python -m apps.rrhh_epp_compras`. |

@@ -18,6 +18,7 @@ from suite_juviar.plataforma.parametria.infrastructure.perfiles_acceso_yaml impo
     PerfilesAccesoYAML,
 )
 
+from .application.avisos_compras import DespacharAvisosCompras
 from .application.constancias import ObtenerConstanciaPDF
 from .application.programadas import PlanificarEntregasProgramadas
 from .application.servicios_mvp import ConsultarLegajo, RegistrarEntrega
@@ -30,6 +31,7 @@ from .domain.puertos_mvp import (
 )
 from .infrastructure.catalogo_yaml import CatalogoYAML
 from .infrastructure.constancia_pdf import GeneradorConstanciaPDFSimulada
+from .infrastructure.correo_smtp import CorreoComprasSMTP
 from .infrastructure.firma_simulada import FirmaSimulada
 from .infrastructure.legajos_nexus import LegajosNexusSQLServer
 from .infrastructure.legajos_yaml import LegajosYAML
@@ -76,6 +78,29 @@ class Contenedor:
     modo_simulado: bool
     persistencia: str
     email_compras: str | None
+
+
+def construir_despachador_compras(c: Contenedor) -> DespacharAvisosCompras:
+    host = (os.getenv("SJ_SMTP_HOST") or "").strip()
+    remitente = (os.getenv("SJ_SMTP_REMITENTE") or "").strip()
+    if not c.email_compras or not host or not remitente:
+        raise ErrorDeConfiguracion(
+            "El correo a Compras requiere SJ_COMPRAS_EMAIL, SJ_SMTP_HOST y SJ_SMTP_REMITENTE."
+        )
+    try:
+        puerto = int(os.getenv("SJ_SMTP_PUERTO") or "587")
+    except ValueError as exc:
+        raise ErrorDeConfiguracion("SJ_SMTP_PUERTO debe ser un entero.") from exc
+    transporte = CorreoComprasSMTP(
+        host=host,
+        puerto=puerto,
+        remitente=remitente,
+        usuario=(os.getenv("SJ_SMTP_USUARIO") or "").strip() or None,
+        clave=os.getenv("SJ_SMTP_CLAVE"),
+        usar_tls=(os.getenv("SJ_SMTP_TLS") or "SI").strip().upper()
+        in {"1", "SI", "SÍ", "TRUE"},
+    )
+    return DespacharAvisosCompras(c.stock, transporte, c.email_compras)
 
 
 def construir(

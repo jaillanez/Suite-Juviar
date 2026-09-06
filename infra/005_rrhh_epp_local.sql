@@ -54,10 +54,21 @@ CREATE TABLE IF NOT EXISTS rrhh_epp.aviso_compras (
     disponible   integer NOT NULL,
     minimo       integer NOT NULL,
     creado_en    timestamptz NOT NULL DEFAULT now(),
-    estado       text NOT NULL DEFAULT 'PENDIENTE'
+    estado       text NOT NULL DEFAULT 'PENDIENTE',
+    intentos     integer NOT NULL DEFAULT 0,
+    ultimo_error text,
+    enviado_en   timestamptz,
+    procesando_en timestamptz
 );
-CREATE UNIQUE INDEX IF NOT EXISTS ux_rrhh_epp_aviso_pendiente
-    ON rrhh_epp.aviso_compras (item_codigo) WHERE estado = 'PENDIENTE';
+ALTER TABLE rrhh_epp.aviso_compras
+    ADD COLUMN IF NOT EXISTS intentos integer NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS ultimo_error text,
+    ADD COLUMN IF NOT EXISTS enviado_en timestamptz,
+    ADD COLUMN IF NOT EXISTS procesando_en timestamptz;
+DROP INDEX IF EXISTS rrhh_epp.ux_rrhh_epp_aviso_pendiente;
+CREATE UNIQUE INDEX ux_rrhh_epp_aviso_pendiente
+    ON rrhh_epp.aviso_compras (item_codigo)
+    WHERE estado IN ('PENDIENTE', 'PROCESANDO');
 
 CREATE TABLE IF NOT EXISTS rrhh_epp.bitacora (
     id        bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

@@ -12,7 +12,7 @@ credencial, aprobación o dato corporativo faltante se reemplazó por una invenc
 | 0.1 Catálogo de dos niveles | CONSTRUIDO | Los 435 ítems `SIM-*` deben reemplazarse por el Excel de HyS. |
 | 0.2 Constancia individual | CONSTRUIDO | PDF individual y versionado inmutable; firma digital real pendiente. |
 | 0.3 Dos circuitos | CONSTRUIDO | Matriz y volumen diario siguen sin validación empresarial. |
-| 0.4 Stock | CONSTRUIDO | Existencias/mínimos simulados; canal a Compras definido como correo, transporte pendiente. |
+| 0.4 Stock | CONSTRUIDO | Existencias/mínimos simulados; outbox y transporte SMTP construidos, configuración corporativa pendiente. |
 | 0.5 Deuda de EPP | PARCIAL | PostgreSQL y offline construidos; identidad real y certificado de firma pendientes. |
 | 1.1 Postulante | CONSTRUIDO | Vive en Terceros, con dueño RRHH; persistencia cifrada pendiente. |
 | 1.2 Ingesta | BASE CONSTRUIDA | Originales cifrados en PostgreSQL; 20 a 30 CV por correo alcanzan para calibrar sin esperar la ruta Chimbas. |
@@ -56,7 +56,8 @@ externa de sólo lectura y ningún componente escribe en Nexus o Time.
    La ruta de sólo lectura de Chimbas puede resolverse después de la calibración.
 5. DSN/credenciales de sólo lectura de Nexus.
 6. Diccionario de Time y protocolo de cambios de turno.
-7. Canal a Compras: correo; falta configurar `SJ_COMPRAS_EMAIL` y el transporte.
+7. Canal a Compras: correo implementado con outbox durable y reintentos; falta
+   configurar `SJ_COMPRAS_EMAIL`, host/remitente SMTP y credenciales del entorno.
 
 El orden EPP → Selección → Capacitaciones → resto quedó confirmado en §6.2 de
 la Base Común v0.4. La Base, el README fuente de EPP y el plan se conservan en

@@ -6,6 +6,7 @@ resuelve del lado servidor desde Parametría, pero parte de esa identidad no
 autenticada hasta que ``plataforma/identidad`` esté operativo.
 """
 
+import os
 from datetime import date, datetime
 from ipaddress import ip_address
 from pathlib import Path
@@ -180,6 +181,9 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             "dueno_stock": c.stock.dueno_dato,
             "canal_aviso_compras": "EMAIL",
             "email_compras_configurado": c.email_compras is not None,
+            "transporte_email_configurado": bool(
+                os.getenv("SJ_SMTP_HOST") and os.getenv("SJ_SMTP_REMITENTE")
+            ),
             "metodos_firma": list(c.firma.metodos_habilitados),
             "perfil": usuario.perfil.value,
         }

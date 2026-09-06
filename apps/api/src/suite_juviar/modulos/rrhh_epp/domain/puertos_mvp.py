@@ -128,6 +128,22 @@ class RepositorioStock(Protocol):
 
     def alertas_pendientes(self) -> list[dict[str, object]]: ...
 
+    def reclamar_alertas(self, limite: int = 20) -> list[dict[str, object]]: ...
+
+    def confirmar_alerta(self, aviso_id: int) -> None: ...
+
+    def reintentar_alerta(self, aviso_id: int, error: str) -> None: ...
+
+
+class TransporteCorreo(Protocol):
+    def enviar(
+        self,
+        destinatario: str,
+        asunto: str,
+        cuerpo: str,
+        identificador: str,
+    ) -> None: ...
+
 
 class ConfirmadorEntrega(Protocol):
     """Confirma entrega, stock y bitácora dentro de una única transacción."""
