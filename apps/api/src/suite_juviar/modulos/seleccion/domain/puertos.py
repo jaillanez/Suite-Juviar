@@ -2,7 +2,14 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from .modelos import CampoExtraido, CVOriginal, DocumentoEntrante, ExtraccionCV
+from .modelos import (
+    AvisoCoincidencia,
+    CampoExtraido,
+    CVOriginal,
+    DocumentoEntrante,
+    ExtraccionCV,
+    PerfilBusqueda,
+)
 
 
 class FuenteCV(Protocol):
@@ -35,3 +42,17 @@ class RepositorioExtracciones(Protocol):
     def guardar_extraccion(self, extraccion: ExtraccionCV) -> None: ...
 
     def obtener_extraccion(self, id_original: str) -> ExtraccionCV | None: ...
+
+
+class CriteriosPerfil(Protocol):
+    @property
+    def estado(self) -> str: ...
+
+    @property
+    def dueno_dato(self) -> str: ...
+
+    def palabras_clave(self, perfil: PerfilBusqueda) -> tuple[str, ...]: ...
+
+
+class NotificadorCoincidencias(Protocol):
+    def avisar(self, aviso: AvisoCoincidencia) -> None: ...

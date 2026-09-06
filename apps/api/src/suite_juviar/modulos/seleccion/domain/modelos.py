@@ -75,3 +75,59 @@ class ExtraccionCV:
     @property
     def requiere_revision(self) -> bool:
         return bool(self.campos_pendientes)
+
+
+class PerfilBusqueda(StrEnum):
+    ADMINISTRACION = "ADMINISTRACION"
+    MANTENIMIENTO = "MANTENIMIENTO"
+    BODEGA = "BODEGA"
+
+
+@dataclass(frozen=True, slots=True)
+class Busqueda:
+    id: str
+    nombre: str
+    perfil: PerfilBusqueda
+    definido_por: str
+    definido_en: datetime
+    edad_minima: int | None = None
+    edad_maxima: int | None = None
+    secundaria_completa: bool = False
+    abierta: bool = True
+
+    def __post_init__(self) -> None:
+        for etiqueta, valor in (
+            ("identificador", self.id),
+            ("nombre", self.nombre),
+            ("responsable", self.definido_por),
+        ):
+            if not valor or not valor.strip():
+                raise ValueError(f"El {etiqueta} de la búsqueda no puede estar vacío")
+        if not isinstance(self.perfil, PerfilBusqueda):
+            raise TypeError("El perfil de búsqueda no es válido")
+        for edad in (self.edad_minima, self.edad_maxima):
+            if edad is not None and (isinstance(edad, bool) or edad < 0):
+                raise ValueError("Las edades deben ser enteros positivos")
+        if (
+            self.edad_minima is not None
+            and self.edad_maxima is not None
+            and self.edad_minima > self.edad_maxima
+        ):
+            raise ValueError("La edad mínima no puede superar la máxima")
+
+
+@dataclass(frozen=True, slots=True)
+class ResultadoPostulante:
+    id_original: str
+    cumple: bool
+    requiere_revision: bool
+    puntaje: int
+    razones: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class AvisoCoincidencia:
+    busqueda_id: str
+    id_original: str
+    destinatario: str
+    creado_en: datetime

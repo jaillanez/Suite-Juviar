@@ -13,6 +13,11 @@ el registro se conserva y se vincula al legajo creado externamente en Nexus.
   los bytes originales, su referencia de origen y SHA-256 sin mover el archivo fuente.
 - Extracción explicable de edad/fecha, estudios, experiencia, oficio, localidad y
   contacto: cada valor nace `NO_VERIFICADO` con su fragmento; lo faltante va a revisión.
+- Filtros y ranking explicables por edad, secundaria y perfil; cada búsqueda conserva
+  quién definió el criterio y cuándo, y una coincidencia abierta genera un aviso simulado.
+
+> El filtro por edad es una decisión de la empresa, no del sistema. El asesor legal
+> debe revisarlo antes de usarlo en una búsqueda real.
 
 ## Deuda técnica y datos pendientes
 
@@ -25,4 +30,6 @@ el registro se conserva y se vincula al legajo creado externamente en Nexus.
 | Persistencia durable de originales | PENDIENTE | Conectar el puerto a almacenamiento cifrado e inmutable; hoy sólo existe el adaptador en memoria para pruebas. |
 | Reglas de extracción | SIMULADO | Validar con CV reales de RRHH y sustituir o ajustar las expresiones provisorias; nunca auto-verifican ni descartan. |
 | PDF escaneado sin texto | PENDIENTE | Incorporar OCR cuando RRHH confirme el volumen; mientras tanto va completo a revisión. |
+| Palabras clave por perfil | PROPUESTA_SIN_VALIDAR | RRHH debe validar el YAML antes de usarlo para una búsqueda real. |
+| Canal proactivo a RRHH | SIMULADO | Conectar el notificador al canal corporativo; hoy sólo se prueba en memoria. |
 
