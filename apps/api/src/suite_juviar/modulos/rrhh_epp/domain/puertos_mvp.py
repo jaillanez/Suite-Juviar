@@ -18,6 +18,7 @@ from .modelos_mvp import (
     ItemCatalogo,
     Legajo,
     RequisitoEPP,
+    StockItem,
 )
 
 
@@ -105,6 +106,26 @@ class RepositorioConstancias(Protocol):
     def obtener(self, id_entrega: str) -> DocumentoConstancia | None: ...
 
     def guardar_original(self, documento: DocumentoConstancia) -> None: ...
+
+
+class RepositorioStock(Protocol):
+    @property
+    def estado(self) -> str: ...
+
+    @property
+    def dueno_dato(self) -> str: ...
+
+    def listar(self) -> list[StockItem]: ...
+
+    def obtener(self, item_codigo: str) -> StockItem | None: ...
+
+    def verificar(self, lineas: list[tuple[str, int]]) -> None: ...
+
+    def descontar(self, lineas: list[tuple[str, int]]) -> None: ...
+
+    def configurar(self, item_codigo: str, disponible: int, minimo: int) -> StockItem: ...
+
+    def alertas_pendientes(self) -> list[dict[str, object]]: ...
 
 
 class Bitacora(Protocol):

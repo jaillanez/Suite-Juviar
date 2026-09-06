@@ -39,6 +39,8 @@ function entrega(id = "tablet-00000001"): EntregaOffline {
     entregada_en: "2026-09-06T13:45:12-03:00",
     actor_declarado: "1210",
     observaciones: "",
+    circuito: "ESPONTANEA",
+    motivo: "ROTURA",
   };
 }
 

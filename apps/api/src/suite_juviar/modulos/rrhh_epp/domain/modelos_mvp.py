@@ -14,6 +14,7 @@ from datetime import date, datetime
 # Personas: vienen de Nexus. El módulo las lee, nunca las crea ni las edita.
 # --------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class Legajo:
     legajo: str
@@ -36,6 +37,7 @@ class Legajo:
 # --------------------------------------------------------------------------
 # Catálogo RD 068/11 y matriz Puesto vs. EPP
 # --------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class ElementoEPP:
@@ -73,8 +75,8 @@ class RequisitoEPP:
 
     codigo: str
     cantidad: int
-    frecuencia: str          # SEMESTRAL | ANUAL | A_DEMANDA
-    temporada: str           # VERANO | INVIERNO | TODO_EL_ANIO
+    frecuencia: str  # SEMESTRAL | ANUAL | A_DEMANDA
+    temporada: str  # VERANO | INVIERNO | TODO_EL_ANIO
     obligatorio: bool
     fundamento: str = ""
     origen: str = "SECTOR"
@@ -83,6 +85,7 @@ class RequisitoEPP:
 # --------------------------------------------------------------------------
 # Entrega
 # --------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class LineaEntrega:
@@ -115,8 +118,8 @@ class Firma:
     (plataforma/firma) ni sello de tiempo de una autoridad.
     """
 
-    metodo: str              # TRAZO_TABLET | PIN | BIOMETRIA
-    evidencia: str           # trazo en base64, hash del PIN, id de la validación
+    metodo: str  # TRAZO_TABLET | PIN | BIOMETRIA
+    evidencia: str  # trazo en base64, hash del PIN, id de la validación
     sello_tiempo: datetime
     simulada: bool
 
@@ -131,8 +134,8 @@ class Entrega:
     usuario_deposito: str
     circuito: str = "ESPONTANEA"
     motivo: str = "DESGASTE"
-    firma_empresa: str | None = None   # la firma digital del empleador la pone
-                                       # el motor de la base, todavía no existe
+    firma_empresa: str | None = None  # la firma digital del empleador la pone
+    # el motor de la base, todavía no existe
     observaciones: str = ""
 
     @property
@@ -160,9 +163,18 @@ class EntregaProgramada:
     requisitos: tuple[RequisitoEPP, ...]
 
 
+@dataclass(frozen=True)
+class StockItem:
+    item_codigo: str
+    disponible: int
+    minimo: int
+    estado: str
+
+
 # --------------------------------------------------------------------------
 # Errores del dominio
 # --------------------------------------------------------------------------
+
 
 class ErrorDeEntrega(Exception):
     """Base de los rechazos de negocio. La API los traduce a HTTP 400/404."""
@@ -205,4 +217,12 @@ class CircuitoEntregaInvalido(ErrorDeEntrega):
 
 
 class MotivoReposicionInvalido(ErrorDeEntrega):
+    pass
+
+
+class StockInsuficiente(ErrorDeEntrega):
+    pass
+
+
+class StockInvalido(ErrorDeEntrega):
     pass

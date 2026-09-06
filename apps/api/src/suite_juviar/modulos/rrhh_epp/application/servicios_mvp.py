@@ -28,19 +28,26 @@ from ..domain.puertos_mvp import (
     RepositorioCatalogo,
     RepositorioEntregas,
     RepositorioLegajos,
+    RepositorioStock,
 )
 
 
 class ConsultarLegajo:
     """Devuelve la cabecera del RD 062/11 y su EPP por sector + puesto."""
 
-    def __init__(self, legajos: RepositorioLegajos, catalogo: RepositorioCatalogo,
-                 entregas: RepositorioEntregas) -> None:
+    def __init__(
+        self,
+        legajos: RepositorioLegajos,
+        catalogo: RepositorioCatalogo,
+        entregas: RepositorioEntregas,
+    ) -> None:
         self._legajos = legajos
         self._catalogo = catalogo
         self._entregas = entregas
 
-    def ejecutar(self, numero: str) -> tuple[Legajo, list[tuple[RequisitoEPP, ElementoEPP]], list[Entrega]]:
+    def ejecutar(
+        self, numero: str
+    ) -> tuple[Legajo, list[tuple[RequisitoEPP, ElementoEPP]], list[Entrega]]:
         persona = self._legajos.obtener(numero)
         if persona is None:
             raise LegajoInexistente(f"El legajo {numero} no existe en {self._legajos.fuente}.")
@@ -78,12 +85,14 @@ class RegistrarEntrega:
         entregas: RepositorioEntregas,
         firma: MotorFirma,
         bitacora: Bitacora,
+        stock: RepositorioStock,
     ) -> None:
         self._legajos = legajos
         self._catalogo = catalogo
         self._entregas = entregas
         self._firma = firma
         self._bitacora = bitacora
+        self._stock = stock
 
     def ejecutar(
         self,
@@ -118,7 +127,9 @@ class RegistrarEntrega:
 
         persona = self._legajos.obtener(numero_legajo)
         if persona is None:
-            raise LegajoInexistente(f"El legajo {numero_legajo} no existe en {self._legajos.fuente}.")
+            raise LegajoInexistente(
+                f"El legajo {numero_legajo} no existe en {self._legajos.fuente}."
+            )
         if not persona.activo:
             raise LegajoInactivo(f"El legajo {numero_legajo} figura dado de baja.")
 
@@ -142,9 +153,7 @@ class RegistrarEntrega:
                 )
             cantidad = item.get("cantidad")
             if not isinstance(cantidad, int) or isinstance(cantidad, bool) or cantidad <= 0:
-                raise CantidadInvalida(
-                    f"Cantidad inválida para el código {codigo}: {cantidad!r}."
-                )
+                raise CantidadInvalida(f"Cantidad inválida para el código {codigo}: {cantidad!r}.")
             lineas.append(
                 LineaEntrega(
                     codigo=elemento.codigo,
@@ -170,6 +179,9 @@ class RegistrarEntrega:
                 f"El método de firma '{metodo_firma}' no está habilitado. "
                 f"Habilitados: {', '.join(self._firma.metodos_habilitados)}."
             )
+
+        movimientos_stock = [(linea.item_codigo, linea.cantidad) for linea in lineas]
+        self._stock.verificar(movimientos_stock)
 
         momento_entrega = entregada_en or datetime.now(UTC)
         if momento_entrega.tzinfo is None:
@@ -205,6 +217,7 @@ class RegistrarEntrega:
             if existente is not None:
                 return existente
             raise RuntimeError("La entrega duplicada no pudo recuperarse del repositorio.")
+        self._stock.descontar(movimientos_stock)
         self._bitacora.registrar(
             evento="ENTREGA_EPP_REGISTRADA",
             usuario=usuario_deposito,
@@ -217,6 +230,10 @@ class RegistrarEntrega:
                 "firma_simulada": firma.simulada,
                 "circuito": circuito,
                 "motivo": motivo,
+                "movimientos_stock": [
+                    {"item_codigo": codigo, "cantidad": cantidad}
+                    for codigo, cantidad in movimientos_stock
+                ],
             },
         )
         return entrega

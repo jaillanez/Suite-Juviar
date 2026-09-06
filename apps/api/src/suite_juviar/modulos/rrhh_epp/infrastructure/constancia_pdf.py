@@ -54,17 +54,21 @@ class GeneradorConstanciaPDFSimulada:
         alerta = ParagraphStyle("alerta_epp", parent=centro, textColor=colors.white)
         historia: list[object] = [
             Table(
-                [[
-                    Paragraph("<b>DOCUMENTO DE PRUEBA - SIN VALIDEZ LEGAL</b>", alerta),
-                ]],
+                [
+                    [
+                        Paragraph("<b>DOCUMENTO DE PRUEBA - SIN VALIDEZ LEGAL</b>", alerta),
+                    ]
+                ],
                 colWidths=[273 * mm],
-                style=TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#A8400C")),
-                    ("TEXTCOLOR", (0, 0), (-1, -1), colors.white),
-                    ("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor("#792D09")),
-                    ("TOPPADDING", (0, 0), (-1, -1), 5),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ]),
+                style=TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#A8400C")),
+                        ("TEXTCOLOR", (0, 0), (-1, -1), colors.white),
+                        ("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor("#792D09")),
+                        ("TOPPADDING", (0, 0), (-1, -1), 5),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                    ]
+                ),
             ),
             Spacer(1, 3 * mm),
             Paragraph("<b>ENTREGA DE ROPA DE TRABAJO Y EPP</b>", titulo),
@@ -75,94 +79,113 @@ class GeneradorConstanciaPDFSimulada:
             ),
             Spacer(1, 3 * mm),
             Table(
-                [[
-                    Paragraph(
-                        f"<b>Trabajador:</b> {entrega.legajo.nombre_completo}<br/>"
-                        f"<b>DNI:</b> {entrega.legajo.dni} - <b>Legajo:</b> {entrega.legajo.legajo}",
-                        normal,
-                    ),
-                    Paragraph(
-                        f"<b>Puesto:</b> {entrega.legajo.puesto}<br/>"
-                        f"<b>Sector:</b> {entrega.legajo.sector} - "
-                        f"<b>Empresa:</b> {entrega.legajo.empresa}",
-                        normal,
-                    ),
-                ]],
+                [
+                    [
+                        Paragraph(
+                            f"<b>Trabajador:</b> {entrega.legajo.nombre_completo}<br/>"
+                            f"<b>DNI:</b> {entrega.legajo.dni} - <b>Legajo:</b> {entrega.legajo.legajo}",
+                            normal,
+                        ),
+                        Paragraph(
+                            f"<b>Puesto:</b> {entrega.legajo.puesto}<br/>"
+                            f"<b>Sector:</b> {entrega.legajo.sector} - "
+                            f"<b>Empresa:</b> {entrega.legajo.empresa}",
+                            normal,
+                        ),
+                    ]
+                ],
                 colWidths=[136.5 * mm, 136.5 * mm],
-                style=TableStyle([
-                    ("BOX", (0, 0), (-1, -1), 0.6, colors.black),
-                    ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.grey),
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ("PADDING", (0, 0), (-1, -1), 5),
-                ]),
+                style=TableStyle(
+                    [
+                        ("BOX", (0, 0), (-1, -1), 0.6, colors.black),
+                        ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.grey),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("PADDING", (0, 0), (-1, -1), 5),
+                    ]
+                ),
             ),
             Spacer(1, 3 * mm),
         ]
-        filas: list[list[object]] = [[
-            Paragraph("<b>Producto</b>", centro),
-            Paragraph("<b>Ítem / Tipo / Modelo</b>", centro),
-            Paragraph("<b>Marca</b>", centro),
-            Paragraph("<b>Talle / Color</b>", centro),
-            Paragraph("<b>Certificación</b>", centro),
-            Paragraph("<b>Cant.</b>", centro),
-            Paragraph("<b>Fecha</b>", centro),
-        ]]
+        filas: list[list[object]] = [
+            [
+                Paragraph("<b>Producto</b>", centro),
+                Paragraph("<b>Ítem / Tipo / Modelo</b>", centro),
+                Paragraph("<b>Marca</b>", centro),
+                Paragraph("<b>Talle / Color</b>", centro),
+                Paragraph("<b>Certificación</b>", centro),
+                Paragraph("<b>Cant.</b>", centro),
+                Paragraph("<b>Fecha</b>", centro),
+            ]
+        ]
         for linea in entrega.lineas:
-            filas.append([
-                Paragraph(linea.producto, normal),
-                Paragraph(
-                    f"{linea.item_codigo}<br/>{linea.tipo_modelo}<br/><b>{linea.estado_item}</b>",
-                    normal,
-                ),
-                Paragraph(linea.marca, normal),
-                Paragraph(f"{linea.talle} / {linea.color}", normal),
-                Paragraph(
-                    ("SI" if linea.posee_certificacion else "NO")
-                    + (f" - {linea.certificacion}" if linea.certificacion else ""),
-                    normal,
-                ),
-                Paragraph(str(linea.cantidad), centro),
-                Paragraph(entrega.fecha_entrega.strftime("%d/%m/%Y"), centro),
-            ])
+            filas.append(
+                [
+                    Paragraph(linea.producto, normal),
+                    Paragraph(
+                        f"{linea.item_codigo}<br/>{linea.tipo_modelo}<br/><b>{linea.estado_item}</b>",
+                        normal,
+                    ),
+                    Paragraph(linea.marca, normal),
+                    Paragraph(f"{linea.talle} / {linea.color}", normal),
+                    Paragraph(
+                        ("SI" if linea.posee_certificacion else "NO")
+                        + (f" - {linea.certificacion}" if linea.certificacion else ""),
+                        normal,
+                    ),
+                    Paragraph(str(linea.cantidad), centro),
+                    Paragraph(entrega.fecha_entrega.strftime("%d/%m/%Y"), centro),
+                ]
+            )
         historia.append(
             Table(
                 filas,
                 repeatRows=1,
                 colWidths=[38 * mm, 70 * mm, 30 * mm, 32 * mm, 55 * mm, 18 * mm, 30 * mm],
-                style=TableStyle([
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E5E7EB")),
-                    ("BOX", (0, 0), (-1, -1), 0.7, colors.black),
-                    ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.grey),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("PADDING", (0, 0), (-1, -1), 4),
-                ]),
+                style=TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E5E7EB")),
+                        ("BOX", (0, 0), (-1, -1), 0.7, colors.black),
+                        ("INNERGRID", (0, 0), (-1, -1), 0.35, colors.grey),
+                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                        ("PADDING", (0, 0), (-1, -1), 4),
+                    ]
+                ),
             )
         )
-        historia.extend([
-            Spacer(1, 5 * mm),
-            Table(
-                [[self._firma(entrega), Paragraph(
-                    f"<b>Método:</b> {entrega.firma_trabajador.metodo}<br/>"
-                    f"<b>Circuito:</b> {entrega.circuito} - {entrega.motivo}<br/>"
-                    f"<b>Sello:</b> {entrega.firma_trabajador.sello_tiempo.isoformat()}<br/>"
-                    f"<b>Registró:</b> {entrega.usuario_deposito}<br/>"
-                    "<b>Firma digital empresa:</b> PENDIENTE - motor real no disponible",
-                    normal,
-                )]],
-                colWidths=[136.5 * mm, 136.5 * mm],
-                style=TableStyle([
-                    ("BOX", (0, 0), (-1, -1), 0.6, colors.black),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("PADDING", (0, 0), (-1, -1), 6),
-                ]),
-            ),
-            Spacer(1, 3 * mm),
-            Paragraph(
-                "El archivo conserva este original, pero no está firmado digitalmente por la empresa. "
-                "Se imprime y firma en papel hasta habilitar plataforma/firma.",
-                centro,
-            ),
-        ])
+        historia.extend(
+            [
+                Spacer(1, 5 * mm),
+                Table(
+                    [
+                        [
+                            self._firma(entrega),
+                            Paragraph(
+                                f"<b>Método:</b> {entrega.firma_trabajador.metodo}<br/>"
+                                f"<b>Circuito:</b> {entrega.circuito} - {entrega.motivo}<br/>"
+                                f"<b>Sello:</b> {entrega.firma_trabajador.sello_tiempo.isoformat()}<br/>"
+                                f"<b>Registró:</b> {entrega.usuario_deposito}<br/>"
+                                "<b>Firma digital empresa:</b> PENDIENTE - motor real no disponible",
+                                normal,
+                            ),
+                        ]
+                    ],
+                    colWidths=[136.5 * mm, 136.5 * mm],
+                    style=TableStyle(
+                        [
+                            ("BOX", (0, 0), (-1, -1), 0.6, colors.black),
+                            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                            ("PADDING", (0, 0), (-1, -1), 6),
+                        ]
+                    ),
+                ),
+                Spacer(1, 3 * mm),
+                Paragraph(
+                    "El archivo conserva este original, pero no está firmado digitalmente por la empresa. "
+                    "Se imprime y firma en papel hasta habilitar plataforma/firma.",
+                    centro,
+                ),
+            ]
+        )
         documento.build(historia)
         contenido = salida.getvalue()
         return DocumentoConstancia(
@@ -185,9 +208,11 @@ class GeneradorConstanciaPDFSimulada:
                 imagen.drawHeight = 24 * mm
                 imagen.drawWidth = 70 * mm
                 return imagen
-            except (binascii.Error, OSError, UnidentifiedImageError, ValueError):
+            except binascii.Error, OSError, UnidentifiedImageError, ValueError:
                 return Paragraph(
                     "Firma del trabajador: evidencia simulada inválida",
                     getSampleStyleSheet()["BodyText"],
                 )
-        return Paragraph("Firma del trabajador: evidencia simulada conservada", getSampleStyleSheet()["BodyText"])
+        return Paragraph(
+            "Firma del trabajador: evidencia simulada conservada", getSampleStyleSheet()["BodyText"]
+        )

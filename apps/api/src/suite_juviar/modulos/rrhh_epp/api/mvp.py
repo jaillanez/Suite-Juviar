@@ -85,6 +85,13 @@ class EntregaEntrada(BaseModel):
     motivo: str = Field(default="DESGASTE", min_length=1, max_length=30)
 
 
+class StockEntrada(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    disponible: int = Field(ge=0)
+    minimo: int = Field(ge=0)
+
+
 def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
     c = contenedor or construir()
     app = FastAPI(title="Suite Juviar — Entrega de EPP", version="0.2.0-mvp")
@@ -168,6 +175,8 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             "dueno_catalogo_items": c.catalogo.dueno_items,
             "estado_mapa_perfiles": c.perfiles_acceso.estado,
             "dueno_mapa_perfiles": c.perfiles_acceso.dueno_dato,
+            "estado_stock": c.stock.estado,
+            "dueno_stock": c.stock.dueno_dato,
             "metodos_firma": list(c.firma.metodos_habilitados),
             "perfil": usuario.perfil.value,
         }
@@ -304,6 +313,45 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             }
             for elemento in c.catalogo.listar_elementos()
         ]
+
+    @app.get("/stock")
+    def stock(_usuario: OperadorDeposito) -> list[dict[str, object]]:
+        return [
+            {
+                "item_codigo": item.item_codigo,
+                "disponible": item.disponible,
+                "minimo": item.minimo,
+                "estado": item.estado,
+            }
+            for item in c.stock.listar()
+        ]
+
+    @app.put("/stock/{item_codigo}")
+    def configurar_stock(
+        item_codigo: str,
+        entrada: StockEntrada,
+        usuario: OperadorDeposito,
+    ) -> dict[str, object]:
+        item = c.stock.configurar(item_codigo, entrada.disponible, entrada.minimo)
+        c.bitacora.registrar(
+            evento="STOCK_EPP_CONFIGURADO",
+            usuario=usuario.legajo,
+            detalle={
+                "item_codigo": item.item_codigo,
+                "disponible": item.disponible,
+                "minimo": item.minimo,
+            },
+        )
+        return {
+            "item_codigo": item.item_codigo,
+            "disponible": item.disponible,
+            "minimo": item.minimo,
+            "estado": item.estado,
+        }
+
+    @app.get("/stock/alertas")
+    def alertas_stock(_usuario: OperadorDeposito) -> list[dict[str, object]]:
+        return c.stock.alertas_pendientes()
 
     @app.post("/entregas")
     def registrar(

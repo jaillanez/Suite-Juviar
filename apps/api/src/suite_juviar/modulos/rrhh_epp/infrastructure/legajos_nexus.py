@@ -73,7 +73,9 @@ class LegajosNexusSQLServer:
             cursor.execute(
                 CONSULTA_BASE
                 + " WHERE activo = 1 AND (legajo LIKE ? OR dni LIKE ? OR apellido LIKE ?)"
-                  " ORDER BY apellido, nombre",
-                patron, patron, patron,
+                " ORDER BY apellido, nombre",
+                patron,
+                patron,
+                patron,
             )
             return [self._a_legajo(f) for f in cursor.fetchmany(limite)]

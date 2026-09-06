@@ -16,8 +16,17 @@ import yaml
 from ..domain.modelos_mvp import Legajo
 
 CAMPOS = (
-    "legajo", "nombre", "apellido", "dni", "puesto_codigo", "puesto",
-    "sector_codigo", "sector", "empresa", "tipo_vinculo", "activo",
+    "legajo",
+    "nombre",
+    "apellido",
+    "dni",
+    "puesto_codigo",
+    "puesto",
+    "sector_codigo",
+    "sector",
+    "empresa",
+    "tipo_vinculo",
+    "activo",
 )
 
 
@@ -82,8 +91,10 @@ class LegajosYAML:
         if not t:
             return []
         encontrados = [
-            p for p in self._por_numero.values()
-            if p.activo and (
+            p
+            for p in self._por_numero.values()
+            if p.activo
+            and (
                 t in p.legajo.lower()
                 or t in p.dni.lower()
                 or t in p.apellido.lower()

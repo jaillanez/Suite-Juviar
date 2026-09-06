@@ -17,6 +17,9 @@ matriz `PROPUESTA_SIN_VALIDAR`, firma simulada y persistencia SQLite.
   SHA-256 y marca visible `SIN VALIDEZ LEGAL` mientras la firma sea simulada.
 - Dos circuitos: planificación estacional programada por sector y reposición espontánea
   por rotura o desgaste; ambos quedan identificados en entrega, bitácora y constancia.
+- Stock por ítem: cada entrega confirmada descuenta existencias y al alcanzar el mínimo
+  genera automáticamente un aviso pendiente para Compras. El stock inicial es simulado
+  y su dueño declarado es Depósito.
 
 ## Deuda técnica y datos pendientes
 
@@ -29,3 +32,5 @@ matriz `PROPUESTA_SIN_VALIDAR`, firma simulada y persistencia SQLite.
 | Reposición sobre una constancia vigente | PENDIENTE | Versionar el original al agregar renglones sin destruir metadatos ni firmas previas. |
 | Volumen diario de temporada alta | PENDIENTE | Observación presencial en depósito; la pantalla se diseñó como lista masiva mientras falta el dato. |
 | Ítems reales de marcas, modelos, talles y colores | SIMULADO | Reemplazar los 435 registros `SIM-*` cuando llegue el Excel maestro de Higiene y Seguridad. |
+| Existencias y mínimos reales por ítem | SIMULADO | Depósito debe sustituir las cantidades ficticias y aprobar cada mínimo antes del uso real. |
+| Envío del aviso de mínimo a Compras | PENDIENTE | Conectar los avisos durables al outbox/notificador corporativo; hoy quedan disponibles en la API. |

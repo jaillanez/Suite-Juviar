@@ -50,7 +50,7 @@ class ConstanciaEntrega:
     otra: el papel que vería una inspección no se reescribe.
     """
 
-    legajo: str                      # viene de Nexus, no se tipea
+    legajo: str  # viene de Nexus, no se tipea
     sector: str
     puesto: str
     entregado_por_legajo: str

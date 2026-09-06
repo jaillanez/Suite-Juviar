@@ -14,10 +14,22 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections import defaultdict
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from ..domain.modelos_mvp import DocumentoConstancia, Entrega, Firma, Legajo, LineaEntrega
+import yaml
+
+from ..domain.modelos_mvp import (
+    DocumentoConstancia,
+    Entrega,
+    Firma,
+    Legajo,
+    LineaEntrega,
+    StockInsuficiente,
+    StockInvalido,
+    StockItem,
+)
 
 ESQUEMA = """
 CREATE TABLE IF NOT EXISTS entrega_epp (
@@ -45,6 +57,23 @@ CREATE TABLE IF NOT EXISTS constancia_original (
     generado_en  TEXT NOT NULL,
     firmado      INTEGER NOT NULL,
     simulado     INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS stock_item (
+    item_codigo  TEXT PRIMARY KEY,
+    disponible  INTEGER NOT NULL CHECK (disponible >= 0),
+    minimo      INTEGER NOT NULL CHECK (minimo >= 0),
+    estado      TEXT NOT NULL,
+    dueno_dato  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS aviso_compras (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_codigo  TEXT NOT NULL,
+    disponible   INTEGER NOT NULL,
+    minimo       INTEGER NOT NULL,
+    creado_en    TEXT NOT NULL,
+    estado       TEXT NOT NULL DEFAULT 'PENDIENTE'
 );
 
 CREATE TABLE IF NOT EXISTS bitacora (
@@ -146,9 +175,7 @@ class EntregasSQLite:
         )
 
     def obtener(self, id_entrega: str) -> Entrega | None:
-        fila = self._cn.execute(
-            "SELECT * FROM entrega_epp WHERE id = ?", (id_entrega,)
-        ).fetchone()
+        fila = self._cn.execute("SELECT * FROM entrega_epp WHERE id = ?", (id_entrega,)).fetchone()
         return self._a_entrega(fila) if fila else None
 
     def listar_por_legajo(self, legajo: str) -> list[Entrega]:
@@ -226,3 +253,112 @@ class ConstanciasSQLite:
             ),
         )
         self._cn.commit()
+
+
+class StockSQLite:
+    def __init__(self, base: BaseLocal, ruta_inicial: str | Path) -> None:
+        self._cn = base.cn
+        datos = yaml.safe_load(Path(ruta_inicial).read_text(encoding="utf-8")) or {}
+        self._estado = str(datos.get("estado") or "DESCONOCIDO")
+        self._dueno_dato = str(datos.get("dueno_dato") or "SIN_DEFINIR")
+        for fila in datos.get("stock") or []:
+            self._cn.execute(
+                """INSERT OR IGNORE INTO stock_item
+                   (item_codigo, disponible, minimo, estado, dueno_dato) VALUES (?,?,?,?,?)""",
+                (
+                    str(fila["item_codigo"]),
+                    int(fila["disponible"]),
+                    int(fila["minimo"]),
+                    str(fila.get("estado") or self._estado),
+                    self._dueno_dato,
+                ),
+            )
+        self._cn.commit()
+
+    @property
+    def estado(self) -> str:
+        return self._estado
+
+    @property
+    def dueno_dato(self) -> str:
+        return self._dueno_dato
+
+    @staticmethod
+    def _a_stock(fila: sqlite3.Row) -> StockItem:
+        return StockItem(
+            item_codigo=fila["item_codigo"],
+            disponible=int(fila["disponible"]),
+            minimo=int(fila["minimo"]),
+            estado=fila["estado"],
+        )
+
+    def listar(self) -> list[StockItem]:
+        filas = self._cn.execute("SELECT * FROM stock_item ORDER BY item_codigo").fetchall()
+        return [self._a_stock(fila) for fila in filas]
+
+    def obtener(self, item_codigo: str) -> StockItem | None:
+        fila = self._cn.execute(
+            "SELECT * FROM stock_item WHERE item_codigo = ?", (item_codigo,)
+        ).fetchone()
+        return self._a_stock(fila) if fila else None
+
+    def verificar(self, lineas: list[tuple[str, int]]) -> None:
+        cantidades: dict[str, int] = defaultdict(int)
+        for item_codigo, cantidad in lineas:
+            cantidades[item_codigo] += cantidad
+        for item_codigo, cantidad in cantidades.items():
+            stock = self.obtener(item_codigo)
+            if stock is None or stock.disponible < cantidad:
+                raise StockInsuficiente(
+                    f"Stock insuficiente para {item_codigo}: "
+                    f"disponible {stock.disponible if stock else 0}, solicitado {cantidad}."
+                )
+
+    def descontar(self, lineas: list[tuple[str, int]]) -> None:
+        self.verificar(lineas)
+        cantidades: dict[str, int] = defaultdict(int)
+        for item_codigo, cantidad in lineas:
+            cantidades[item_codigo] += cantidad
+        for item_codigo, cantidad in cantidades.items():
+            self._cn.execute(
+                "UPDATE stock_item SET disponible = disponible - ? WHERE item_codigo = ?",
+                (cantidad, item_codigo),
+            )
+            stock = self.obtener(item_codigo)
+            if stock and stock.disponible <= stock.minimo:
+                self._cn.execute(
+                    """INSERT INTO aviso_compras
+                       (item_codigo, disponible, minimo, creado_en, estado)
+                       SELECT ?,?,?,?,'PENDIENTE'
+                       WHERE NOT EXISTS (
+                           SELECT 1 FROM aviso_compras
+                           WHERE item_codigo = ? AND estado = 'PENDIENTE'
+                       )""",
+                    (
+                        item_codigo,
+                        stock.disponible,
+                        stock.minimo,
+                        datetime.now(UTC).isoformat(),
+                        item_codigo,
+                    ),
+                )
+        self._cn.commit()
+
+    def configurar(self, item_codigo: str, disponible: int, minimo: int) -> StockItem:
+        if isinstance(disponible, bool) or isinstance(minimo, bool) or disponible < 0 or minimo < 0:
+            raise StockInvalido("Disponible y mínimo deben ser enteros mayores o iguales a cero.")
+        if self.obtener(item_codigo) is None:
+            raise StockInvalido(f"El ítem {item_codigo or '(vacío)'} no existe en el stock.")
+        self._cn.execute(
+            """UPDATE stock_item SET disponible = ?, minimo = ?, estado = 'CONFIGURADO_DEPOSITO'
+               WHERE item_codigo = ?""",
+            (disponible, minimo, item_codigo),
+        )
+        self._cn.commit()
+        return self.obtener(item_codigo)  # type: ignore[return-value]
+
+    def alertas_pendientes(self) -> list[dict[str, object]]:
+        filas = self._cn.execute(
+            "SELECT * FROM aviso_compras WHERE estado = 'PENDIENTE' ORDER BY id"
+        ).fetchall()
+        return [dict(fila) for fila in filas]

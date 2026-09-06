@@ -31,6 +31,7 @@ from .infrastructure.persistencia_mvp import (
     BitacoraSQLite,
     ConstanciasSQLite,
     EntregasSQLite,
+    StockSQLite,
 )
 
 RAIZ = Path(__file__).resolve().parent
@@ -53,6 +54,7 @@ class Contenedor:
     registrar_entrega: RegistrarEntrega
     obtener_constancia_pdf: ObtenerConstanciaPDF
     planificar_entregas: PlanificarEntregasProgramadas
+    stock: StockSQLite
     entorno: str
     modo_simulado: bool
 
@@ -64,10 +66,7 @@ def construir(
 ) -> Contenedor:
     entorno = (entorno or os.getenv("SJ_ENTORNO") or os.getenv("ENTORNO") or "desarrollo").lower()
     fuente_legajos = (
-        fuente_legajos
-        or os.getenv("SJ_FUENTE_LEGAJOS")
-        or os.getenv("FUENTE_LEGAJOS")
-        or "yaml"
+        fuente_legajos or os.getenv("SJ_FUENTE_LEGAJOS") or os.getenv("FUENTE_LEGAJOS") or "yaml"
     ).lower()
 
     # Guarda: la fuente simulada no puede llegar a producción por descuido.
@@ -79,10 +78,9 @@ def construir(
             "autenticación local, SQLite y firma simulada por los servicios de plataforma."
         )
 
-    identidad_declarada_habilitada = (
-        os.getenv("SJ_HABILITAR_IDENTIDAD_DECLARADA", "").strip().upper()
-        in {"1", "SI", "SÍ", "TRUE"}
-    )
+    identidad_declarada_habilitada = os.getenv(
+        "SJ_HABILITAR_IDENTIDAD_DECLARADA", ""
+    ).strip().upper() in {"1", "SI", "SÍ", "TRUE"}
     if entorno != "prueba" and not identidad_declarada_habilitada:
         raise ErrorDeConfiguracion(
             "No hay autenticación real. Para una prueba exclusivamente local declare "
@@ -123,6 +121,7 @@ def construir(
     constancias = ConstanciasSQLite(base)
     firma = FirmaSimulada()
     generador_constancia = GeneradorConstanciaPDFSimulada()
+    stock = StockSQLite(base, RAIZ / "data" / "stock_inicial_simulado.yaml")
 
     return Contenedor(
         legajos=legajos,
@@ -132,13 +131,21 @@ def construir(
         firma=firma,
         bitacora=bitacora,
         consultar_legajo=ConsultarLegajo(legajos, catalogo, entregas),
-        registrar_entrega=RegistrarEntrega(legajos, catalogo, entregas, firma, bitacora),
+        registrar_entrega=RegistrarEntrega(
+            legajos,
+            catalogo,
+            entregas,
+            firma,
+            bitacora,
+            stock,
+        ),
         obtener_constancia_pdf=ObtenerConstanciaPDF(
             entregas,
             constancias,
             generador_constancia,
         ),
         planificar_entregas=PlanificarEntregasProgramadas(legajos, catalogo),
+        stock=stock,
         entorno=entorno,
         modo_simulado=(fuente_legajos != "nexus"),
     )
