@@ -21,6 +21,12 @@ FRECUENCIAS = {"SEMESTRAL", "ANUAL", "A_DEMANDA"}
 TEMPORADAS = {"VERANO", "INVIERNO", "TODO_EL_ANIO"}
 
 
+def _orden_codigo(codigo: str) -> tuple[int, str]:
+    """Orden natural para códigos textuales: 9, 10, 104, 104-B, 114."""
+    numero, _, sufijo = codigo.partition("-")
+    return (int(numero) if numero.isdigit() else 9999, sufijo)
+
+
 class ErrorDeCatalogo(Exception):
     pass
 
@@ -32,6 +38,7 @@ class CatalogoYAML:
         self._elementos: dict[str, ElementoEPP] = {}
         self._matriz: dict[str, list[RequisitoEPP]] = {}
         self._estado_matriz = "DESCONOCIDO"
+        self._version_norma = ""
         self._cargar_catalogo()
         self._cargar_matriz()
 
@@ -40,8 +47,13 @@ class CatalogoYAML:
         """PROVISORIA mientras Higiene y Seguridad no la valide."""
         return self._estado_matriz
 
+    @property
+    def version_norma(self) -> str:
+        return self._version_norma
+
     def _cargar_catalogo(self) -> None:
         datos = yaml.safe_load(self._ruta_catalogo.read_text(encoding="utf-8")) or {}
+        self._version_norma = str(datos.get("version_norma") or "")
         for fila in datos.get("elementos") or []:
             codigo = str(fila["codigo"]).strip()
             if codigo in self._elementos:
@@ -55,6 +67,9 @@ class CatalogoYAML:
                 certificacion=fila.get("certificacion"),
                 unidad=str(fila.get("unidad") or "unidad"),
                 vida_util_dias=fila.get("vida_util_dias"),
+                familia=str(fila.get("familia") or "Otros"),
+                destino_declarado=fila.get("destino_declarado"),
+                criterio_vida_util=str(fila.get("criterio_vida_util") or ""),
             )
         if not self._elementos:
             raise ErrorDeCatalogo(f"{self._ruta_catalogo.name} está vacío.")
@@ -92,7 +107,7 @@ class CatalogoYAML:
         return self._elementos.get(str(codigo).strip())
 
     def listar_elementos(self) -> list[ElementoEPP]:
-        return sorted(self._elementos.values(), key=lambda e: e.codigo)
+        return sorted(self._elementos.values(), key=lambda e: _orden_codigo(e.codigo))
 
     def requisitos_de_puesto(self, puesto_codigo: str) -> list[RequisitoEPP]:
         return list(self._matriz.get(str(puesto_codigo).strip(), []))

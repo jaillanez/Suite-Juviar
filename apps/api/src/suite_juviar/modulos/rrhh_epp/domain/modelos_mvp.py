@@ -49,6 +49,9 @@ class ElementoEPP:
     certificacion: str | None
     unidad: str
     vida_util_dias: int | None
+    familia: str = "Otros"
+    destino_declarado: str | None = None
+    criterio_vida_util: str = ""
 
 
 @dataclass(frozen=True)

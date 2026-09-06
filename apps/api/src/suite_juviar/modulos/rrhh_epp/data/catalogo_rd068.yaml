@@ -1,181 +1,1462 @@
-# ---------------------------------------------------------------------------
-# CATÁLOGO DE EPP Y ROPA DE TRABAJO — PROVISORIO
-# ---------------------------------------------------------------------------
-# El catálogo real es la norma interna RD 068/11, que todavía no tenemos
-# digitalizada. Esto es una muestra con la estructura correcta para que la
-# aplicación funcione en prueba.
-#
-# Cuando llegue el RD 068/11 completo se reemplaza el contenido de este
-# archivo. La estructura no cambia.
-#
-# Dueño del dato: Higiene y Seguridad.
-# Las columnas producto / tipo_modelo / marca / posee_certificacion son las
-# que exige la grilla del RD 062/11.
-# ---------------------------------------------------------------------------
+# Generado por herramientas/importar_rd068.py — no editar a mano.
+# Para actualizar: publicar la nueva versión del Excel y volver a correr el importador.
 version: 1
-norma: "RD 068/11"
-estado: PROVISORIO
-dueno_del_dato: "Higiene y Seguridad"
-
+norma: RD 068/11
+version_norma: V 02 — Septiembre 2023
+origen: RD_062_11_Registro_de_Entrega_de_Ropa_de_Trabajo_y_EPP.xls
+estado: IMPORTADO_SIN_VALIDAR
+dueno_del_dato: Recursos Humanos / Higiene y Seguridad
 elementos:
-  - codigo: "1580"
-    producto: "Chomba piqué manga corta"
-    tipo_modelo: "Piqué azul marino"
-    marca: "Ombú"
-    posee_certificacion: false
-    certificacion: null
-    unidad: "unidad"
-    vida_util_dias: 180
-
-  - codigo: "1581"
-    producto: "Camisa de trabajo manga larga"
-    tipo_modelo: "Grafa 70 gris"
-    marca: "Ombú"
-    posee_certificacion: false
-    certificacion: null
-    unidad: "unidad"
-    vida_util_dias: 180
-
-  - codigo: "1602"
-    producto: "Pantalón de trabajo"
-    tipo_modelo: "Grafa 70 azul"
-    marca: "Pampero"
-    posee_certificacion: false
-    certificacion: null
-    unidad: "unidad"
-    vida_util_dias: 180
-
-  - codigo: "2110"
-    producto: "Calzado de seguridad"
-    tipo_modelo: "Botín puntera composite"
-    marca: "Funcional"
-    posee_certificacion: true
-    certificacion: "IRAM 3610 — Marca de conformidad Res. 18/2025"
-    unidad: "par"
-    vida_util_dias: 365
-
-  - codigo: "2115"
-    producto: "Bota de goma caña alta"
-    tipo_modelo: "PVC antideslizante"
-    marca: "Trueno"
-    posee_certificacion: true
-    certificacion: "IRAM 3643"
-    unidad: "par"
-    vida_util_dias: 365
-
-  - codigo: "3040"
-    producto: "Guante de nitrilo"
-    tipo_modelo: "Soporte textil, puño largo"
-    marca: "Vitrex"
-    posee_certificacion: true
-    certificacion: "IRAM 3607"
-    unidad: "par"
-    vida_util_dias: 30
-
-  - codigo: "3055"
-    producto: "Guante de precisión"
-    tipo_modelo: "Nitrilo sin polvo, descartable"
-    marca: "Vitrex"
-    posee_certificacion: true
-    certificacion: "IRAM 3607"
-    unidad: "caja x 100"
-    vida_util_dias: 30
-
-  - codigo: "3070"
-    producto: "Guante anticorte"
-    tipo_modelo: "Nivel 5, recubrimiento poliuretano"
-    marca: "Steelpro"
-    posee_certificacion: true
-    certificacion: "IRAM 3607 nivel 5"
-    unidad: "par"
-    vida_util_dias: 90
-
-  - codigo: "4020"
-    producto: "Antiparra de seguridad"
-    tipo_modelo: "Lente incoloro antiempañante"
-    marca: "Libus"
-    posee_certificacion: true
-    certificacion: "IRAM 3630"
-    unidad: "unidad"
-    vida_util_dias: 365
-
-  - codigo: "4035"
-    producto: "Protector auditivo de copa"
-    tipo_modelo: "NRR 25 dB"
-    marca: "Libus"
-    posee_certificacion: true
-    certificacion: "IRAM 4060"
-    unidad: "unidad"
-    vida_util_dias: 365
-
-  - codigo: "4040"
-    producto: "Protector auditivo endoaural"
-    tipo_modelo: "Espuma con cordón"
-    marca: "3M"
-    posee_certificacion: true
-    certificacion: "IRAM 4060"
-    unidad: "par"
-    vida_util_dias: 15
-
-  - codigo: "5010"
-    producto: "Casco de seguridad"
-    tipo_modelo: "ALA completa, arnés cremallera"
-    marca: "Libus"
-    posee_certificacion: true
-    certificacion: "IRAM 3620"
-    unidad: "unidad"
-    vida_util_dias: 1825
-
-  - codigo: "5030"
-    producto: "Mameluco enterizo"
-    tipo_modelo: "Antiácido, cierre frontal"
-    marca: "Pampero"
-    posee_certificacion: true
-    certificacion: "IRAM 3859"
-    unidad: "unidad"
-    vida_util_dias: 180
-
-  - codigo: "5045"
-    producto: "Chaleco reflectivo"
-    tipo_modelo: "Alta visibilidad, bandas 3M"
-    marca: "Libus"
-    posee_certificacion: true
-    certificacion: "IRAM 3859"
-    unidad: "unidad"
-    vida_util_dias: 365
-
-  - codigo: "5060"
-    producto: "Faja lumbar"
-    tipo_modelo: "Con tiradores regulables"
-    marca: "Steelpro"
-    posee_certificacion: false
-    certificacion: null
-    unidad: "unidad"
-    vida_util_dias: 365
-
-  - codigo: "6010"
-    producto: "Campera abrigo de trabajo"
-    tipo_modelo: "Polar forrada, invierno"
-    marca: "Ombú"
-    posee_certificacion: false
-    certificacion: null
-    unidad: "unidad"
-    vida_util_dias: 730
-
-  - codigo: "6020"
-    producto: "Barbijo respirador"
-    tipo_modelo: "Libre mantenimiento P2"
-    marca: "3M"
-    posee_certificacion: true
-    certificacion: "IRAM 80057"
-    unidad: "unidad"
-    vida_util_dias: 15
-
-  - codigo: "6035"
-    producto: "Gorro tipo legionario"
-    tipo_modelo: "Con protección de nuca, verano"
-    marca: "Ombú"
-    posee_certificacion: false
-    certificacion: null
-    unidad: "unidad"
-    vida_util_dias: 365
+- codigo: '110'
+  producto: Barbijo
+  familia: Protección respiratoria
+  tipo_modelo: Reutilizable p/protección COVID
+  marca: Varias
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '111'
+  producto: Barbijo
+  familia: Protección respiratoria
+  tipo_modelo: Reutilizable p/protección COVID c/logo ENAV
+  marca: ENAV
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '84'
+  producto: Casco
+  familia: Protección de cráneo
+  tipo_modelo: Casco Milenium con arnes
+  marca: Libus
+  posee_certificacion: true
+  certificacion: IRAM 3620-
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '131'
+  producto: Casco
+  familia: Protección de cráneo
+  tipo_modelo: Carcasa clase B
+  marca: UCU - DP
+  posee_certificacion: true
+  certificacion: IRAM 3620-
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '1'
+  producto: Cartuchos/Filtro contra químicos para respiradores Advantage
+  familia: Filtros y cartuchos
+  tipo_modelo: GMC
+  marca: MSA
+  posee_certificacion: true
+  certificacion: Niosh
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '2'
+  producto: Semimáscara Advantage
+  familia: Protección respiratoria
+  tipo_modelo: 200 LS
+  marca: MSA
+  posee_certificacion: true
+  certificacion: Niosh
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '3'
+  producto: Cartuchos
+  familia: Filtros y cartuchos
+  tipo_modelo: Serie 6000
+  marca: 3M
+  posee_certificacion: true
+  certificacion: Niosh
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '32'
+  producto: Cartuchos contra vapores
+  familia: Filtros y cartuchos
+  tipo_modelo: Serie 6003/07047
+  marca: 3M
+  posee_certificacion: true
+  certificacion: Niosh
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '86'
+  producto: Cartuchos contra vapores
+  familia: Filtros y cartuchos
+  tipo_modelo: G03
+  marca: Libus
+  posee_certificacion: true
+  certificacion: NIOSH 42-CFR-84
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '95'
+  producto: Cartuchos contra vapores
+  familia: Filtros y cartuchos
+  tipo_modelo: AP3 para vapores orgánicos
+  marca: 3M
+  posee_certificacion: true
+  certificacion: Niosh
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '46'
+  producto: Cartucho - Filtro para gases
+  familia: Filtros y cartuchos
+  tipo_modelo: 5300/22
+  marca: Fravida
+  posee_certificacion: true
+  certificacion: Niosh- IRAM 3648y3649
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '47'
+  producto: Cartucho - Filtro para carbón
+  familia: Filtros y cartuchos
+  tipo_modelo: 5300/24
+  marca: Fravida
+  posee_certificacion: true
+  certificacion: Niosh- IRAM 3648y3649
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '100'
+  producto: Cartucho- Filtro para partículas
+  familia: Filtros y cartuchos
+  tipo_modelo: P100
+  marca: 3M
+  posee_certificacion: true
+  certificacion: Niosh
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '4'
+  producto: Semimáscara
+  familia: Protección respiratoria
+  tipo_modelo: Advantage 200 H
+  marca: 3M
+  posee_certificacion: true
+  certificacion: Niosh
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '45'
+  producto: Protector respiratorio semimáscara
+  familia: Protección respiratoria
+  tipo_modelo: '5260.0'
+  marca: Fravida
+  posee_certificacion: true
+  certificacion: Niosh
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '28'
+  producto: Mascarilla Descartable 8210
+  familia: Protección respiratoria
+  tipo_modelo: 3M 8210
+  marca: 3M 8210
+  posee_certificacion: true
+  certificacion: N 95
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '44'
+  producto: Mascarilla / Respirador R10
+  familia: Protección respiratoria
+  tipo_modelo: R 10 64250
+  marca: Jackson
+  posee_certificacion: true
+  certificacion: Niosh N95-AS/NZS 1716-EN149
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '104'
+  producto: Mascarilla
+  familia: Protección respiratoria
+  tipo_modelo: '1501.0'
+  marca: Libus
+  posee_certificacion: true
+  certificacion: No. Uso de emergencia COVID
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '77'
+  producto: Mascara
+  familia: Protección respiratoria
+  tipo_modelo: 3M 6800
+  marca: 3M 6800
+  posee_certificacion: true
+  certificacion: Niosh
+  destino_declarado: Bosque
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '83'
+  producto: Mascara
+  familia: Protección respiratoria
+  tipo_modelo: Respirador particulado N95 1740
+  marca: Libus
+  posee_certificacion: true
+  certificacion: Niosh
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '91'
+  producto: Mascara
+  familia: Protección respiratoria
+  tipo_modelo: Mascara de Respirador media cara Mod.9200-Serie 9000
+  marca: Libus
+  posee_certificacion: true
+  certificacion: Niosh
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '94'
+  producto: Mascara
+  familia: Protección respiratoria
+  tipo_modelo: Respirador para partículas con válvula de exhalación N95 2740V
+  marca: Steelpro Safety
+  posee_certificacion: true
+  certificacion: Niosh
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '98'
+  producto: Mascara
+  familia: Protección respiratoria
+  tipo_modelo: Protección Ocular UCU 411A
+  marca: De Pascale
+  posee_certificacion: true
+  certificacion: AR1257, UL
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '99'
+  producto: Mascara
+  familia: Protección respiratoria
+  tipo_modelo: Mascarilla 1501-Polvo
+  marca: Libus
+  posee_certificacion: false
+  certificacion: '-'
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '102'
+  producto: Mascara
+  familia: Protección respiratoria
+  tipo_modelo: Pieza facial de cara completa
+  marca: 3M
+  posee_certificacion: true
+  certificacion: Niosh- MSHA
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '109'
+  producto: Mascara
+  familia: Protección respiratoria
+  tipo_modelo: Protección COVID-19
+  marca: Varias
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '80'
+  producto: Respirador de Partículas c/válvula
+  familia: Protección respiratoria
+  tipo_modelo: F720 V (para polvo-tierra)
+  marca: Steelpro
+  posee_certificacion: true
+  certificacion: Niosh/ISO
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '124'
+  producto: Respirador descartable
+  familia: Protección respiratoria
+  tipo_modelo: KN95 protective mask
+  marca: Steelpro Safety
+  posee_certificacion: true
+  certificacion: KN95 GB2626
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '5'
+  producto: Calzado de Seguridad
+  familia: Calzado de seguridad
+  tipo_modelo: Cobra
+  marca: Funcional
+  posee_certificacion: true
+  certificacion: IRAM 3610
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '35'
+  producto: Calzado de Seguridad
+  familia: Calzado de seguridad
+  tipo_modelo: Infinit
+  marca: Funcional
+  posee_certificacion: true
+  certificacion: IRAM 3610
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '6'
+  producto: Calzado de Seguridad
+  familia: Calzado de seguridad
+  tipo_modelo: Botín Frances Cuero flor
+  marca: Escorpio
+  posee_certificacion: true
+  certificacion: ISO 9001:2008
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '36'
+  producto: Calzado de Seguridad
+  familia: Calzado de seguridad
+  tipo_modelo: Botín Oil resistant
+  marca: Febo
+  posee_certificacion: false
+  certificacion: null
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '57'
+  producto: Calzado de Seguridad
+  familia: Calzado de seguridad
+  tipo_modelo: Botín Frances Cuero flor
+  marca: ForTrack
+  posee_certificacion: true
+  certificacion: IRAM 3610
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '105'
+  producto: Calzado de Seguridad
+  familia: Calzado de seguridad
+  tipo_modelo: Botín TISZA
+  marca: ForTrack
+  posee_certificacion: true
+  certificacion: IRAM 3610 – SELLO “S”
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '106'
+  producto: Calzado de Seguridad
+  familia: Calzado de seguridad
+  tipo_modelo: Botín NIGER
+  marca: ForTrack
+  posee_certificacion: true
+  certificacion: IRAM 3610 – SELLO “S”
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '107'
+  producto: Calzado de Seguridad
+  familia: Calzado de seguridad
+  tipo_modelo: Botín JUCAR
+  marca: ForTrack
+  posee_certificacion: true
+  certificacion: IRAM 3610 – SELLO “S”
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '108'
+  producto: Calzado de Seguridad
+  familia: Calzado de seguridad
+  tipo_modelo: Botín TARIME
+  marca: ForTrack
+  posee_certificacion: true
+  certificacion: IRAM 3610 – SELLO “S”
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '121'
+  producto: Calzado de Seguridad
+  familia: Calzado de seguridad
+  tipo_modelo: Botín Francés ojalado C/P Plástica
+  marca: Ombu
+  posee_certificacion: true
+  certificacion: IRAM 3610 – SELLO “S”
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '122'
+  producto: Calzado de Seguridad
+  familia: Calzado de seguridad
+  tipo_modelo: Cronos N - Botín de Seguridad Mod.Francés
+  marca: Voran
+  posee_certificacion: true
+  certificacion: IRAM 3610 – SELLO “S”
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '7'
+  producto: Botas de goma
+  familia: Botas de goma
+  tipo_modelo: Agricola Industrial con puntera de acero
+  marca: Escorpio
+  posee_certificacion: true
+  certificacion: ISO 9001:2008
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '8'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Camisa de Grafa
+  marca: Ombú
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '125'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Camisa de Grafa
+  marca: Varias
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '9'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Pantalón de Grafa
+  marca: Ombú
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '126'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Pantalón de Grafa
+  marca: Varias
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '56'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Pantalón Cargo
+  marca: Gaucho
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '10'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Mamelucos de grafa
+  marca: Ombú
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '60'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Mamelucos de grafa
+  marca: Guayabera
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '89'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Mamelucos de grafa
+  marca: Varios
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '11'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Mameluco descartable (BLANCO) Tyvek Classic CHF5 LA c/capucha.Contra particulas, protección electrostática
+    y ag.químicos
+  marca: Dupont
+  posee_certificacion: true
+  certificacion: EN 1073-2, EN 1149-1, CE 0120
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '40'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Mameluco descartable (BLANCO) Kimberly-Clark Profesional KleenGuard A40 c/capucha.Contra liquidos bajo presión
+    y particulas
+  marca: Kimberly-Clark
+  posee_certificacion: true
+  certificacion: EN 1073-2, EN 1149-1, EN 13982-1-2, EN 13034
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '51'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Mameluco descartable (BLANCO) Kimberly-Clark Profesional KleenGuard A30 c/capucha.Contra salpicaduras y particulas
+  marca: Kimberly-Clark
+  posee_certificacion: true
+  certificacion: EN 1073-2, EN 1149-1, EN 13982-1-2, EN 13034
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '85'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Mameluco descartable (BLANCO) NUB. Tareas de aseo y limpieza. Importado por De Pascacale SA
+  marca: NUBUS
+  posee_certificacion: true
+  certificacion: AR1257, UL
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '88'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Mameluco descartable (BLANCO) Micromax NS ANSI. Protector contra suciedad, grasas, mugre y salpicaduras leves
+    químicos
+  marca: Lakelan
+  posee_certificacion: true
+  certificacion: EN 1149-1
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '34'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Mameluco descartable (AMARILLO) Tychem QC c/capucha. Contra salpicaduras
+  marca: Dupont
+  posee_certificacion: true
+  certificacion: ASTM F 739
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '127'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Mameluco descartable microporoso 60gr
+  marca: WS Dustex Pro
+  posee_certificacion: true
+  certificacion: ISO 13688:2013 - ISO 13982-1:2004+A1:2010
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '138'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Mameluco desechable microporoso-antiestático
+  marca: STEELGEN
+  posee_certificacion: true
+  certificacion: ISO13982-1:2004+A1:2010
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '12'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Camisa antiácido
+  marca: ''
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '13'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Pantalón Antiácido
+  marca: ''
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '14'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Gorra
+  marca: Dosier
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '58'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Gorra
+  marca: Guayabera
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '93'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Gorra
+  marca: Varias
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '15'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Remera
+  marca: Dosier
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '90'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Remera con Logo
+  marca: Varias
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '16'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Chomba
+  marca: Dosier
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '59'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Chomba
+  marca: Guayabera
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '92'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Chomba
+  marca: Varias
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '17'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Guardapolvo
+  marca: Varias
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '82'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Traje de Agua/ Chaqueta Pantalón. MXT-300
+  marca: Max Track
+  posee_certificacion: false
+  certificacion: null
+  destino_declarado: Filtro/Bosque
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '103'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Primera Piel
+  marca: N/A
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: 104-B
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Cuello Polar
+  marca: N/A
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '113'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Pantalón cargo - antiácido
+  marca: Varias
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '114'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Campera - Softshell
+  marca: ForTrack
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '115'
+  producto: Ropa de Trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Campera – Modelo Aconcagua
+  marca: Bonk
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '116'
+  producto: Ropa de trabajo
+  familia: Ropa de trabajo
+  tipo_modelo: Camisa de jean
+  marca: Varias
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '18'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Tejido de Algodón Moteado 1 cara. 25cm
+  marca: Segufer
+  posee_certificacion: false
+  certificacion: 'No'
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '19'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Cuero Vaqueta Amarillos
+  marca: Segufer
+  posee_certificacion: false
+  certificacion: 'No'
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '20'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: PVC largo pesado. 40cm
+  marca: Segufer
+  posee_certificacion: false
+  certificacion: 'No'
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '54'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: PVC largo rojo DPS 31545.40cm.Nivel 4
+  marca: DPS
+  posee_certificacion: true
+  certificacion: IRAM 3607
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '21'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Descarne
+  marca: R&R
+  posee_certificacion: false
+  certificacion: 'No'
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '29'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Para soldar color rojo. Uso Intensivo
+  marca: Pampero
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '70'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Guantes Soldador Kevlar Steelpro
+  marca: DPS
+  posee_certificacion: true
+  certificacion: Certificado UL o IRAM
+  destino_declarado: Mant.
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '79'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Guantes Soldador DPS 31113 (marrón)
+  marca: DPS
+  posee_certificacion: true
+  certificacion: UL S
+  destino_declarado: Mant.
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '37'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Multiflex-Poliester Latex. Resiste Abrasión/Vorte/Rasgado/Perforación
+  marca: Steelpro SA
+  posee_certificacion: true
+  certificacion: EN 420+EN 388:2003
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '49'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Cuero Vaqueta Amarillos Puño Largo
+  marca: Segufer
+  posee_certificacion: false
+  certificacion: 'No'
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '66'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: 3M G750 NYLON PU BIT.9
+  marca: 3M
+  posee_certificacion: true
+  certificacion: Certificado UL o IRAM
+  destino_declarado: Electricista
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '67'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Guantes Cuero Vaqueta Cod. 222025
+  marca: DPS
+  posee_certificacion: true
+  certificacion: Certificado UL o IRAM 3607
+  destino_declarado: Electricista/ Bosque
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '68'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Guantes de Nitrilo Azul (Corto Cod.13255)
+  marca: DPS
+  posee_certificacion: true
+  certificacion: Certificado UL o IRAM
+  destino_declarado: Mant./Efluente
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '69'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Guantes de Nitrilo Azul (Largo Cod.11356)
+  marca: DPS
+  posee_certificacion: true
+  certificacion: Certificado UL o IRAM
+  destino_declarado: Mant.
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '71'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Guantes Dieléctrico 2500 Volt
+  marca: KRAFTEX
+  posee_certificacion: true
+  certificacion: Certificado UL o IRAM
+  destino_declarado: Mant.
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '72'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Guante Vaqueta Cobertor Dieléctrico
+  marca: KRAFTEX
+  posee_certificacion: true
+  certificacion: Certificado UL o IRAM
+  destino_declarado: Mant.
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '74'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Guante Gamisol 120 CET (color naranja)
+  marca: GAMISOL
+  posee_certificacion: true
+  certificacion: IRAM3607/08
+  destino_declarado: Producción
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '75'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: MAPA Ultranitril 492 p/tareas de Lavado (Verde largo)
+  marca: MAPA
+  posee_certificacion: true
+  certificacion: CE0334
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '81'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: MAPA Professionnel ULTRANE 526
+  marca: MAPA
+  posee_certificacion: true
+  certificacion: En 388 / 4121
+  destino_declarado: Producción
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '97'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Guante Multiflex PU negro
+  marca: SteelproSafety
+  posee_certificacion: true
+  certificacion: EN 420 + EN 388:2003
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '101'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Nitrilo verde largo para tareas de lavado
+  marca: SteelproSafety
+  posee_certificacion: true
+  certificacion: EN 420 + EN 388:2003
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '112'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Vaqueta GV100
+  marca: FN
+  posee_certificacion: true
+  certificacion: IRAM 3607/19
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '120'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Cuero Vaqueta Art. V-901
+  marca: CVE
+  posee_certificacion: true
+  certificacion: IRAM 3807-3608
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '128'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Guante Nitrilo Pesado Recubrimiento NI175 puño de lona
+  marca: Deltaplus
+  posee_certificacion: true
+  certificacion: Res.896/99
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '129'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Guante sintético de acrilonitrilo premium
+  marca: DPS (De Pascale)
+  posee_certificacion: true
+  certificacion: IRAM 3607, 3609-2/3
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '130'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Guante soldador forrado con hilo de kevlar. Descarne amarillo
+  marca: FN
+  posee_certificacion: true
+  certificacion: Iram 3607 y 3608
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '133'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Nitrilo para examen - laboratorio
+  marca: ELIT
+  posee_certificacion: true
+  certificacion: 'ASTM D 6319-10 / EN455-1: 2000, EN455-2: 2009 + A1: 2011 y EN455-3'
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '134'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Dieléctrico – Caucho Natural Aislante – Borde Enrollado
+  marca: DPS
+  posee_certificacion: true
+  certificacion: EN 60903:2003 – UL – S-MARK
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '139'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Nitrilo Azul Puño Lona
+  marca: Hi-Flex
+  posee_certificacion: true
+  certificacion: 3121 – IRAM 3607 - S-MARK
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '141'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Medio Paseo Cuero Vaqueta
+  marca: CANOR
+  posee_certificacion: true
+  certificacion: EN388:2016 – EN420
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '143'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Recubierto en palma PU Negro Tejido Poliester G13. DPS85195
+  marca: DPS
+  posee_certificacion: true
+  certificacion: IRAM 3608,3607
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '144'
+  producto: Guantes
+  familia: Guantes
+  tipo_modelo: Guante Tejido sin costura recubierto completo en Nitrilo Gris
+  marca: DPS
+  posee_certificacion: true
+  certificacion: IRAM 3608,3607
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '22'
+  producto: Bandolera
+  familia: Alta visibilidad
+  tipo_modelo: Fluor naranja c/reflectivo 80cm PVC
+  marca: Segufer
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '142'
+  producto: Chaleco Reflectivo
+  familia: Alta visibilidad
+  tipo_modelo: Fluor reglamentario
+  marca: varias
+  posee_certificacion: false
+  certificacion: N/A
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '23'
+  producto: Lentes de Seguridad
+  familia: Protección ocular
+  tipo_modelo: Modelo Ecolight- Marco Transparente
+  marca: MSA
+  posee_certificacion: true
+  certificacion: IRAM en 166
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '30'
+  producto: Lentes de Seguridad
+  familia: Protección ocular
+  tipo_modelo: Modelo Uvex Stealth S3960C
+  marca: Uvex
+  posee_certificacion: true
+  certificacion: ANSI Z87+ y CSA Z94.3
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '39'
+  producto: Lentes de Seguridad
+  familia: Protección ocular
+  tipo_modelo: Modelo GH 3000
+  marca: MSA
+  posee_certificacion: true
+  certificacion: IRAM en 166/CE
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '41'
+  producto: Lentes de Seguridad
+  familia: Protección ocular
+  tipo_modelo: Modelo New Classic Transparente HC
+  marca: LIBUS
+  posee_certificacion: true
+  certificacion: IRAM en 166
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '53'
+  producto: Lentes de Seguridad
+  familia: Protección ocular
+  tipo_modelo: Modelo Eco Line GRIS HC
+  marca: LIBUS
+  posee_certificacion: true
+  certificacion: ISO 9001:2008
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '43'
+  producto: Lentes de Seguridad
+  familia: Protección ocular
+  tipo_modelo: Modelo Spy Claro
+  marca: Steelro SA
+  posee_certificacion: true
+  certificacion: IRAM en 166
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '50'
+  producto: Lentes de Seguridad
+  familia: Protección ocular
+  tipo_modelo: Modelo N° 109
+  marca: Fravida
+  posee_certificacion: false
+  certificacion: 'No'
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '62'
+  producto: Lentes de Seguridad
+  familia: Protección ocular
+  tipo_modelo: Anteojos ARGON ELITE Indoor/Outdoor HC. Cod.902441
+  marca: LIBUS
+  posee_certificacion: true
+  certificacion: Certificado UL o IRAM
+  destino_declarado: Mant/ Autoelevadorista/Efluente/ Bosque
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '73'
+  producto: Lentes de Seguridad
+  familia: Protección ocular
+  tipo_modelo: Modelo LUXOR (p/cristales recetados)
+  marca: MSA
+  posee_certificacion: true
+  certificacion: IRAM en 166/CE
+  destino_declarado: Mant.
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '96'
+  producto: Lentes de Seguridad
+  familia: Protección ocular
+  tipo_modelo: Antiparra. AVIATOR Trasparente AF - GRIS
+  marca: LIBUS
+  posee_certificacion: true
+  certificacion: IRAM 166 – ANSI Z87.1
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '145'
+  producto: Lentes de Seguridad
+  familia: Protección ocular
+  tipo_modelo: Anteojo Negro K, Patilel recta regulable, UCU022E
+  marca: DPS
+  posee_certificacion: true
+  certificacion: IRAM 3630-7
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '24'
+  producto: Delantal
+  familia: Protección para soldadura
+  tipo_modelo: PVC
+  marca: Segufer
+  posee_certificacion: false
+  certificacion: 'No'
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '63'
+  producto: Delantal
+  familia: Protección para soldadura
+  tipo_modelo: Delantal De Cuero para Soldar.
+  marca: DPS
+  posee_certificacion: true
+  certificacion: Certificado UL o IRAM
+  destino_declarado: Mant.
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '140'
+  producto: Delantal
+  familia: Protección para soldadura
+  tipo_modelo: Descarne Standar 60x90
+  marca: DPS
+  posee_certificacion: false
+  certificacion: null
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '25'
+  producto: Careta para soldar
+  familia: Protección facial
+  tipo_modelo: ''
+  marca: ''
+  posee_certificacion: false
+  certificacion: null
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '64'
+  producto: Polainas para Soldar
+  familia: Protección para soldadura
+  tipo_modelo: Polainas para Soldar.
+  marca: DPS
+  posee_certificacion: true
+  certificacion: Certificado UL o IRAM
+  destino_declarado: Mant.
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '135'
+  producto: Polainas para Soldar
+  familia: Protección para soldadura
+  tipo_modelo: Polainas para Soldar
+  marca: CANOR
+  posee_certificacion: true
+  certificacion: ISO 11611
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '117'
+  producto: Protector facial
+  familia: Protección facial
+  tipo_modelo: Soporte para protector facial con arnés estándar
+  marca: Libus
+  posee_certificacion: true
+  certificacion: S/prot facial montado
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '137'
+  producto: Protector facial
+  familia: Protección facial
+  tipo_modelo: 2020/HB
+  marca: FRAVIDA
+  posee_certificacion: true
+  certificacion: IRAM EN166-/S-MARK
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '118'
+  producto: Visor para protector facial
+  familia: Protección facial
+  tipo_modelo: Protector facial plano
+  marca: Libus
+  posee_certificacion: true
+  certificacion: IRAM EN166
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '65'
+  producto: Mangas para Soldar.
+  familia: Protección para soldadura
+  tipo_modelo: Mangas para Soldar.
+  marca: DPS
+  posee_certificacion: true
+  certificacion: Certificado UL o IRAM
+  destino_declarado: Mant.
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '136'
+  producto: Mangas para Soldar.
+  familia: Protección para soldadura
+  tipo_modelo: Mangas para Soldar.
+  marca: CANOR
+  posee_certificacion: true
+  certificacion: ISO 11611
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '26'
+  producto: Protector Auditivo de copa
+  familia: Protección auditiva
+  tipo_modelo: Fravida 4005
+  marca: Fravida
+  posee_certificacion: true
+  certificacion: IRAM 4060
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '31'
+  producto: Protector Auditivo de copa
+  familia: Protección auditiva
+  tipo_modelo: Prowork EY23
+  marca: Prowork
+  posee_certificacion: false
+  certificacion: null
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '38'
+  producto: Protector Auditivo de copa
+  familia: Protección auditiva
+  tipo_modelo: Alternative 22dB Externo-Modelo Vincha
+  marca: Libus
+  posee_certificacion: true
+  certificacion: ANSI S12.6 - 1997
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '48'
+  producto: Protector Auditivo de copa
+  familia: Protección auditiva
+  tipo_modelo: Modelo L-320
+  marca: Libus
+  posee_certificacion: true
+  certificacion: ANSI S3.19 - 1974
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '52'
+  producto: Protector Auditivo de copa
+  familia: Protección auditiva
+  tipo_modelo: Fravida 4006
+  marca: Fravida
+  posee_certificacion: true
+  certificacion: IRAM 4060-1 y 4126-1
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '55'
+  producto: Protector Auditivo de copa
+  familia: Protección auditiva
+  tipo_modelo: Masprot MR. MPA -103
+  marca: Masprot
+  posee_certificacion: true
+  certificacion: ANSI S3.19 - 1974
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '61'
+  producto: Protector Auditivo de copa
+  familia: Protección auditiva
+  tipo_modelo: Con Vincha tras nuca C/ Atenuación de 25 a 27 Decibeles
+  marca: LIBUS
+  posee_certificacion: true
+  certificacion: Certificado UL o IRAM
+  destino_declarado: Mant.
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '123'
+  producto: Protector Auditivo de copa
+  familia: Protección auditiva
+  tipo_modelo: Modelo L-340
+  marca: Libus L-300
+  posee_certificacion: true
+  certificacion: IRAM EN 352 -ANSI S3.19-1974
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '132'
+  producto: Protector auditivo de copa
+  familia: Protección auditiva
+  tipo_modelo: Tipo vincha naranja fluo
+  marca: DPS
+  posee_certificacion: true
+  certificacion: UL-/ S-MARK
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '27'
+  producto: Protector Endo Aural
+  familia: Protección auditiva
+  tipo_modelo: ''
+  marca: R&R
+  posee_certificacion: false
+  certificacion: null
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '87'
+  producto: Protector Endo Aural
+  familia: Protección auditiva
+  tipo_modelo: Protector auditivo de inserción pre-moldeado tipo plug con cordón
+  marca: Libus
+  posee_certificacion: true
+  certificacion: IRAM EN 352 ANSI S3.19-1974 NCH 1331/2-2001
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '33'
+  producto: Protector Lumbar
+  familia: Protección lumbar
+  tipo_modelo: Cinturón de espalda.Patente Nº 71740
+  marca: Mustang
+  posee_certificacion: false
+  certificacion: 'No'
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '42'
+  producto: Protector en Altura
+  familia: Protección contra caídas
+  tipo_modelo: Arnes
+  marca: Musitani
+  posee_certificacion: false
+  certificacion: 'No'
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '78'
+  producto: Protector en Altura
+  familia: Protección contra caídas
+  tipo_modelo: Arnes Apolo X URBAN c/cola de amarre doble -55mm
+  marca: Urban
+  posee_certificacion: true
+  certificacion: IRAM 3622-1
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
+- codigo: '119'
+  producto: Arnés para casco
+  familia: Protección de cráneo
+  tipo_modelo: Arnés milenium a cremallera plástico
+  marca: Libus
+  posee_certificacion: true
+  certificacion: IRAM 3620 Tipo 1-Clase B
+  destino_declarado: null
+  unidad: unidad
+  vida_util_dias: null
