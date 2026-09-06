@@ -270,37 +270,40 @@ class StockPostgreSQL:
     def descontar(self, lineas: list[tuple[str, int]]) -> None:
         cantidades = self._agrupar(lineas)
         with self._base.conectar(filas_dict=True) as cn, cn.cursor() as cur:
-            stocks: dict[str, dict[str, object]] = {}
-            for item_codigo in sorted(cantidades):
-                cur.execute(
-                    "SELECT * FROM rrhh_epp.stock_item WHERE item_codigo = %s FOR UPDATE",
-                    (item_codigo,),
-                )
-                fila = cur.fetchone()
-                solicitado = cantidades[item_codigo]
-                if fila is None or int(fila["disponible"]) < solicitado:
-                    raise StockInsuficiente(
-                        f"Stock insuficiente para {item_codigo}: "
-                        f"disponible {int(fila['disponible']) if fila else 0}, "
-                        f"solicitado {solicitado}."
-                    )
-                stocks[item_codigo] = fila
+            self._descontar_con_cursor(cur, cantidades)
 
-            for item_codigo, cantidad in cantidades.items():
-                disponible = int(stocks[item_codigo]["disponible"]) - cantidad
-                minimo = int(stocks[item_codigo]["minimo"])
-                cur.execute(
-                    """UPDATE rrhh_epp.stock_item SET disponible = %s
-                       WHERE item_codigo = %s""",
-                    (disponible, item_codigo),
+    @staticmethod
+    def _descontar_con_cursor(cur, cantidades: dict[str, int]) -> None:
+        stocks: dict[str, dict[str, object]] = {}
+        for item_codigo in sorted(cantidades):
+            cur.execute(
+                "SELECT * FROM rrhh_epp.stock_item WHERE item_codigo = %s FOR UPDATE",
+                (item_codigo,),
+            )
+            fila = cur.fetchone()
+            solicitado = cantidades[item_codigo]
+            if fila is None or int(fila["disponible"]) < solicitado:
+                raise StockInsuficiente(
+                    f"Stock insuficiente para {item_codigo}: "
+                    f"disponible {int(fila['disponible']) if fila else 0}, "
+                    f"solicitado {solicitado}."
                 )
-                if disponible <= minimo:
-                    cur.execute(
-                        """INSERT INTO rrhh_epp.aviso_compras
-                           (item_codigo, disponible, minimo)
-                           VALUES (%s,%s,%s) ON CONFLICT DO NOTHING""",
-                        (item_codigo, disponible, minimo),
-                    )
+            stocks[item_codigo] = fila
+
+        for item_codigo, cantidad in cantidades.items():
+            disponible = int(stocks[item_codigo]["disponible"]) - cantidad
+            minimo = int(stocks[item_codigo]["minimo"])
+            cur.execute(
+                "UPDATE rrhh_epp.stock_item SET disponible = %s WHERE item_codigo = %s",
+                (disponible, item_codigo),
+            )
+            if disponible <= minimo:
+                cur.execute(
+                    """INSERT INTO rrhh_epp.aviso_compras
+                       (item_codigo, disponible, minimo)
+                       VALUES (%s,%s,%s) ON CONFLICT DO NOTHING""",
+                    (item_codigo, disponible, minimo),
+                )
 
     def configurar(self, item_codigo: str, disponible: int, minimo: int) -> StockItem:
         if (
@@ -329,3 +332,40 @@ class StockPostgreSQL:
                    WHERE estado = 'PENDIENTE' ORDER BY id"""
             )
             return list(cur.fetchall())
+
+
+class ConfirmadorEntregaPostgreSQL:
+    def __init__(self, base: BasePostgreSQL, stock: StockPostgreSQL) -> None:
+        self._base = base
+        self._stock = stock
+
+    def confirmar(
+        self,
+        entrega: Entrega,
+        movimientos_stock: list[tuple[str, int]],
+        evento: str,
+        usuario: str,
+        detalle: dict,
+    ) -> bool:
+        with self._base.conectar(filas_dict=True) as cn, cn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO rrhh_epp.entrega_epp
+                   (id, legajo, fecha_entrega, usuario_deposito, circuito, motivo,
+                    observaciones, firma_metodo, firma_evidencia, firma_sello,
+                    firma_simulada, cabecera_json, lineas_json)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb)
+                   ON CONFLICT (id) DO NOTHING RETURNING id""",
+                _datos_entrega(entrega),
+            )
+            if cur.fetchone() is None:
+                return False
+            self._stock._descontar_con_cursor(
+                cur,
+                self._stock._agrupar(movimientos_stock),
+            )
+            cur.execute(
+                """INSERT INTO rrhh_epp.bitacora (evento, usuario, detalle)
+                   VALUES (%s,%s,%s::jsonb)""",
+                (evento, usuario, json.dumps(detalle, ensure_ascii=False)),
+            )
+            return True

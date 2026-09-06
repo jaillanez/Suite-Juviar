@@ -23,12 +23,11 @@ from ..domain.modelos_mvp import (
     RequisitoEPP,
 )
 from ..domain.puertos_mvp import (
-    Bitacora,
+    ConfirmadorEntrega,
     MotorFirma,
     RepositorioCatalogo,
     RepositorioEntregas,
     RepositorioLegajos,
-    RepositorioStock,
 )
 
 
@@ -84,15 +83,13 @@ class RegistrarEntrega:
         catalogo: RepositorioCatalogo,
         entregas: RepositorioEntregas,
         firma: MotorFirma,
-        bitacora: Bitacora,
-        stock: RepositorioStock,
+        confirmador: ConfirmadorEntrega,
     ) -> None:
         self._legajos = legajos
         self._catalogo = catalogo
         self._entregas = entregas
         self._firma = firma
-        self._bitacora = bitacora
-        self._stock = stock
+        self._confirmador = confirmador
 
     def ejecutar(
         self,
@@ -181,8 +178,6 @@ class RegistrarEntrega:
             )
 
         movimientos_stock = [(linea.item_codigo, linea.cantidad) for linea in lineas]
-        self._stock.verificar(movimientos_stock)
-
         momento_entrega = entregada_en or datetime.now(UTC)
         if momento_entrega.tzinfo is None:
             momento_entrega = momento_entrega.replace(tzinfo=UTC)
@@ -212,28 +207,29 @@ class RegistrarEntrega:
             motivo=motivo,
             observaciones=observaciones,
         )
-        if not self._entregas.guardar(entrega):
+        detalle_evento = {
+            "id_entrega": id_entrega,
+            "legajo": persona.legajo,
+            "fuente_legajos": self._legajos.fuente,
+            "items": len(lineas),
+            "metodo_firma": firma.metodo,
+            "firma_simulada": firma.simulada,
+            "circuito": circuito,
+            "motivo": motivo,
+            "movimientos_stock": [
+                {"item_codigo": codigo, "cantidad": cantidad}
+                for codigo, cantidad in movimientos_stock
+            ],
+        }
+        if not self._confirmador.confirmar(
+            entrega,
+            movimientos_stock,
+            "ENTREGA_EPP_REGISTRADA",
+            usuario_deposito,
+            detalle_evento,
+        ):
             existente = self._entregas.obtener(id_entrega)
             if existente is not None:
                 return existente
             raise RuntimeError("La entrega duplicada no pudo recuperarse del repositorio.")
-        self._stock.descontar(movimientos_stock)
-        self._bitacora.registrar(
-            evento="ENTREGA_EPP_REGISTRADA",
-            usuario=usuario_deposito,
-            detalle={
-                "id_entrega": id_entrega,
-                "legajo": persona.legajo,
-                "fuente_legajos": self._legajos.fuente,
-                "items": len(lineas),
-                "metodo_firma": firma.metodo,
-                "firma_simulada": firma.simulada,
-                "circuito": circuito,
-                "motivo": motivo,
-                "movimientos_stock": [
-                    {"item_codigo": codigo, "cantidad": cantidad}
-                    for codigo, cantidad in movimientos_stock
-                ],
-            },
-        )
         return entrega

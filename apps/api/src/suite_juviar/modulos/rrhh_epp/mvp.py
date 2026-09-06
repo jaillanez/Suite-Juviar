@@ -36,6 +36,7 @@ from .infrastructure.legajos_yaml import LegajosYAML
 from .infrastructure.persistencia_mvp import (
     BaseLocal,
     BitacoraSQLite,
+    ConfirmadorEntregaSQLite,
     ConstanciasSQLite,
     EntregasSQLite,
     StockSQLite,
@@ -43,6 +44,7 @@ from .infrastructure.persistencia_mvp import (
 from .infrastructure.persistencia_postgres import (
     BasePostgreSQL,
     BitacoraPostgreSQL,
+    ConfirmadorEntregaPostgreSQL,
     ConstanciasPostgreSQL,
     EntregasPostgreSQL,
     EsquemaPostgreSQLFaltante,
@@ -145,6 +147,12 @@ def construir(
         bitacora = BitacoraSQLite(base_sqlite)
         constancias = ConstanciasSQLite(base_sqlite)
         stock = StockSQLite(base_sqlite, RAIZ / "data" / "stock_inicial_simulado.yaml")
+        confirmador = ConfirmadorEntregaSQLite(
+            base_sqlite,
+            entregas,
+            stock,
+            bitacora,
+        )
     elif tipo_persistencia == "postgresql":
         dsn = (
             postgres_dsn
@@ -162,6 +170,7 @@ def construir(
             base_postgres,
             RAIZ / "data" / "stock_inicial_simulado.yaml",
         )
+        confirmador = ConfirmadorEntregaPostgreSQL(base_postgres, stock)
     else:
         raise ErrorDeConfiguracion(
             f"SJ_RRHH_EPP_PERSISTENCIA='{tipo_persistencia}' no es válida. "
@@ -183,8 +192,7 @@ def construir(
             catalogo,
             entregas,
             firma,
-            bitacora,
-            stock,
+            confirmador,
         ),
         obtener_constancia_pdf=ObtenerConstanciaPDF(
             entregas,

@@ -25,12 +25,13 @@ limitado al aislamiento de las pruebas automatizadas.
   y su dueño declarado es Depósito.
 - Persistencia PostgreSQL para entregas, constancias originales, stock, avisos y bitácora;
   el adaptador de Nexus permanece separado y de solo lectura.
+- Confirmación atómica: entrega, descuento de stock, aviso de mínimo y bitácora se
+  confirman juntos o se revierten juntos, incluso con varias tablets concurrentes.
 
 ## Deuda técnica y datos pendientes
 
 | Deuda o dato | Estado | Para resolverla |
 |---|---|---|
-| Transacción única entrega-stock-bitácora | PENDIENTE | Unificar las tres escrituras en una unidad de trabajo PostgreSQL antes de la prueba con varias tablets. |
 | Protección criptográfica de DNI y legajo en RRHH/EPP | PENDIENTE | Aplicar HMAC + AES-GCM de `plataforma/cripto` antes de cargar datos reales. |
 | Umbral offline de 20 entregas o 24 horas | PROPUESTA_SIN_VALIDAR | Confirmación de Operaciones y de Higiene y Seguridad. |
 | Identidad real del operario | PENDIENTE | Integrar `plataforma/identidad`; el header local es suplantable. |

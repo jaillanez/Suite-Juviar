@@ -129,6 +129,21 @@ class RepositorioStock(Protocol):
     def alertas_pendientes(self) -> list[dict[str, object]]: ...
 
 
+class ConfirmadorEntrega(Protocol):
+    """Confirma entrega, stock y bitácora dentro de una única transacción."""
+
+    def confirmar(
+        self,
+        entrega: Entrega,
+        movimientos_stock: list[tuple[str, int]],
+        evento: str,
+        usuario: str,
+        detalle: dict,
+    ) -> bool:
+        """Devuelve False si el identificador de entrega ya existía."""
+        ...
+
+
 class Bitacora(Protocol):
     """Regla 5 de la base: quién hizo qué y cuándo."""
 

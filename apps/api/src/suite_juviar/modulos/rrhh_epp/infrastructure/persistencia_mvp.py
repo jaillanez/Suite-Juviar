@@ -136,7 +136,7 @@ class EntregasSQLite:
     def __init__(self, base: BaseLocal) -> None:
         self._cn = base.cn
 
-    def guardar(self, entrega: Entrega) -> bool:
+    def guardar(self, entrega: Entrega, *, confirmar: bool = True) -> bool:
         try:
             self._cn.execute(
                 """INSERT INTO entrega_epp
@@ -166,7 +166,8 @@ class EntregasSQLite:
             if self.obtener(entrega.id) is not None:
                 return False
             raise
-        self._cn.commit()
+        if confirmar:
+            self._cn.commit()
         return True
 
     @staticmethod
@@ -206,7 +207,14 @@ class BitacoraSQLite:
     def __init__(self, base: BaseLocal) -> None:
         self._cn = base.cn
 
-    def registrar(self, evento: str, usuario: str, detalle: dict) -> None:
+    def registrar(
+        self,
+        evento: str,
+        usuario: str,
+        detalle: dict,
+        *,
+        confirmar: bool = True,
+    ) -> None:
         self._cn.execute(
             "INSERT INTO bitacora (momento, evento, usuario, detalle) VALUES (?,?,?,?)",
             (
@@ -216,7 +224,8 @@ class BitacoraSQLite:
                 json.dumps(detalle, ensure_ascii=False),
             ),
         )
-        self._cn.commit()
+        if confirmar:
+            self._cn.commit()
 
     def ultimos(self, cantidad: int = 50) -> list[dict]:
         filas = self._cn.execute(
@@ -337,7 +346,7 @@ class StockSQLite:
                     f"disponible {stock.disponible if stock else 0}, solicitado {cantidad}."
                 )
 
-    def descontar(self, lineas: list[tuple[str, int]]) -> None:
+    def descontar(self, lineas: list[tuple[str, int]], *, confirmar: bool = True) -> None:
         self.verificar(lineas)
         cantidades: dict[str, int] = defaultdict(int)
         for item_codigo, cantidad in lineas:
@@ -365,7 +374,8 @@ class StockSQLite:
                         item_codigo,
                     ),
                 )
-        self._cn.commit()
+        if confirmar:
+            self._cn.commit()
 
     def configurar(self, item_codigo: str, disponible: int, minimo: int) -> StockItem:
         if isinstance(disponible, bool) or isinstance(minimo, bool) or disponible < 0 or minimo < 0:
@@ -385,3 +395,37 @@ class StockSQLite:
             "SELECT * FROM aviso_compras WHERE estado = 'PENDIENTE' ORDER BY id"
         ).fetchall()
         return [dict(fila) for fila in filas]
+
+
+class ConfirmadorEntregaSQLite:
+    def __init__(
+        self,
+        base: BaseLocal,
+        entregas: EntregasSQLite,
+        stock: StockSQLite,
+        bitacora: BitacoraSQLite,
+    ) -> None:
+        self._cn = base.cn
+        self._entregas = entregas
+        self._stock = stock
+        self._bitacora = bitacora
+
+    def confirmar(
+        self,
+        entrega: Entrega,
+        movimientos_stock: list[tuple[str, int]],
+        evento: str,
+        usuario: str,
+        detalle: dict,
+    ) -> bool:
+        try:
+            self._cn.execute("BEGIN IMMEDIATE")
+            if not self._entregas.guardar(entrega, confirmar=False):
+                return False
+            self._stock.descontar(movimientos_stock, confirmar=False)
+            self._bitacora.registrar(evento, usuario, detalle, confirmar=False)
+            self._cn.commit()
+            return True
+        except Exception:
+            self._cn.rollback()
+            raise

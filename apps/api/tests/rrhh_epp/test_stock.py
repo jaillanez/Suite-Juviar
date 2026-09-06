@@ -81,6 +81,19 @@ def test_sin_stock_rechaza_y_no_guarda_entrega(contenedor):
     assert contenedor.entregas.listar_por_legajo("1042") == []
 
 
+def test_si_falla_la_bitacora_se_revierten_entrega_y_stock(contenedor, monkeypatch):
+    disponible = contenedor.stock.obtener("SIM-68-01").disponible  # type: ignore[union-attr]
+
+    def fallar(*_args, **_kwargs):
+        raise RuntimeError("bitácora no disponible")
+
+    monkeypatch.setattr(contenedor.bitacora, "registrar", fallar)
+    with pytest.raises(RuntimeError, match="bitácora no disponible"):
+        _entregar(contenedor, id_entrega="TABLET-ROLLBACK-1")
+    assert contenedor.entregas.obtener("TABLET-ROLLBACK-1") is None
+    assert contenedor.stock.obtener("SIM-68-01").disponible == disponible  # type: ignore[union-attr]
+
+
 @pytest.mark.parametrize(
     ("disponible", "minimo"),
     [(-1, 0), (0, -1), (True, 0), (0, False)],
