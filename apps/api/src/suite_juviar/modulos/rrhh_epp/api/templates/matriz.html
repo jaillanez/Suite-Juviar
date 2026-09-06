@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Matriz de EPP por sector — propuesta para revisión</title>
+<style>
+  :root{--tinta:#141a1f;--suave:#5a6672;--papel:#fff;--linea:#c9d1d8;--fondo:#eef1f3;--alerta:#a8400c;--ok:#1c5c3b;--accion:#6b1f3a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fondo);color:var(--tinta);font-family:"Segoe UI",Roboto,system-ui,Helvetica,Arial,sans-serif;font-size:16px;line-height:1.5}
+  .aviso{background:var(--alerta);color:#fff;padding:14px 24px;font-weight:600}
+  header{background:var(--papel);border-bottom:1px solid var(--linea);padding:22px 24px}
+  header h1{margin:0 0 6px;font-size:23px;font-weight:600}
+  header p{margin:0;color:var(--suave);font-size:15px;max-width:70ch}
+  main{max-width:1080px;margin:0 auto;padding:22px}
+  .resumen{background:var(--papel);border:1px solid var(--linea);padding:18px 20px;margin-bottom:18px;display:flex;gap:36px;flex-wrap:wrap}
+  .resumen div b{display:block;font-size:26px;font-weight:600}
+  .resumen div span{color:var(--suave);font-size:14px}
+  section{background:var(--papel);border:1px solid var(--linea);margin-bottom:14px}
+  section > h2{margin:0;padding:14px 18px;font-size:18px;font-weight:600;border-bottom:1px solid var(--linea);display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  section > h2 em{font-style:normal;color:var(--suave);font-size:14px;font-weight:400}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{text-align:left;color:var(--suave);font-weight:600;font-size:13px;padding:8px 18px;border-bottom:1px solid var(--linea)}
+  td{padding:10px 18px;border-bottom:1px solid #e9edf0;vertical-align:top}
+  tr:last-child td{border-bottom:0}
+  tr.revisar{background:#fdf4ef}
+  .cod{font-weight:600;white-space:nowrap}
+  .det{color:var(--suave)}
+  .origen{font-size:12px;color:var(--suave);white-space:nowrap}
+  .fund{max-width:52ch}
+  .marca-revisar{color:var(--alerta);font-weight:600}
+  .vacio{padding:16px 18px;color:var(--suave)}
+  .pie{max-width:1080px;margin:0 auto;padding:0 22px 40px;color:var(--suave);font-size:14px}
+</style>
+</head>
+<body>
+
+<div class="aviso">Propuesta sin validar. Ninguna línea de esta matriz es criterio de protección hasta que Higiene y Seguridad la apruebe y firme.</div>
+
+<header>
+  <h1>Matriz de EPP por sector y puesto</h1>
+  <p>Los sectores salen del esquema interno de ENAV de 2012. Los códigos, del RD 068/11 {{ version_norma }}.
+     Las filas resaltadas son las que necesitan definición de Higiene y Seguridad antes que ninguna otra.</p>
+</header>
+
+<main>
+  <div class="resumen">
+    <div><b>{{ total_lineas }}</b><span>líneas propuestas</span></div>
+    <div><b>{{ por_origen.get('RD 068/11', 0) }}</b><span>respaldadas por el catálogo de ENAV</span></div>
+    <div><b>{{ por_origen.get('CCT', 0) }}</b><span>por convenio colectivo</span></div>
+    <div><b>{{ a_revisar }}</b><span class="marca-revisar">a definir con HyS</span></div>
+  </div>
+
+  {% for s in sectores %}
+  <section>
+    <h2>{{ s.nombre }} <em>{{ s.codigo }} · {{ s.lineas|length }} elementos{% if not s.aplica_base %} · no recibe la base operativa{% endif %}</em></h2>
+    {% if s.lineas %}
+    <table>
+      <thead><tr><th>Cód.</th><th>Elemento</th><th>Cantidad</th><th>Frecuencia</th><th>Fundamento</th></tr></thead>
+      <tbody>
+      {% for l in s.lineas %}
+        <tr class="{{ 'revisar' if l.revisar else '' }}">
+          <td class="cod">{{ l.codigo }}</td>
+          <td>{{ l.producto }}<br><span class="det">{{ l.tipo_modelo }} · {{ l.marca }}</span></td>
+          <td>{{ l.cantidad }}{% if not l.obligatorio %}<br><span class="det">opcional</span>{% endif %}</td>
+          <td>{{ l.frecuencia|lower|replace('_',' ') }}<br><span class="det">{{ l.temporada|lower|replace('_',' ') }}</span></td>
+          <td class="fund">{{ l.fundamento }}<br><span class="origen">{{ l.origen|lower }}</span></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="vacio">Sin elementos definidos. En el esquema original de 2012 este sector figura sin marcas.</p>
+    {% endif %}
+  </section>
+  {% endfor %}
+</main>
+
+<p class="pie">Generado desde modulos/rrhh_epp/data/matriz_sector_puesto_epp.yaml. Para corregir una línea se edita ese archivo, no esta pantalla.</p>
+</body>
+</html>

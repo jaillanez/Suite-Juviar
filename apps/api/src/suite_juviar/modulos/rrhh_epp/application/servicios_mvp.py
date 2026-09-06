@@ -29,7 +29,7 @@ from ..domain.puertos_mvp import (
 
 
 class ConsultarLegajo:
-    """Devuelve la cabecera del RD 062/11 más el EPP que le corresponde al puesto."""
+    """Devuelve la cabecera del RD 062/11 y su EPP por sector + puesto."""
 
     def __init__(self, legajos: RepositorioLegajos, catalogo: RepositorioCatalogo,
                  entregas: RepositorioEntregas) -> None:
@@ -47,13 +47,16 @@ class ConsultarLegajo:
             )
 
         requeridos: list[tuple[RequisitoEPP, ElementoEPP]] = []
-        for requisito in self._catalogo.requisitos_de_puesto(persona.puesto_codigo):
+        for requisito in self._catalogo.requisitos_de(
+            persona.sector_codigo,
+            persona.puesto_codigo,
+        ):
             elemento = self._catalogo.obtener_elemento(requisito.codigo)
             if elemento is None:
                 # La matriz apunta a un código que no está en el catálogo.
                 # Se avisa fuerte: es un error de datos, no del operario.
                 raise CodigoFueraDeCatalogo(
-                    f"La matriz del puesto {persona.puesto_codigo} pide el código "
+                    f"La matriz de {persona.sector_codigo}/{persona.puesto_codigo} pide el código "
                     f"{requisito.codigo}, que no existe en el catálogo RD 068/11."
                 )
             requeridos.append((requisito, elemento))

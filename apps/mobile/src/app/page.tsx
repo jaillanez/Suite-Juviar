@@ -26,6 +26,8 @@ type Elemento = {
   frecuencia: string;
   temporada: string;
   obligatorio: boolean;
+  fundamento: string;
+  origen: "BASE" | "SECTOR" | "PUESTO";
   ultima_entrega: string | null;
 };
 
@@ -286,6 +288,7 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
                 <div>
                   <strong>{elemento.producto}</strong>
                   <span>{elemento.codigo} · {elemento.marca} · {elemento.unidad}</span>
+                  <small>{elemento.origen} · {elemento.fundamento}</small>
                   <small>Última entrega: {elemento.ultima_entrega ?? "sin registro"}</small>
                 </div>
                 <input

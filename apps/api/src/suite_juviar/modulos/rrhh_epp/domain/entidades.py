@@ -20,7 +20,7 @@ class EstadoConstancia(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class ElementoCatalogo:
-    """Una fila del RD 068/11 digitalizado. Ej.: código interno 1580."""
+    """Una fila del RD 068/11 digitalizado. Ej.: número de orden ``104-B``."""
 
     codigo: str
     descripcion: str

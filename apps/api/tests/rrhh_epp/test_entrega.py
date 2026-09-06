@@ -17,7 +17,7 @@ from suite_juviar.modulos.rrhh_epp.mvp import ErrorDeConfiguracion, construir
 def entregar(contenedor, **cambios):
     argumentos = {
         "numero_legajo": "1042",
-        "items": [{"codigo": "3040", "cantidad": 2}],
+        "items": [{"codigo": "68", "cantidad": 2}],
         "metodo_firma": "TRAZO_TABLET",
         "evidencia_firma": "data:image/png;base64,AAAA",
         "usuario_deposito": "deposito",
@@ -31,8 +31,9 @@ def entregar(contenedor, **cambios):
 def test_registra_y_copia_los_datos_del_catalogo(contenedor):
     e = entregar(contenedor)
     assert e.legajo.dni == "27443110"          # vino de la fuente, no se tipeó
-    assert e.lineas[0].producto == "Guante de nitrilo"
-    assert e.lineas[0].marca == "Vitrex"
+    assert e.lineas[0].producto == "Guantes"
+    assert e.lineas[0].tipo_modelo == "Guantes de Nitrilo Azul (Corto Cod.13255)"
+    assert e.lineas[0].marca == "DPS"
     assert e.lineas[0].posee_certificacion is True
     assert e.cantidad_items == 2
 
@@ -94,7 +95,7 @@ def test_rechaza_entrega_sin_elementos(contenedor):
 @pytest.mark.parametrize("cantidad", [0, -1, 1.5, "2", None, True])
 def test_rechaza_cantidades_invalidas(contenedor, cantidad):
     with pytest.raises(CantidadInvalida):
-        entregar(contenedor, items=[{"codigo": "3040", "cantidad": cantidad}])
+        entregar(contenedor, items=[{"codigo": "68", "cantidad": cantidad}])
 
 
 @pytest.mark.parametrize("evidencia", ["", "   ", None])

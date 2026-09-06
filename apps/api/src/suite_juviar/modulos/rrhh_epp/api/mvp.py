@@ -206,6 +206,8 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
                     "frecuencia": requisito.frecuencia,
                     "temporada": requisito.temporada,
                     "obligatorio": requisito.obligatorio,
+                    "fundamento": requisito.fundamento,
+                    "origen": requisito.origen,
                     "ultima_entrega": (
                         entregados[elemento.codigo].isoformat()
                         if elemento.codigo in entregados
@@ -214,6 +216,7 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
                 }
                 for requisito, elemento in requeridos
             ],
+            "matriz_sector_definida": c.catalogo.sector_definido(persona.sector_codigo),
             "historial": [
                 {
                     "id": entrega.id,
@@ -282,5 +285,64 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
         n: int = 50,
     ) -> list[dict]:
         return c.bitacora.ultimos(n)
+
+    @app.get("/matriz", response_class=HTMLResponse)
+    def revisar_matriz(
+        request: Request,
+        _usuario: OperadorDeposito,
+    ) -> HTMLResponse:
+        """Revisión de sólo lectura; aprobar exige identidad real."""
+        senales = ("PROPUESTA", "CONFIRMAR", "VERIFICAR", "REVISAR", "FALTA")
+        sectores: list[dict[str, object]] = []
+        total = 0
+        a_revisar = 0
+        por_origen: dict[str, int] = {}
+        for codigo in c.catalogo.sectores_conocidos:
+            lineas: list[dict[str, object]] = []
+            for requisito in c.catalogo.requisitos_de(codigo, ""):
+                elemento = c.catalogo.obtener_elemento(requisito.codigo)
+                if elemento is None:  # la carga del catálogo ya lo impide
+                    continue
+                revisar = any(senal in requisito.fundamento.upper() for senal in senales)
+                etiqueta = requisito.fundamento.split(" ")[0]
+                por_origen[etiqueta] = por_origen.get(etiqueta, 0) + 1
+                if "RD" in etiqueta:
+                    por_origen["RD 068/11"] = por_origen.get("RD 068/11", 0) + 1
+                total += 1
+                a_revisar += int(revisar)
+                lineas.append(
+                    {
+                        "codigo": requisito.codigo,
+                        "producto": elemento.producto,
+                        "tipo_modelo": elemento.tipo_modelo,
+                        "marca": elemento.marca,
+                        "cantidad": requisito.cantidad,
+                        "obligatorio": requisito.obligatorio,
+                        "frecuencia": requisito.frecuencia,
+                        "temporada": requisito.temporada,
+                        "fundamento": requisito.fundamento,
+                        "origen": requisito.origen,
+                        "revisar": revisar,
+                    }
+                )
+            sectores.append(
+                {
+                    "codigo": codigo,
+                    "nombre": c.catalogo.nombre_sector(codigo),
+                    "lineas": lineas,
+                    "aplica_base": c.catalogo.aplica_base(codigo),
+                }
+            )
+        return PLANTILLAS.TemplateResponse(
+            request=request,
+            name="matriz.html",
+            context={
+                "sectores": sectores,
+                "total_lineas": total,
+                "a_revisar": a_revisar,
+                "por_origen": por_origen,
+                "version_norma": c.catalogo.version_norma,
+            },
+        )
 
     return app

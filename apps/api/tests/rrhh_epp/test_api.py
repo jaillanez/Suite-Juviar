@@ -2,7 +2,7 @@ def test_estado_avisa_que_es_simulado(cliente):
     d = cliente.get("/estado").json()
     assert d["modo_simulado"] is True
     assert d["fuente_legajos"] == "SIMULADA"
-    assert d["estado_matriz_epp"] == "PROVISORIA"
+    assert d["estado_matriz_epp"] == "PROPUESTA_SIN_VALIDAR"
 
 
 def test_sesion_asigna_el_perfil_segun_el_usuario(cliente):
@@ -21,18 +21,25 @@ def test_un_usuario_de_campo_no_puede_entregar_epp(cliente):
     cabecera = {"X-Legajo-Usuario": "1501"}
     assert cliente.get("/sesion", headers=cabecera).json()["perfil"] == "campo"
     assert cliente.get("/legajos?q=Quiroga", headers=cabecera).status_code == 403
+    assert cliente.get("/matriz", headers=cabecera).status_code == 403
 
 
 def test_un_usuario_de_bascula_no_puede_entregar_epp(cliente):
     cabecera = {"X-Legajo-Usuario": "1601"}
     assert cliente.get("/sesion", headers=cabecera).json()["perfil"] == "bascula"
     assert cliente.get("/legajos?q=Quiroga", headers=cabecera).status_code == 403
+    assert cliente.get("/matriz", headers=cabecera).status_code == 403
+
+
+def test_un_usuario_de_campo_no_puede_revisar_la_matriz(cliente):
+    r = cliente.get("/matriz", headers={"X-Legajo-Usuario": "1501"})
+    assert r.status_code == 403
 
 
 def test_el_cliente_no_puede_suplantar_al_operador(cliente):
     r = cliente.post("/entregas", json={
         "legajo": "1103",
-        "items": [{"codigo": "4035", "cantidad": 1}],
+        "items": [{"codigo": "62", "cantidad": 1}],
         "evidencia_firma": "data:image/png;base64,AAAA",
         "usuario_deposito": "otro-legajo",
     })
@@ -42,7 +49,7 @@ def test_el_cliente_no_puede_suplantar_al_operador(cliente):
 def test_la_bitacora_toma_la_identidad_declarada_no_el_cuerpo(cliente):
     r = cliente.post("/entregas", json={
         "legajo": "1103",
-        "items": [{"codigo": "4035", "cantidad": 1}],
+        "items": [{"codigo": "62", "cantidad": 1}],
         "evidencia_firma": "data:image/png;base64,AAAA",
     })
     assert r.status_code == 200
@@ -114,7 +121,11 @@ def test_ficha_trae_cabecera_y_epp_del_puesto(cliente):
     assert d["cabecera"]["nombre_completo"] == "Olivares, Marisa Beatriz"
     assert d["cabecera"]["puesto"] == "Operaria de Clarificación"
     codigos = {e["codigo"] for e in d["epp_requerido"]}
-    assert "5030" in codigos and "3055" in codigos   # mameluco y guante de precisión
+    assert {"8", "10", "69"} <= codigos
+    origenes = {e["codigo"]: e["origen"] for e in d["epp_requerido"]}
+    assert origenes["8"] == "BASE"
+    assert origenes["69"] == "SECTOR"
+    assert all(e["fundamento"] for e in d["epp_requerido"])
 
 
 def test_legajo_inexistente_da_404(cliente):
@@ -131,7 +142,7 @@ def test_legajo_inactivo_da_400(cliente):
 def test_entrega_completa_y_constancia(cliente):
     r = cliente.post("/entregas", json={
         "legajo": "1103",
-        "items": [{"codigo": "4035", "cantidad": 1}, {"codigo": "2110", "cantidad": 1}],
+        "items": [{"codigo": "62", "cantidad": 1}, {"codigo": "5", "cantidad": 1}],
         "metodo_firma": "TRAZO_TABLET",
         "evidencia_firma": "data:image/png;base64,AAAA",
     })
@@ -144,7 +155,7 @@ def test_entrega_completa_y_constancia(cliente):
     assert constancia.status_code == 200
     assert "Funes, Héctor Daniel" in constancia.text
     assert "24880431" in constancia.text
-    assert "Protector auditivo de copa" in constancia.text
+    assert "Calzado de Seguridad" in constancia.text
     assert "Documento de prueba" in constancia.text
     assert "validez legal" in constancia.text
 
@@ -152,14 +163,24 @@ def test_entrega_completa_y_constancia(cliente):
 def test_la_segunda_consulta_muestra_la_entrega_anterior(cliente):
     cliente.post("/entregas", json={
         "legajo": "1210",
-        "items": [{"codigo": "5045", "cantidad": 1}],
+        "items": [{"codigo": "5", "cantidad": 1}],
         "evidencia_firma": "data:image/png;base64,AAAA",
     })
     d = cliente.get("/legajos/1210").json()
-    chaleco = next(e for e in d["epp_requerido"] if e["codigo"] == "5045")
-    assert chaleco["ultima_entrega"] is not None
+    calzado = next(e for e in d["epp_requerido"] if e["codigo"] == "5")
+    assert calzado["ultima_entrega"] is not None
     assert len(d["historial"]) == 1
 
 
 def test_constancia_inexistente_da_404(cliente):
     assert cliente.get("/constancias/NOEXISTE").status_code == 404
+
+
+def test_pantalla_de_revision_de_matriz_es_solo_lectura(cliente):
+    r = cliente.get("/matriz")
+    assert r.status_code == 200
+    assert "Propuesta sin validar" in r.text
+    assert "Clarificación" in r.text and "Calderas" in r.text
+    assert "a definir con HyS" in r.text
+    assert "el catálogo declara" in r.text
+    assert "Aprobar" not in r.text

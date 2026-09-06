@@ -56,13 +56,15 @@ class ElementoEPP:
 
 @dataclass(frozen=True)
 class RequisitoEPP:
-    """Lo que le corresponde a un puesto según la matriz de Higiene y Seguridad."""
+    """Línea compuesta desde base operativa, sector o puesto."""
 
     codigo: str
     cantidad: int
     frecuencia: str          # SEMESTRAL | ANUAL | A_DEMANDA
     temporada: str           # VERANO | INVIERNO | TODO_EL_ANIO
     obligatorio: bool
+    fundamento: str = ""
+    origen: str = "SECTOR"
 
 
 # --------------------------------------------------------------------------
