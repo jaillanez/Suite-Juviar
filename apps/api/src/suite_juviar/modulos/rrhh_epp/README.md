@@ -9,6 +9,8 @@ matriz `PROPUESTA_SIN_VALIDAR`, firma simulada y persistencia SQLite.
 - Catálogo normativo de 145 elementos y matriz compuesta por base, sector y puesto.
 - Perfiles operativos resueltos por Parametría, sin perfil permisivo por defecto.
 - Vida útil `REFERENCIAL_INVESTIGADO` y auditoría no bloqueante del catálogo.
+- Catálogo de dos niveles: la matriz usa el elemento normativo y la entrega guarda
+  código interno, marca, modelo, talle y color del ítem elegido.
 - Cola offline en la tablet: guarda antes de enviar, muestra pendientes, reintenta con
   espera exponencial y no ofrece constancia hasta la confirmación idempotente del servidor.
 
@@ -20,4 +22,4 @@ matriz `PROPUESTA_SIN_VALIDAR`, firma simulada y persistencia SQLite.
 | Umbral offline de 20 entregas o 24 horas | PROPUESTA_SIN_VALIDAR | Confirmación de Operaciones y de Higiene y Seguridad. |
 | Identidad real del operario | PENDIENTE | Integrar `plataforma/identidad`; el header local es suplantable. |
 | PDF y firma digital de la empresa | PENDIENTE | Certificado y motor real de `plataforma/firma`. |
-| Catálogo de marcas, modelos, talles y colores | PENDIENTE | Excel maestro y numeración mantenida por Higiene y Seguridad. |
+| Ítems reales de marcas, modelos, talles y colores | SIMULADO | Reemplazar los 435 registros `SIM-*` cuando llegue el Excel maestro de Higiene y Seguridad. |

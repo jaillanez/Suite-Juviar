@@ -38,6 +38,14 @@ type Elemento = {
   fundamento: string;
   origen: "BASE" | "SECTOR" | "PUESTO";
   ultima_entrega: string | null;
+  items: Array<{
+    codigo_interno: string;
+    marca: string;
+    modelo: string;
+    talle: string;
+    color: string;
+    estado: string;
+  }>;
 };
 
 type Ficha = {
@@ -187,6 +195,7 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
   const [ficha, setFicha] = useState<Ficha | null>(null);
   const [seleccion, setSeleccion] = useState<Record<string, boolean>>({});
   const [cantidades, setCantidades] = useState<Record<string, number>>({});
+  const [itemsElegidos, setItemsElegidos] = useState<Record<string, string>>({});
   const [firma, setFirma] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
@@ -277,6 +286,7 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
       setBuscado(false);
       setSeleccion({});
       setCantidades(Object.fromEntries(nueva.epp_requerido.map((e) => [e.codigo, e.cantidad_sugerida])));
+      setItemsElegidos({});
       setFirma("");
       setConstancia(null);
     } catch (e) {
@@ -294,7 +304,11 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
     }
     const items = ficha.epp_requerido
       .filter((elemento) => seleccion[elemento.codigo])
-      .map((elemento) => ({ codigo: elemento.codigo, cantidad: cantidades[elemento.codigo] ?? 1 }));
+      .map((elemento) => ({
+        codigo: elemento.codigo,
+        item_codigo: itemsElegidos[elemento.codigo],
+        cantidad: cantidades[elemento.codigo] ?? 1,
+      }));
     setError("");
     setMensaje("");
     setConstancia(null);
@@ -331,6 +345,9 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
   }
 
   const elegidos = Object.values(seleccion).filter(Boolean).length;
+  const seleccionCompleta = ficha?.epp_requerido
+    .filter((elemento) => seleccion[elemento.codigo])
+    .every((elemento) => Boolean(itemsElegidos[elemento.codigo])) ?? false;
 
   return (
     <section className="flujo">
@@ -407,6 +424,26 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
                   <span>{elemento.codigo} · {elemento.marca} · {elemento.unidad}</span>
                   <small>{elemento.origen} · {elemento.fundamento}</small>
                   <small>Última entrega: {elemento.ultima_entrega ?? "sin registro"}</small>
+                  {seleccion[elemento.codigo] && (
+                    <label className="selector-item" htmlFor={`item-${elemento.codigo}`}>
+                      Ítem concreto
+                      <select
+                        id={`item-${elemento.codigo}`}
+                        value={itemsElegidos[elemento.codigo] ?? ""}
+                        onChange={(e) => setItemsElegidos({
+                          ...itemsElegidos,
+                          [elemento.codigo]: e.target.value,
+                        })}
+                      >
+                        <option value="">Elegir código, marca y modelo</option>
+                        {elemento.items.map((item) => (
+                          <option key={item.codigo_interno} value={item.codigo_interno}>
+                            {item.codigo_interno} · {item.marca} · {item.modelo} · {item.talle} · {item.color} · {item.estado}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                 </div>
                 <input
                   aria-label={`Cantidad de ${elemento.producto}`}
@@ -423,7 +460,7 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
           <button
             className="principal confirmar"
             onClick={registrar}
-            disabled={!elegidos || !firma || cargando || Boolean(bloqueoCola)}
+            disabled={!elegidos || !seleccionCompleta || !firma || cargando || Boolean(bloqueoCola)}
           >
             {cargando ? "Registrando…" : "Registrar entrega"}
           </button>

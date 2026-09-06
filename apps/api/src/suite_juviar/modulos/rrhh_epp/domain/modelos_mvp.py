@@ -55,6 +55,19 @@ class ElementoEPP:
 
 
 @dataclass(frozen=True)
+class ItemCatalogo:
+    """Presentación concreta comprable y entregable de un elemento normativo."""
+
+    codigo_interno: str
+    elemento_codigo: str
+    marca: str
+    modelo: str
+    talle: str
+    color: str
+    estado: str
+
+
+@dataclass(frozen=True)
 class RequisitoEPP:
     """Línea compuesta desde base operativa, sector o puesto."""
 
@@ -87,6 +100,10 @@ class LineaEntrega:
     posee_certificacion: bool
     certificacion: str | None
     cantidad: int
+    item_codigo: str = ""
+    talle: str = ""
+    color: str = ""
+    estado_item: str = "DESCONOCIDO"
 
 
 @dataclass(frozen=True)
@@ -143,6 +160,10 @@ class EntregaSinLineas(ErrorDeEntrega):
 
 class CodigoFueraDeCatalogo(ErrorDeEntrega):
     """Regla 3 de la base: no se acepta texto libre donde hay catálogo."""
+
+
+class ItemFueraDeCatalogo(ErrorDeEntrega):
+    """El ítem no existe o no pertenece al elemento normativo informado."""
 
 
 class CantidadInvalida(ErrorDeEntrega):

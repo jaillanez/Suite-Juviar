@@ -33,7 +33,7 @@ function entrega(id = "tablet-00000001"): EntregaOffline {
   return {
     id_cliente: id,
     legajo: "1103",
-    items: [{ codigo: "62", cantidad: 1 }],
+    items: [{ codigo: "62", item_codigo: "SIM-62-01", cantidad: 1 }],
     metodo_firma: "TRAZO_TABLET",
     evidencia_firma: "data:image/png;base64,AAAA",
     entregada_en: "2026-09-06T13:45:12-03:00",

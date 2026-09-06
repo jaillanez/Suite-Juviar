@@ -61,6 +61,7 @@ def _solicitud_es_exclusivamente_local(request: Request) -> bool:
 
 class ItemEntrada(BaseModel):
     codigo: str = Field(min_length=1, max_length=30)
+    item_codigo: str = Field(min_length=1, max_length=80)
     cantidad: int
 
 
@@ -161,6 +162,8 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             "modo_simulado": c.modo_simulado,
             "estado_matriz_epp": c.catalogo.estado_matriz,
             "estado_vida_util": c.catalogo.estado_vida_util,
+            "estado_catalogo_items": c.catalogo.estado_items,
+            "dueno_catalogo_items": c.catalogo.dueno_items,
             "estado_mapa_perfiles": c.perfiles_acceso.estado,
             "dueno_mapa_perfiles": c.perfiles_acceso.dueno_dato,
             "metodos_firma": list(c.firma.metodos_habilitados),
@@ -223,6 +226,17 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
                         if elemento.codigo in entregados
                         else None
                     ),
+                    "items": [
+                        {
+                            "codigo_interno": item.codigo_interno,
+                            "marca": item.marca,
+                            "modelo": item.modelo,
+                            "talle": item.talle,
+                            "color": item.color,
+                            "estado": item.estado,
+                        }
+                        for item in c.catalogo.items_de(elemento.codigo)
+                    ],
                 }
                 for requisito, elemento in requeridos
             ],
@@ -264,7 +278,14 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
     ) -> dict[str, object]:
         entrega = c.registrar_entrega.ejecutar(
             numero_legajo=entrada.legajo,
-            items=[{"codigo": item.codigo, "cantidad": item.cantidad} for item in entrada.items],
+            items=[
+                {
+                    "codigo": item.codigo,
+                    "item_codigo": item.item_codigo,
+                    "cantidad": item.cantidad,
+                }
+                for item in entrada.items
+            ],
             metodo_firma=entrada.metodo_firma,
             evidencia_firma=entrada.evidencia_firma,
             usuario_deposito=usuario.legajo,

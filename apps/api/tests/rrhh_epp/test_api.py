@@ -53,7 +53,7 @@ def test_un_usuario_de_campo_no_puede_leer_alertas_del_catalogo(cliente):
 def test_el_cliente_no_puede_suplantar_al_operador(cliente):
     r = cliente.post("/entregas", json={
         "legajo": "1103",
-        "items": [{"codigo": "62", "cantidad": 1}],
+        "items": [{"codigo": "62", "item_codigo": "SIM-62-01", "cantidad": 1}],
         "evidencia_firma": "data:image/png;base64,AAAA",
         "usuario_deposito": "otro-legajo",
     })
@@ -63,7 +63,7 @@ def test_el_cliente_no_puede_suplantar_al_operador(cliente):
 def test_la_bitacora_toma_la_identidad_declarada_no_el_cuerpo(cliente):
     r = cliente.post("/entregas", json={
         "legajo": "1103",
-        "items": [{"codigo": "62", "cantidad": 1}],
+        "items": [{"codigo": "62", "item_codigo": "SIM-62-01", "cantidad": 1}],
         "evidencia_firma": "data:image/png;base64,AAAA",
     })
     assert r.status_code == 200
@@ -156,7 +156,10 @@ def test_legajo_inactivo_da_400(cliente):
 def test_entrega_completa_y_constancia(cliente):
     r = cliente.post("/entregas", json={
         "legajo": "1103",
-        "items": [{"codigo": "62", "cantidad": 1}, {"codigo": "5", "cantidad": 1}],
+        "items": [
+            {"codigo": "62", "item_codigo": "SIM-62-01", "cantidad": 1},
+            {"codigo": "5", "item_codigo": "SIM-5-01", "cantidad": 1},
+        ],
         "metodo_firma": "TRAZO_TABLET",
         "evidencia_firma": "data:image/png;base64,AAAA",
     })
@@ -170,6 +173,8 @@ def test_entrega_completa_y_constancia(cliente):
     assert "Funes, Héctor Daniel" in constancia.text
     assert "24880431" in constancia.text
     assert "Calzado de Seguridad" in constancia.text
+    assert "SIM-5-01" in constancia.text
+    assert "SIMULADO" in constancia.text
     assert "Documento de prueba" in constancia.text
     assert "validez legal" in constancia.text
 
@@ -177,7 +182,7 @@ def test_entrega_completa_y_constancia(cliente):
 def test_la_segunda_consulta_muestra_la_entrega_anterior(cliente):
     cliente.post("/entregas", json={
         "legajo": "1210",
-        "items": [{"codigo": "5", "cantidad": 1}],
+        "items": [{"codigo": "5", "item_codigo": "SIM-5-01", "cantidad": 1}],
         "evidencia_firma": "data:image/png;base64,AAAA",
     })
     d = cliente.get("/legajos/1210").json()
@@ -210,7 +215,7 @@ def test_api_expone_alertas_sin_bloquear_entregas(cliente):
 
     entrega = cliente.post("/entregas", json={
         "legajo": "1103",
-        "items": [{"codigo": "105", "cantidad": 1}],
+        "items": [{"codigo": "105", "item_codigo": "SIM-105-01", "cantidad": 1}],
         "evidencia_firma": "data:image/png;base64,AAAA",
     })
     assert entrega.status_code == 200
@@ -220,7 +225,7 @@ def test_reenviar_la_misma_entrega_genera_un_solo_registro(cliente):
     cuerpo = {
         "id_cliente": "tablet-20260906-0001",
         "legajo": "1103",
-        "items": [{"codigo": "62", "cantidad": 1}],
+        "items": [{"codigo": "62", "item_codigo": "SIM-62-01", "cantidad": 1}],
         "metodo_firma": "TRAZO_TABLET",
         "evidencia_firma": "data:image/png;base64,AAAA",
         "entregada_en": "2026-09-06T13:45:12-03:00",
@@ -246,7 +251,7 @@ def test_el_servidor_conserva_el_sello_real_de_la_tablet(cliente, contenedor):
         json={
             "id_cliente": "tablet-20260906-0002",
             "legajo": "1103",
-            "items": [{"codigo": "62", "cantidad": 1}],
+            "items": [{"codigo": "62", "item_codigo": "SIM-62-01", "cantidad": 1}],
             "evidencia_firma": "data:image/png;base64,AAAA",
             "entregada_en": sello.isoformat(),
             "actor_declarado": "1210",

@@ -15,7 +15,7 @@ from typing import ClassVar
 
 import yaml
 
-from ..domain.modelos_mvp import ElementoEPP, RequisitoEPP
+from ..domain.modelos_mvp import ElementoEPP, ItemCatalogo, RequisitoEPP
 
 FRECUENCIAS = {"SEMESTRAL", "ANUAL", "A_DEMANDA"}
 TEMPORADAS = {"VERANO", "INVIERNO", "TODO_EL_ANIO"}
@@ -38,21 +38,27 @@ class CatalogoYAML:
         ruta_catalogo: str | Path,
         ruta_matriz: str | Path,
         ruta_vida_util: str | Path | None = None,
+        ruta_items: str | Path | None = None,
     ) -> None:
         self._ruta_catalogo = Path(ruta_catalogo)
         self._ruta_matriz = Path(ruta_matriz)
         self._ruta_vida_util = Path(ruta_vida_util) if ruta_vida_util else None
+        self._ruta_items = Path(ruta_items) if ruta_items else None
         self._vida_familia: dict[str, dict] = {}
         self._vida_codigo: dict[str, dict] = {}
         self._elementos: dict[str, ElementoEPP] = {}
+        self._items: dict[str, ItemCatalogo] = {}
         self._base: list[RequisitoEPP] = []
         self._sectores: dict[str, dict] = {}
         self._puestos: dict[str, list[RequisitoEPP]] = {}
         self._estado_matriz = "DESCONOCIDO"
         self._version_norma = ""
         self._estado_vida_util = "SIN_TABLA"
+        self._estado_items = "SIN_CATALOGO"
+        self._dueno_items = "SIN_DEFINIR"
         self._cargar_vida_util()
         self._cargar_catalogo()
+        self._cargar_items()
         self._cargar_matriz()
 
     @property
@@ -71,6 +77,14 @@ class CatalogoYAML:
     @property
     def estado_vida_util(self) -> str:
         return self._estado_vida_util
+
+    @property
+    def estado_items(self) -> str:
+        return self._estado_items
+
+    @property
+    def dueno_items(self) -> str:
+        return self._dueno_items
 
     def _cargar_vida_util(self) -> None:
         if not self._ruta_vida_util or not self._ruta_vida_util.exists():
@@ -115,6 +129,33 @@ class CatalogoYAML:
             )
         if not self._elementos:
             raise ErrorDeCatalogo(f"{self._ruta_catalogo.name} está vacío.")
+
+    def _cargar_items(self) -> None:
+        if not self._ruta_items or not self._ruta_items.exists():
+            return
+        datos = yaml.safe_load(self._ruta_items.read_text(encoding="utf-8")) or {}
+        self._estado_items = str(datos.get("estado") or "DESCONOCIDO")
+        self._dueno_items = str(datos.get("dueno_dato") or "SIN_DEFINIR")
+        for fila in datos.get("items") or []:
+            codigo = str(fila.get("codigo_interno") or "").strip()
+            elemento_codigo = str(fila.get("elemento_codigo") or "").strip()
+            if not codigo:
+                raise ErrorDeCatalogo("Hay un ítem sin código interno.")
+            if codigo in self._items:
+                raise ErrorDeCatalogo(f"Código interno {codigo} duplicado.")
+            if elemento_codigo not in self._elementos:
+                raise ErrorDeCatalogo(
+                    f"El ítem {codigo} apunta al elemento inexistente {elemento_codigo}."
+                )
+            self._items[codigo] = ItemCatalogo(
+                codigo_interno=codigo,
+                elemento_codigo=elemento_codigo,
+                marca=str(fila.get("marca") or "SIN_DATO"),
+                modelo=str(fila.get("modelo") or "SIN_DATO"),
+                talle=str(fila.get("talle") or "SIN_DATO"),
+                color=str(fila.get("color") or "SIN_DATO"),
+                estado=str(fila.get("estado") or self._estado_items),
+            )
 
     def _leer_requisitos(self, filas: list[dict] | None, contexto: str) -> list[RequisitoEPP]:
         requisitos: list[RequisitoEPP] = []
@@ -171,6 +212,19 @@ class CatalogoYAML:
 
     def listar_elementos(self) -> list[ElementoEPP]:
         return sorted(self._elementos.values(), key=lambda e: _orden_codigo(e.codigo))
+
+    def obtener_item(self, codigo_interno: str) -> ItemCatalogo | None:
+        return self._items.get(str(codigo_interno).strip())
+
+    def items_de(self, elemento_codigo: str) -> list[ItemCatalogo]:
+        return sorted(
+            (
+                item
+                for item in self._items.values()
+                if item.elemento_codigo == str(elemento_codigo).strip()
+            ),
+            key=lambda item: item.codigo_interno,
+        )
 
     def requisitos_de(self, sector_codigo: str, puesto_codigo: str) -> list[RequisitoEPP]:
         """Compone base + sector + puesto sin repetir ni reducir cantidades."""

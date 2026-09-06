@@ -14,12 +14,13 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--fondo); color: var(--tinta); font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1.5; }
-button, input { font: inherit; }
+button, input, select { font: inherit; }
 button { min-height: 46px; padding: 10px 16px; border: 1px solid var(--linea); border-radius: 8px; background: var(--papel); color: var(--tinta); cursor: pointer; touch-action: manipulation; transition: background-color 180ms ease, opacity 180ms ease; }
-button:focus-visible, input:focus-visible, canvas:focus-visible { outline: 3px solid var(--vino); outline-offset: 2px; }
+button:focus-visible, input:focus-visible, select:focus-visible, canvas:focus-visible { outline: 3px solid var(--vino); outline-offset: 2px; }
 button:disabled { cursor: not-allowed; opacity: .5; }
 button:active:not(:disabled) { opacity: .72; }
 input { width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid var(--linea); border-radius: 7px; background: var(--papel); color: var(--tinta); }
+select { width: 100%; min-height: 48px; padding: 9px 10px; border: 1px solid var(--linea); border-radius: 7px; background: var(--papel); color: var(--tinta); }
 label { display: block; margin-bottom: 7px; color: var(--suave); font-size: 14px; font-weight: 700; }
 main { width: min(calc(100% - 28px), 860px); min-height: 100vh; margin: auto; padding: max(28px, env(safe-area-inset-top)) 0 max(32px, env(safe-area-inset-bottom)); }
 .acceso { max-width: 540px; padding-top: max(70px, env(safe-area-inset-top)); }
@@ -61,6 +62,8 @@ h1 { margin: 0; font-size: clamp(36px, 9vw, 58px); line-height: 1; letter-spacin
 .elemento > input[type="checkbox"] { width: 24px; min-height: 24px; }
 .elemento strong, .elemento span, .elemento small { display: block; }
 .elemento span, .elemento small { color: var(--suave); font-size: 13px; }
+.selector-item { margin: 10px 0 0; color: var(--suave); font-size: 13px; }
+.selector-item select { margin-top: 5px; }
 .elemento > input[type="number"] { min-height: 42px; text-align: center; }
 .entrega h3 { margin: 0 0 8px; }
 .firma canvas { display: block; width: 100%; height: 180px; border: 1px dashed #8b949c; border-radius: 8px; background: white; touch-action: none; }

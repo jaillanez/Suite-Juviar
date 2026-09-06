@@ -7,6 +7,7 @@ from suite_juviar.modulos.rrhh_epp.domain.modelos_mvp import (
     CodigoFueraDeCatalogo,
     EntregaSinLineas,
     FirmaFaltante,
+    ItemFueraDeCatalogo,
     LegajoInactivo,
     LegajoInexistente,
     MetodoDeFirmaNoHabilitado,
@@ -17,7 +18,7 @@ from suite_juviar.modulos.rrhh_epp.mvp import ErrorDeConfiguracion, construir
 def entregar(contenedor, **cambios):
     argumentos = {
         "numero_legajo": "1042",
-        "items": [{"codigo": "68", "cantidad": 2}],
+        "items": [{"codigo": "68", "item_codigo": "SIM-68-01", "cantidad": 2}],
         "metodo_firma": "TRAZO_TABLET",
         "evidencia_firma": "data:image/png;base64,AAAA",
         "usuario_deposito": "deposito",
@@ -35,6 +36,8 @@ def test_registra_y_copia_los_datos_del_catalogo(contenedor):
     assert e.lineas[0].tipo_modelo == "Guantes de Nitrilo Azul (Corto Cod.13255)"
     assert e.lineas[0].marca == "DPS"
     assert e.lineas[0].posee_certificacion is True
+    assert e.lineas[0].item_codigo == "SIM-68-01"
+    assert e.lineas[0].estado_item == "SIMULADO"
     assert e.cantidad_items == 2
 
 
@@ -87,6 +90,16 @@ def test_rechaza_codigo_vacio(contenedor):
         entregar(contenedor, items=[{"codigo": "", "cantidad": 1}])
 
 
+@pytest.mark.parametrize("item_codigo", ["", None, "SIM-69-01", "NO-EXISTE"])
+def test_rechaza_item_vacio_nulo_ajeno_o_inexistente(contenedor, item_codigo):
+    with pytest.raises(ItemFueraDeCatalogo):
+        entregar(contenedor, items=[{
+            "codigo": "68",
+            "item_codigo": item_codigo,
+            "cantidad": 1,
+        }])
+
+
 def test_rechaza_entrega_sin_elementos(contenedor):
     with pytest.raises(EntregaSinLineas):
         entregar(contenedor, items=[])
@@ -95,7 +108,11 @@ def test_rechaza_entrega_sin_elementos(contenedor):
 @pytest.mark.parametrize("cantidad", [0, -1, 1.5, "2", None, True])
 def test_rechaza_cantidades_invalidas(contenedor, cantidad):
     with pytest.raises(CantidadInvalida):
-        entregar(contenedor, items=[{"codigo": "68", "cantidad": cantidad}])
+        entregar(contenedor, items=[{
+            "codigo": "68",
+            "item_codigo": "SIM-68-01",
+            "cantidad": cantidad,
+        }])
 
 
 @pytest.mark.parametrize("evidencia", ["", "   ", None])

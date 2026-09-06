@@ -1,5 +1,6 @@
 export type ItemEntregaOffline = {
   codigo: string;
+  item_codigo: string;
   cantidad: number;
 };
 

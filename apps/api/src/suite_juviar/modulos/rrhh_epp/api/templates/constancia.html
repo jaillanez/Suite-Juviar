@@ -63,7 +63,10 @@
       <tr>
         <td class="num">{{ loop.index }}</td>
         <td>{{ l.producto }}</td>
-        <td>{{ l.tipo_modelo }}</td>
+        <td>
+          {{ l.tipo_modelo }}<br>
+          <small>Ítem {{ l.item_codigo }} · talle {{ l.talle }} · color {{ l.color }} · {{ l.estado_item }}</small>
+        </td>
         <td>{{ l.marca }}</td>
         <td>{{ 'SI' if l.posee_certificacion else 'NO' }}{% if l.certificacion %} — {{ l.certificacion }}{% endif %}</td>
         <td>{{ l.cantidad }}</td>

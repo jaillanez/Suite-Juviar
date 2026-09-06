@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Protocol
 
-from .modelos_mvp import ElementoEPP, Entrega, Firma, Legajo, RequisitoEPP
+from .modelos_mvp import ElementoEPP, Entrega, Firma, ItemCatalogo, Legajo, RequisitoEPP
 
 
 class RepositorioLegajos(Protocol):
@@ -39,6 +39,10 @@ class RepositorioCatalogo(Protocol):
     def obtener_elemento(self, codigo: str) -> ElementoEPP | None: ...
 
     def listar_elementos(self) -> list[ElementoEPP]: ...
+
+    def obtener_item(self, codigo_interno: str) -> ItemCatalogo | None: ...
+
+    def items_de(self, elemento_codigo: str) -> list[ItemCatalogo]: ...
 
     def requisitos_de(
         self,

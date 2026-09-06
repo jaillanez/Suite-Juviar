@@ -12,6 +12,7 @@ from ..domain.modelos_mvp import (
     Entrega,
     EntregaSinLineas,
     FirmaFaltante,
+    ItemFueraDeCatalogo,
     Legajo,
     LegajoInactivo,
     LegajoInexistente,
@@ -119,6 +120,12 @@ class RegistrarEntrega:
                 raise CodigoFueraDeCatalogo(
                     f"El código {codigo or '(vacío)'} no existe en el catálogo RD 068/11."
                 )
+            item_codigo = str(item.get("item_codigo") or "").strip()
+            item_catalogo = self._catalogo.obtener_item(item_codigo)
+            if item_catalogo is None or item_catalogo.elemento_codigo != codigo:
+                raise ItemFueraDeCatalogo(
+                    f"El ítem {item_codigo or '(vacío)'} no pertenece al elemento {codigo}."
+                )
             cantidad = item.get("cantidad")
             if not isinstance(cantidad, int) or isinstance(cantidad, bool) or cantidad <= 0:
                 raise CantidadInvalida(
@@ -128,11 +135,15 @@ class RegistrarEntrega:
                 LineaEntrega(
                     codigo=elemento.codigo,
                     producto=elemento.producto,
-                    tipo_modelo=elemento.tipo_modelo,
-                    marca=elemento.marca,
+                    tipo_modelo=item_catalogo.modelo,
+                    marca=item_catalogo.marca,
                     posee_certificacion=elemento.posee_certificacion,
                     certificacion=elemento.certificacion,
                     cantidad=cantidad,
+                    item_codigo=item_catalogo.codigo_interno,
+                    talle=item_catalogo.talle,
+                    color=item_catalogo.color,
+                    estado_item=item_catalogo.estado,
                 )
             )
 
