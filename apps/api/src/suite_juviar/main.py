@@ -6,11 +6,17 @@ from fastapi import FastAPI
 
 from suite_juviar.modulos.recepcion.api.router import router as recepcion_router
 from suite_juviar.modulos.rrhh_epp.api.mvp import crear_app as crear_rrhh_epp_app
+from suite_juviar.modulos.rrhh_epp.mvp import construir as construir_rrhh_epp
+
+from .composicion.olas_3_4_5 import construir_subaplicaciones
 
 app = FastAPI(title="Suite Juviar", version="0.1.0")
 
 app.include_router(recepcion_router, prefix="/api/v1")
-app.mount("/api/v1/rrhh-epp", crear_rrhh_epp_app())
+rrhh_epp = construir_rrhh_epp()
+app.mount("/api/v1/rrhh-epp", crear_rrhh_epp_app(rrhh_epp))
+for nombre, subaplicacion in construir_subaplicaciones(rrhh_epp).items():
+    app.mount(f"/api/v1/{nombre}", subaplicacion)
 # app.include_router(turnos_router, prefix="/api/v1")
 # app.include_router(cosecha_router, prefix="/api/v1")
 

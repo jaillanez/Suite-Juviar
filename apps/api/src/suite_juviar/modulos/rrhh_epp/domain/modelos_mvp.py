@@ -10,6 +10,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime
 
+MOTIVOS_RECLAMO_CALIDAD = frozenset(
+    {"ROTURA", "DESGASTE_PREMATURO", "TALLE", "MOLESTIA_USO", "DEFECTO_FABRICA"}
+)
+
 # --------------------------------------------------------------------------
 # Personas: vienen de Nexus. El módulo las lee, nunca las crea ni las edita.
 # --------------------------------------------------------------------------
@@ -107,6 +111,7 @@ class LineaEntrega:
     talle: str = ""
     color: str = ""
     estado_item: str = "DESCONOCIDO"
+    reclamo_calidad: str | None = None
 
 
 @dataclass(frozen=True)

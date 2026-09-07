@@ -36,6 +36,14 @@ test("la pantalla conserva la franja roja de entorno sin validez legal", () => {
   assert.match(pagina, /Entorno de prueba · constancias sin validez legal/);
 });
 
+test("la entrega ofrece un reclamo opcional de catálogo ligado al ítem", () => {
+  const pagina = readFileSync(new URL("../src/app/page.tsx", import.meta.url), "utf8");
+  assert.match(pagina, /Reclamo de calidad \(opcional\)/);
+  assert.match(pagina, /DESGASTE_PREMATURO/);
+  assert.match(pagina, /DEFECTO_FABRICA/);
+  assert.match(pagina, /reclamo_calidad/);
+});
+
 function entrega(id = "tablet-00000001"): EntregaOffline {
   return {
     id_cliente: id,

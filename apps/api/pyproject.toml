@@ -50,6 +50,9 @@ name = "Capas dentro de cada módulo de negocio"
 type = "layers"
 layers = ["api", "infrastructure", "application", "domain"]
 containers = [
+    "suite_juviar.modulos.epp_analitica",
+    "suite_juviar.modulos.legajo",
+    "suite_juviar.modulos.salud",
     "suite_juviar.modulos.turnos",
     "suite_juviar.modulos.rrhh_epp",
     "suite_juviar.modulos.cosecha",
@@ -76,6 +79,9 @@ containers = [
 name = "Los módulos de negocio no se conocen entre sí"
 type = "independence"
 modules = [
+    "suite_juviar.modulos.epp_analitica",
+    "suite_juviar.modulos.legajo",
+    "suite_juviar.modulos.salud",
     "suite_juviar.modulos.turnos",
     "suite_juviar.modulos.rrhh_epp",
     "suite_juviar.modulos.cosecha",
@@ -89,6 +95,9 @@ modules = [
 name = "El dominio es Python puro"
 type = "forbidden"
 source_modules = [
+    "suite_juviar.modulos.epp_analitica.domain",
+    "suite_juviar.modulos.legajo.domain",
+    "suite_juviar.modulos.salud.domain",
     "suite_juviar.modulos.turnos.domain",
     "suite_juviar.modulos.rrhh_epp.domain",
     "suite_juviar.modulos.cosecha.domain",
@@ -109,6 +118,9 @@ forbidden_modules = ["sqlalchemy", "fastapi", "asyncpg", "redis", "alembic", "py
 name = "La aplicación no conoce implementaciones"
 type = "forbidden"
 source_modules = [
+    "suite_juviar.modulos.epp_analitica.application",
+    "suite_juviar.modulos.legajo.application",
+    "suite_juviar.modulos.salud.application",
     "suite_juviar.modulos.turnos.application",
     "suite_juviar.modulos.rrhh_epp.application",
     "suite_juviar.modulos.cosecha.application",
@@ -147,6 +159,34 @@ name = "La suite no depende del sitio público"
 type = "forbidden"
 source_modules = ["suite_juviar.modulos", "suite_juviar.plataforma"]
 forbidden_modules = ["apps.web"]
+
+[[tool.importlinter.contracts]]
+name = "Analitica EPP permanece de solo lectura"
+type = "forbidden"
+source_modules = ["suite_juviar.modulos.epp_analitica"]
+forbidden_modules = [
+    "suite_juviar.modulos.rrhh_epp.infrastructure",
+    "sqlalchemy",
+    "psycopg",
+]
+
+[[tool.importlinter.contracts]]
+name = "Legajo y Salud permanecen separados"
+type = "independence"
+modules = [
+    "suite_juviar.modulos.legajo",
+    "suite_juviar.modulos.salud",
+]
+
+[[tool.importlinter.contracts]]
+name = "Turnos confina integraciones en infraestructura"
+type = "forbidden"
+source_modules = [
+    "suite_juviar.modulos.turnos.domain",
+    "suite_juviar.modulos.turnos.application",
+    "suite_juviar.modulos.turnos.api",
+]
+forbidden_modules = ["pyodbc", "pymssql"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -2,6 +2,7 @@ export type ItemEntregaOffline = {
   codigo: string;
   item_codigo: string;
   cantidad: number;
+  reclamo_calidad?: "ROTURA" | "DESGASTE_PREMATURO" | "TALLE" | "MOLESTIA_USO" | "DEFECTO_FABRICA";
 };
 
 export type EntregaOffline = {

@@ -1,12 +1,12 @@
-"""Turnos rotativos y novedades. Sincronización Time <-> Nexus.
+"""Turnos rotativos, cronogramas, fichadas, desvíos e imputaciones.
 
 El problema real: los supervisores cambian los turnos rotativos en bodega y no
 avisan a administración, y aparecen diferencias de 8 horas entre ausencia y
 hora extra. El cambio nace en producción, no en RRHH.
 
 Contrato §5.2: el cambio se carga una sola vez, donde ocurre, con el mínimo
-posible de datos —legajo saliente, legajo entrante, fecha y horario— y viaja
-hacia Time y Nexus.
+posible de datos —legajo saliente, legajo entrante, fecha y horario—. La lógica
+no conoce sistemas externos y nunca aprueba una imputación automáticamente.
 """
 
 from __future__ import annotations
@@ -56,3 +56,42 @@ class Desvio:
     @property
     def minutos_desvio(self) -> int:
         return self.minutos_marcados - self.minutos_planificados
+
+
+class EstadoImputacion(StrEnum):
+    PROPUESTA = "PROPUESTA"
+    APROBADA = "APROBADA"
+
+
+@dataclass(frozen=True, slots=True)
+class Cronograma:
+    legajo: str
+    sector: str
+    fecha: date
+    desde: time
+    hasta: time
+    autor: str
+    modificado_en: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+@dataclass(frozen=True, slots=True)
+class Fichada:
+    legajo: str
+    momento: datetime
+    tipo: str
+    simulada: bool = True
+
+
+@dataclass(slots=True)
+class Imputacion:
+    id: UUID
+    legajo: str
+    fecha: date
+    motivo_propuesto: str
+    minutos_desvio: int
+    estado: EstadoImputacion = EstadoImputacion.PROPUESTA
+    aprobada_por: str | None = None
+
+
+class FuenteSimuladaEnProduccion(Exception):
+    pass

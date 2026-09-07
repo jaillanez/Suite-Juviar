@@ -126,6 +126,16 @@ class EntregasPostgreSQL:
             )
             return [_a_entrega(fila) for fila in cur.fetchall()]
 
+    def listar_periodo(self, desde, hasta) -> list[Entrega]:
+        with self._base.conectar(filas_dict=True) as cn, cn.cursor() as cur:
+            cur.execute(
+                """SELECT * FROM rrhh_epp.entrega_epp
+                   WHERE fecha_entrega BETWEEN %s AND %s
+                   ORDER BY fecha_entrega, creado_en""",
+                (desde, hasta),
+            )
+            return [_a_entrega(fila) for fila in cur.fetchall()]
+
 
 class BitacoraPostgreSQL:
     def __init__(self, base: BasePostgreSQL) -> None:

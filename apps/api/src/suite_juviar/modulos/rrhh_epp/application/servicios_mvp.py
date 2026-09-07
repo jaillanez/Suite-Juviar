@@ -6,6 +6,7 @@ import uuid
 from datetime import UTC, date, datetime
 
 from ..domain.modelos_mvp import (
+    MOTIVOS_RECLAMO_CALIDAD,
     CantidadInvalida,
     CircuitoEntregaInvalido,
     CodigoFueraDeCatalogo,
@@ -165,6 +166,11 @@ class RegistrarEntrega:
             cantidad = item.get("cantidad")
             if not isinstance(cantidad, int) or isinstance(cantidad, bool) or cantidad <= 0:
                 raise CantidadInvalida(f"Cantidad inválida para el código {codigo}: {cantidad!r}.")
+            reclamo = item.get("reclamo_calidad")
+            if reclamo is not None and reclamo not in MOTIVOS_RECLAMO_CALIDAD:
+                raise CodigoFueraDeCatalogo(
+                    "El motivo del reclamo de calidad debe elegirse del catálogo permitido."
+                )
             lineas.append(
                 LineaEntrega(
                     codigo=elemento.codigo,
@@ -178,6 +184,7 @@ class RegistrarEntrega:
                     talle=item_catalogo.talle,
                     color=item_catalogo.color,
                     estado_item=item_catalogo.estado,
+                    reclamo_calidad=reclamo,
                 )
             )
 

@@ -64,6 +64,7 @@ class ItemEntrada(BaseModel):
     codigo: str = Field(min_length=1, max_length=30)
     item_codigo: str = Field(min_length=1, max_length=80)
     cantidad: int
+    reclamo_calidad: str | None = None
 
 
 class EntregaEntrada(BaseModel):
@@ -380,6 +381,7 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
                     "codigo": item.codigo,
                     "item_codigo": item.item_codigo,
                     "cantidad": item.cantidad,
+                    "reclamo_calidad": item.reclamo_calidad,
                 }
                 for item in entrada.items
             ],

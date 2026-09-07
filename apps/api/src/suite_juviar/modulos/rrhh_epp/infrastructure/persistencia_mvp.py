@@ -219,6 +219,14 @@ class EntregasSQLite:
         ).fetchall()
         return [self._a_entrega(f) for f in filas]
 
+    def listar_periodo(self, desde, hasta) -> list[Entrega]:
+        filas = self._cn.execute(
+            """SELECT * FROM entrega_epp WHERE fecha_entrega BETWEEN ? AND ?
+               ORDER BY fecha_entrega, creado_en""",
+            (desde.isoformat(), hasta.isoformat()),
+        ).fetchall()
+        return [self._a_entrega(f) for f in filas]
+
 
 class BitacoraSQLite:
     def __init__(self, base: BaseLocal) -> None:

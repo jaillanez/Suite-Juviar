@@ -208,6 +208,7 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
   const [seleccion, setSeleccion] = useState<Record<string, boolean>>({});
   const [cantidades, setCantidades] = useState<Record<string, number>>({});
   const [itemsElegidos, setItemsElegidos] = useState<Record<string, string>>({});
+  const [reclamosCalidad, setReclamosCalidad] = useState<Record<string, string>>({});
   const [firma, setFirma] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
@@ -304,6 +305,7 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
       setSeleccion(Object.fromEntries(codigosProgramados.map((codigo) => [codigo, true])));
       setCantidades(Object.fromEntries(nueva.epp_requerido.map((e) => [e.codigo, e.cantidad_sugerida])));
       setItemsElegidos({});
+      setReclamosCalidad({});
       setFirma("");
       setConstancia(null);
     } catch (e) {
@@ -341,6 +343,9 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
         codigo: elemento.codigo,
         item_codigo: itemsElegidos[elemento.codigo],
         cantidad: cantidades[elemento.codigo] ?? 1,
+        ...(reclamosCalidad[elemento.codigo]
+          ? { reclamo_calidad: reclamosCalidad[elemento.codigo] as "ROTURA" | "DESGASTE_PREMATURO" | "TALLE" | "MOLESTIA_USO" | "DEFECTO_FABRICA" }
+          : {}),
       }));
     setError("");
     setMensaje("");
@@ -529,6 +534,26 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
                             {item.codigo_interno} · {item.marca} · {item.modelo} · {item.talle} · {item.color} · {item.estado}
                           </option>
                         ))}
+                      </select>
+                    </label>
+                  )}
+                  {seleccion[elemento.codigo] && (
+                    <label className="selector-item" htmlFor={`reclamo-${elemento.codigo}`}>
+                      Reclamo de calidad (opcional)
+                      <select
+                        id={`reclamo-${elemento.codigo}`}
+                        value={reclamosCalidad[elemento.codigo] ?? ""}
+                        onChange={(e) => setReclamosCalidad({
+                          ...reclamosCalidad,
+                          [elemento.codigo]: e.target.value,
+                        })}
+                      >
+                        <option value="">Sin reclamo</option>
+                        <option value="ROTURA">Rotura</option>
+                        <option value="DESGASTE_PREMATURO">Desgaste prematuro</option>
+                        <option value="TALLE">Talle</option>
+                        <option value="MOLESTIA_USO">Molestia de uso</option>
+                        <option value="DEFECTO_FABRICA">Defecto de fábrica</option>
                       </select>
                     </label>
                   )}

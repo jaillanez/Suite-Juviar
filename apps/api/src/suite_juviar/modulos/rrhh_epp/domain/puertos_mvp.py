@@ -7,7 +7,7 @@ dominio depende de estas interfaces, nunca de las implementaciones.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Protocol
 
 from .modelos_mvp import (
@@ -77,6 +77,8 @@ class RepositorioEntregas(Protocol):
     def obtener(self, id_entrega: str) -> Entrega | None: ...
 
     def listar_por_legajo(self, legajo: str) -> list[Entrega]: ...
+
+    def listar_periodo(self, desde: date, hasta: date) -> list[Entrega]: ...
 
 
 class MotorFirma(Protocol):

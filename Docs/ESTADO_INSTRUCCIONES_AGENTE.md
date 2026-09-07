@@ -1,6 +1,6 @@
 # Estado de ejecución — instrucciones del agente
 
-Fecha de corte: 2026-09-06. Rama: `codex/rrhh-epp-unificado`.
+Fecha de corte: 2026-09-07. Rama: `codex/rrhh-epp-unificado`.
 
 Este documento distingue código construido de operación real. Ninguna fuente,
 credencial, aprobación o dato corporativo faltante se reemplazó por una invención.
@@ -19,6 +19,10 @@ credencial, aprobación o dato corporativo faltante se reemplazó por una invenc
 | 1.3 Extracción | BASE CONSTRUIDA | Campos y fragmentos cifrados; OCR y validación con CV reales pendientes. |
 | 1.4 Ranking | BASE CONSTRUIDA | Criterios y notificador simulados; perfil real de acceso RRHH pendiente. |
 | 2 Capacitaciones | BASE CONSTRUIDA | Persistencia PostgreSQL cifrada; API/perfil real y motor con certificado pendientes. |
+| 3 Analítica EPP | CONSTRUIDA CON ADAPTADORES | Sólo lectura; precios vacíos, muestra mínima configurable y exportación bloqueada con simulados. |
+| 4 Legajo digital | CONSTRUIDO CON ADAPTADORES | Reutiliza el puerto de legajos; adjuntos cifrados en memoria de prueba, PostgreSQL pendiente. |
+| 4 Salud | CONSTRUIDO CON ADAPTADORES | Rol médico, bitácora de lectura, catálogo muestra, reportes agregados y art. 208 preliminar. |
+| 5 Turnos | CONSTRUIDO CON ADAPTADORES | Cronograma, conciliación, propuesta y aprobación construidos; Time confinado al adaptador pendiente. |
 
 `apps/web` y `apps/consulta` no fueron modificados. Nexus continúa como fuente
 externa de sólo lectura y ningún componente escribe en Nexus o Time.
@@ -35,16 +39,15 @@ externa de sólo lectura y ningún componente escribe en Nexus o Time.
   roles y confirma tanto el permiso propio como los rechazos cruzados.
 - Los README de los tres módulos conservan su tabla de deuda técnica actualizada.
 
-## Condiciones de no inicio respetadas
+## Límites de los adaptadores respetados
 
-- **Ola 3 — Analítica EPP:** no se crea el módulo hasta acumular tres meses de
-  entregas reales. Hoy sólo hay datos simulados, por lo que cualquier comparación
-  de proveedores sería ficticia.
-- **Ola 4 — Legajo y salud:** no se crea el módulo hasta contar con conexión real
-  a Nexus, definición de perfiles para datos sensibles y criterios del aviso del
-  artículo 208. El DSN y las credenciales no fueron suministrados.
-- **Ola 5 — Turnos:** no se escribe ningún adaptador sobre tablas supuestas. Faltan
-  el diccionario de Time y el protocolo mínimo de reporte de cambios de turno.
+- **Ola 3 — Analítica EPP:** la lógica y pantalla existen, pero no publican
+  promedios insuficientes, no convierten precios faltantes en cero y no exportan
+  comparaciones simuladas como evidencia.
+- **Ola 4 — Legajo y salud:** la lógica está separada desde el inicio. Nexus,
+  catálogo médico, Identidad y persistencia real siguen confinados a adaptadores.
+- **Ola 5 — Turnos:** el flujo existe sin nombres de campos supuestos. El adaptador
+  real falla de forma explícita hasta recibir el diccionario contractual de Time.
 
 ## Decisiones o datos requeridos para continuar
 

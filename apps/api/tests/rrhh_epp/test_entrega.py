@@ -179,3 +179,34 @@ def test_fuera_de_prueba_no_registra_items_simulados(monkeypatch):
     with pytest.raises(ItemSimuladoNoPermitido, match=r"SIM-68-01.*entorno de prueba"):
         entregar(c)
     assert c.entregas.listar_por_legajo("1042") == []
+
+
+def test_reclamo_calidad_es_opcional_y_queda_ligado_al_item(contenedor):
+    entrega = entregar(
+        contenedor,
+        items=[
+            {
+                "codigo": "68",
+                "item_codigo": "SIM-68-01",
+                "cantidad": 1,
+                "reclamo_calidad": "ROTURA",
+            }
+        ],
+    )
+    assert entrega.lineas[0].item_codigo == "SIM-68-01"
+    assert entrega.lineas[0].reclamo_calidad == "ROTURA"
+
+
+def test_reclamo_calidad_no_admite_texto_libre(contenedor):
+    with pytest.raises(CodigoFueraDeCatalogo, match="catálogo permitido"):
+        entregar(
+            contenedor,
+            items=[
+                {
+                    "codigo": "68",
+                    "item_codigo": "SIM-68-01",
+                    "cantidad": 1,
+                    "reclamo_calidad": "se rompió raro",
+                }
+            ],
+        )

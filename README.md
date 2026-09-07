@@ -4,11 +4,14 @@ Sistema unificado ENAV S.A. — Jubiar. Monolito modular con Domain-Driven Desig
 
 - Base Común vigente: [`Docs/00_Base_Comun_Sistema_Unificado_ENAV_Jubiar_v04.md`](Docs/00_Base_Comun_Sistema_Unificado_ENAV_Jubiar_v04.md)
 - Plan de implementación: [`Docs/PLAN_DE_IMPLEMENTACION.md`](Docs/PLAN_DE_IMPLEMENTACION.md)
+- Instrucciones base: [`Docs/INSTRUCCIONES_AGENTE.md`](Docs/INSTRUCCIONES_AGENTE.md)
+- Instrucciones Olas 3–5: [`Docs/INSTRUCCIONES_AGENTE_OLAS_3_4_5.md`](Docs/INSTRUCCIONES_AGENTE_OLAS_3_4_5.md)
 - Fuente inicial de RRHH/EPP: [`Docs/README_rrhh_epp.md`](Docs/README_rrhh_epp.md)
 - Estado real y bloqueos: [`Docs/ESTADO_INSTRUCCIONES_AGENTE.md`](Docs/ESTADO_INSTRUCCIONES_AGENTE.md)
 - Arquitectura y decisiones: [`Docs/ARQUITECTURA.md`](Docs/ARQUITECTURA.md)
 - Decisiones registradas: [`Docs/adr/`](Docs/adr/)
 - README operativo vigente de EPP: [`apps/api/src/suite_juviar/modulos/rrhh_epp/README.md`](apps/api/src/suite_juviar/modulos/rrhh_epp/README.md)
+- Módulos nuevos: [Analítica EPP](apps/api/src/suite_juviar/modulos/epp_analitica/README.md), [Legajo](apps/api/src/suite_juviar/modulos/legajo/README.md), [Salud](apps/api/src/suite_juviar/modulos/salud/README.md) y [Turnos](apps/api/src/suite_juviar/modulos/turnos/README.md)
 
 ```
 apps/
