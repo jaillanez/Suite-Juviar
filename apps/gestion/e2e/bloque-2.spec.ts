@@ -18,7 +18,7 @@ test("EPP: catálogo, matriz, stock y entregas quedan recorribles", async ({ pag
   await page.getByRole("button", { name: "Entregas" }).click();
   await expect(page.getByRole("heading", { name: "Entregas y constancias versionadas" })).toBeVisible();
 
-  const rechazo = await request.post("http://127.0.0.1:8011/api/v1/rrhh-epp/catalogo/elementos/NO-AUTORIZADO", {
+  const rechazo = await request.post("http://127.0.0.1:8012/api/v1/rrhh-epp/catalogo/elementos/NO-AUTORIZADO", {
     headers: { "X-Perfil-Simulado": "RRHH" }, data: { producto: "No debe crearse" },
   });
   expect(rechazo.status()).toBe(403);
@@ -34,4 +34,10 @@ test("Selección: búsqueda, lote ilegible, revisión y original auditado", asyn
   await page.getByRole("button", { name: "Revisar" }).click();
   await expect(page.getByRole("heading", { name: /Ficha: ilegible.pdf/ })).toBeVisible();
   await expect(page.getByTitle("CV original")).toBeVisible();
+});
+
+test("URL directa de Salud con RRHH recibe 403 de la API", async ({ page }) => {
+  await ingresar(page, "RRHH", "/salud");
+  await expect(page.getByRole("heading", { name: "Acceso denegado" })).toBeVisible();
+  await expect(page.getByText(/API respondió 403/)).toBeVisible();
 });

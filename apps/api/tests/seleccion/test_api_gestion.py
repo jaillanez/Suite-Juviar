@@ -68,3 +68,10 @@ def test_campo_requiere_confirmacion_explicita_con_autor():
     )
     assert confirmado.status_code == 200
     assert confirmado.json()["confirmado_por"] == "rrhh-prueba"
+
+
+def test_perfil_sin_permiso_recibe_403():
+    c = TestClient(crear_app(CriteriosPerfilYAML(
+        Path(__file__).parents[2] / "src/suite_juviar/modulos/seleccion/data/criterios_perfil.yaml"
+    )))
+    assert c.get("/busquedas", headers={"X-Perfil-Simulado": "HYS"}).status_code == 403

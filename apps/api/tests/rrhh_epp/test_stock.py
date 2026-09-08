@@ -277,6 +277,15 @@ def test_smtp_rechazado_nunca_confirma_el_aviso(contenedor, error, caso):
     assert despachador.ejecutar() == {"enviados": 0, "fallidos": 1}
     assert despachador.ejecutar() == {"enviados": 0, "fallidos": 1}
     aviso = contenedor.stock.alertas_pendientes()[0]
-    assert aviso["estado"] == "PENDIENTE"
+    exigir_aviso_pendiente(aviso)
     assert aviso["intentos"] == 2
     assert identificadores == [identificadores[0], identificadores[0]]
+
+
+def exigir_aviso_pendiente(aviso):
+    assert aviso["estado"] == "PENDIENTE"
+
+
+def test_control_negativo_detecta_un_falso_exito_smtp():
+    with pytest.raises(AssertionError):
+        exigir_aviso_pendiente({"estado": "ENVIADO"})

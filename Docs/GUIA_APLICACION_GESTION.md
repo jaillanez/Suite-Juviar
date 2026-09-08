@@ -8,6 +8,16 @@ Desde la raíz del repositorio:
 ./iniciar_prueba.sh
 ```
 
+El puerto de la API se configura con `SJ_API_PORT` (predeterminado `8000`). Si
+está ocupado, use por ejemplo:
+
+```bash
+SJ_API_PORT=8011 ./iniciar_prueba.sh
+```
+
+El mismo script pasa ese puerto a Tablet y Gestión mediante `API_INTERNAL_URL`;
+no hay que modificar archivos ni URLs internas.
+
 El comando abre tres servicios y los mantiene activos hasta presionar `Ctrl+C`:
 
 - Gestión interna: <http://localhost:3002>
@@ -34,8 +44,28 @@ Stock y Analítica; Supervisión para Cronogramas.
 
 Prueba negativa obligatoria: ingrese como RRHH y abra directamente
 <http://localhost:3002/salud>. La aplicación debe rechazar el acceso y Salud no
-debe aparecer en el menú. Luego cambie a Servicio Médico: sólo Resumen y Salud
+debe aparecer en el menú. El mensaje debe decir `API respondió 403`; una negativa
+producida únicamente por el navegador no alcanza. Luego cambie a Servicio Médico: sólo Resumen y Salud
 deben quedar visibles.
+
+## Cobertura del Bloque 2
+
+Los recorridos de navegador están en `apps/gestion/e2e/bloque-2.spec.ts`; los
+casos que requieren sustituir SMTP o mutar dependencias corren como integración
+API porque no dependen de la red ni del navegador.
+
+| Módulo | Caso | Prueba |
+|---|---|---|
+| EPP | Catálogo, matriz, stock y entregas | Playwright |
+| EPP | Reposición y constancia anterior inmutable | `test_constancia_versionada.py` |
+| EPP | URL/operación sin permiso | Playwright + `test_autorizacion.py` |
+| EPP | Entrega sin existencias | `test_stock.py` |
+| EPP | SMTP inválido/casilla inexistente | `test_stock.py` |
+| EPP | Mutación: falso éxito SMTP debe ser detectado | `test_stock.py` |
+| Selección | Búsqueda, lote, ranking, revisión y original | Playwright |
+| Selección | Perfil sin permiso | `test_api_gestion.py` |
+| Selección | Ilegible apartado, nunca descartado | Playwright + `test_api_gestion.py` |
+| Selección | Confirmación manual explícita con autor | `test_api_gestion.py` |
 
 ## Tablet
 

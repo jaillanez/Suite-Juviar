@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { Empresa, nombres, puedeEntrar, Perfil, perfiles, Seccion } from "@/lib/acceso";
-import { api } from "@/lib/api";
+import { api, ErrorApi } from "@/lib/api";
 import { ErrorVisible, Simulado, Tabla, Vacio } from "./compartidos";
 import { EppGestion } from "./epp-gestion";
 import { SeleccionGestion } from "./seleccion-gestion";
@@ -91,6 +91,20 @@ function Contenido({ seccion, empresa }: { seccion: Seccion; empresa: Empresa })
   if (seccion === "inicio") return <Inicio empresa={empresa} />; if (seccion === "epp") return <Epp />; if (seccion === "analitica") return <Analitica />; if (seccion === "seleccion") return <Seleccion />; if (seccion === "capacitaciones") return <Capacitaciones />; if (seccion === "legajo") return <Legajo />; if (seccion === "salud") return <Salud />; if (seccion === "turnos") return <Turnos />; return <Pendiente seccion={seccion} />;
 }
 
+function AccesoDenegado({ perfil, seccion }: { perfil: Perfil; seccion: Seccion }) {
+  const [resultadoApi, setResultadoApi] = useState("Verificando autorización con la API…");
+  useEffect(() => {
+    const sondas: Partial<Record<Seccion, string>> = { salud: "salud/catalogo" };
+    const ruta = sondas[seccion];
+    if (!ruta) { setResultadoApi("La sección no está habilitada para esta sesión."); return; }
+    api(ruta).then(() => setResultadoApi("Advertencia: la API permitió un acceso que la interfaz oculta."))
+      .catch((error) => setResultadoApi(error instanceof ErrorApi && error.estado === 403
+        ? "API respondió 403: permiso insuficiente."
+        : `La API no pudo verificar el permiso: ${error instanceof Error ? error.message : "error desconocido"}`));
+  }, [seccion]);
+  return <><Encabezado titulo="Acceso denegado" descripcion="Tu perfil no tiene permiso para ingresar a esta sección." /><ErrorVisible mensaje={`El perfil ${perfiles[perfil].nombre} no puede acceder a ${nombres[seccion]}. ${resultadoApi}`} /></>;
+}
+
 export default function Gestion({ seccionSolicitada }: { seccionSolicitada: Seccion }) {
   const [sesion, setSesion] = useState<{ empresa: Empresa; perfil: Perfil } | null>(null);
   useEffect(() => { const guardada = sessionStorage.getItem("gestion-sesion"); if (guardada) setSesion(JSON.parse(guardada)); }, []);
@@ -98,5 +112,5 @@ export default function Gestion({ seccionSolicitada }: { seccionSolicitada: Secc
   if (!sesion) return <Ingreso entrar={entrar} />;
   const valida = Object.hasOwn(nombres, seccionSolicitada) ? seccionSolicitada : "inicio";
   const permitido = puedeEntrar(sesion.perfil, valida);
-  return <div className="aplicacion"><aside><div className="marca"><span className="isotipo">SJ</span><div><strong>Suite Juviar</strong><small>Gestión interna</small></div></div><nav aria-label="Secciones">{perfiles[sesion.perfil].secciones.map((s) => <Link key={s} href={s === "inicio" ? "/" : `/${s}`} className={s === valida ? "activo" : ""}><Icono nombre={s} />{nombres[s]}</Link>)}</nav><div className="modo-prueba"><strong>Modo prueba</strong><label>Perfil<select value={sesion.perfil} onChange={(e) => entrar(sesion.empresa, e.target.value as Perfil)}>{Object.entries(perfiles).map(([id, p]) => <option key={id} value={id}>{p.nombre}</option>)}</select></label></div></aside><div className="principal-contenedor"><div className="franja">DATOS SIMULADOS · SIN VALIDEZ PRODUCTIVA</div><header className="barra"><div><span className="pulso" /> API interna</div><label>Empresa<select value={sesion.empresa} onChange={(e) => entrar(e.target.value as Empresa, sesion.perfil)}><option>ENAV</option><option>JUBIAR</option></select></label><button className="salir" onClick={() => { sessionStorage.removeItem("gestion-sesion"); setSesion(null); }}>Salir</button></header><main>{permitido ? <Contenido seccion={valida} empresa={sesion.empresa} /> : <><Encabezado titulo="Acceso denegado" descripcion="Tu perfil no tiene permiso para ingresar a esta sección." /><ErrorVisible mensaje={`El perfil ${perfiles[sesion.perfil].nombre} no puede acceder a ${nombres[valida]}.`} /></>}</main><footer>Suite Juviar Gestión v{VERSION} · commit {COMMIT}</footer></div></div>;
+  return <div className="aplicacion"><aside><div className="marca"><span className="isotipo">SJ</span><div><strong>Suite Juviar</strong><small>Gestión interna</small></div></div><nav aria-label="Secciones">{perfiles[sesion.perfil].secciones.map((s) => <Link key={s} href={s === "inicio" ? "/" : `/${s}`} className={s === valida ? "activo" : ""}><Icono nombre={s} />{nombres[s]}</Link>)}</nav><div className="modo-prueba"><strong>Modo prueba</strong><label>Perfil<select value={sesion.perfil} onChange={(e) => entrar(sesion.empresa, e.target.value as Perfil)}>{Object.entries(perfiles).map(([id, p]) => <option key={id} value={id}>{p.nombre}</option>)}</select></label></div></aside><div className="principal-contenedor"><div className="franja">DATOS SIMULADOS · SIN VALIDEZ PRODUCTIVA</div><header className="barra"><div><span className="pulso" /> API interna</div><label>Empresa<select value={sesion.empresa} onChange={(e) => entrar(e.target.value as Empresa, sesion.perfil)}><option>ENAV</option><option>JUBIAR</option></select></label><button className="salir" onClick={() => { sessionStorage.removeItem("gestion-sesion"); setSesion(null); }}>Salir</button></header><main>{permitido ? <Contenido seccion={valida} empresa={sesion.empresa} /> : <AccesoDenegado perfil={sesion.perfil} seccion={valida} />}</main><footer>Suite Juviar Gestión v{VERSION} · commit {COMMIT}</footer></div></div>;
 }
