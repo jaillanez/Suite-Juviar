@@ -11,7 +11,9 @@ from suite_juviar.modulos.capacitacion.infrastructure.configuracion_yaml import 
 def cliente() -> TestClient:
     ruta = Path(__file__).parents[2] / "src/suite_juviar/modulos/capacitacion/data/configuracion.yaml"
     configuracion = ConfiguracionCapacitacionYAML(ruta)
-    return TestClient(crear_app(configuracion))
+    return TestClient(
+        crear_app(configuracion), headers={"X-Perfil-Simulado": "RRHH"}
+    )
 
 
 def test_recorrido_tema_dictado_asistencia_y_planilla():

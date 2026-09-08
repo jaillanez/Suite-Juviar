@@ -38,7 +38,9 @@ def test_cronograma_auditable_concilia_y_no_imputa_solo(tmp_path):
 
 def test_pantalla_marcada_y_produccion_rechaza_simulados(tmp_path):
     s = servicio(tmp_path)
-    assert "DATOS SIMULADOS — SIN VALIDEZ" in TestClient(crear_app(s)).get("/").text
+    assert "DATOS SIMULADOS — SIN VALIDEZ" in TestClient(
+        crear_app(s), headers={"X-Perfil-Simulado": "RRHH"}
+    ).get("/").text
     with pytest.raises(FuenteSimuladaEnProduccion):
         crear_app(s, "produccion")
 

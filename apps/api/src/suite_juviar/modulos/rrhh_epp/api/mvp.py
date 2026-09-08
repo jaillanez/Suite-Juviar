@@ -7,6 +7,7 @@ autenticada hasta que ``plataforma/identidad`` esté operativo.
 """
 
 import os
+from base64 import b64decode
 from datetime import date, datetime
 from ipaddress import ip_address
 from pathlib import Path
@@ -18,12 +19,20 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, ConfigDict, Field
 
+from suite_juviar.plataforma.identidad.api.dependencias import SesionActual, exigir_permiso
 from suite_juviar.plataforma.identidad.domain.acceso import (
     ActorOperativo,
     PerfilAcceso,
 )
 
-from ..domain.modelos_mvp import ErrorDeEntrega, LegajoInexistente
+from ..domain.modelos_mvp import (
+    ElementoEPP,
+    ErrorDeEntrega,
+    ItemCatalogo,
+    LegajoInexistente,
+    RequisitoEPP,
+)
+from ..infrastructure.catalogo_yaml import ErrorDeCatalogo
 from ..mvp import Contenedor, construir
 
 PLANTILLAS = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
@@ -94,9 +103,57 @@ class StockEntrada(BaseModel):
     minimo: int = Field(ge=0)
 
 
+class ElementoCatalogoEntrada(BaseModel):
+    producto: str
+    tipo_modelo: str = ""
+    marca: str = ""
+    posee_certificacion: bool = False
+    certificacion: str | None = None
+    unidad: str = "unidad"
+    vida_util_dias: int | None = None
+    familia: str = "Otros"
+    destino_declarado: str | None = None
+    criterio_vida_util: str = ""
+
+
+class ItemCatalogoEntrada(BaseModel):
+    elemento_codigo: str
+    marca: str
+    modelo: str
+    talle: str
+    color: str
+
+
+class ImportacionEntrada(BaseModel):
+    contenido_base64: str
+
+
+class RequisitoEntrada(BaseModel):
+    codigo: str
+    cantidad: int = Field(gt=0)
+    frecuencia: str = "A_DEMANDA"
+    temporada: str = "TODO_EL_ANIO"
+    obligatorio: bool = True
+    fundamento: str = ""
+
+
+class MatrizEntrada(BaseModel):
+    requisitos: list[RequisitoEntrada]
+
+
+class MovimientoEntrada(BaseModel):
+    cantidad: int
+    tipo: str
+    motivo: str = Field(min_length=1)
+
+
 def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
     c = contenedor or construir()
-    app = FastAPI(title="Suite Juviar — Entrega de EPP", version="0.2.0-mvp")
+    app = FastAPI(
+        title="Suite Juviar — Entrega de EPP",
+        version="0.2.0-mvp",
+        dependencies=[Depends(exigir_permiso("suite.acceder"))],
+    )
     app.state.c = c
 
     def usuario_actual(
@@ -141,11 +198,7 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
     def operador_deposito(
         usuario: Annotated[ActorOperativo, Depends(usuario_actual)],
     ) -> ActorOperativo:
-        if usuario.perfil is not PerfilAcceso.DEPOSITO:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="La entrega de EPP requiere el perfil depósito.",
-            )
+        """Adapta la sesión al actor de dominio; la autorización vive en cada ruta."""
         return usuario
 
     UsuarioActual = Annotated[ActorOperativo, Depends(usuario_actual)]
@@ -156,7 +209,7 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
         codigo = 404 if isinstance(exc, LegajoInexistente) else 400
         return JSONResponse(status_code=codigo, content={"error": str(exc)})
 
-    @app.get("/sesion")
+    @app.get("/sesion", dependencies=[Depends(exigir_permiso("suite.acceder"))])
     def sesion(usuario: UsuarioActual) -> dict[str, str]:
         return {
             "legajo": usuario.legajo,
@@ -165,8 +218,8 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             "perfil": usuario.perfil.value,
         }
 
-    @app.get("/estado")
-    def estado(usuario: UsuarioActual) -> dict[str, object]:
+    @app.get("/estado", dependencies=[Depends(exigir_permiso("epp.catalogo.leer"))])
+    def estado(sesion: SesionActual) -> dict[str, object]:
         return {
             "entorno": c.entorno,
             "persistencia": c.persistencia,
@@ -186,10 +239,10 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
                 os.getenv("SJ_SMTP_HOST") and os.getenv("SJ_SMTP_REMITENTE")
             ),
             "metodos_firma": list(c.firma.metodos_habilitados),
-            "perfil": usuario.perfil.value,
+            "actor": sesion.actor,
         }
 
-    @app.get("/legajos")
+    @app.get("/legajos", dependencies=[Depends(exigir_permiso("epp.entrega.operar"))])
     def buscar_legajos(
         _usuario: OperadorDeposito,
         q: str = "",
@@ -207,7 +260,7 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             for p in c.legajos.buscar(q)
         ]
 
-    @app.get("/legajos/{numero}")
+    @app.get("/legajos/{numero}", dependencies=[Depends(exigir_permiso("epp.entrega.operar"))])
     def ver_legajo(
         numero: str,
         _usuario: OperadorDeposito,
@@ -273,7 +326,7 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             ],
         }
 
-    @app.get("/entregas-programadas")
+    @app.get("/entregas-programadas", dependencies=[Depends(exigir_permiso("epp.entrega.operar"))])
     def entregas_programadas(
         fecha: date,
         _usuario: OperadorDeposito,
@@ -303,8 +356,8 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             for plan in c.planificar_entregas.ejecutar(temporada, fecha, sector)
         ]
 
-    @app.get("/catalogo")
-    def catalogo(_usuario: OperadorDeposito) -> list[dict[str, object]]:
+    @app.get("/catalogo", dependencies=[Depends(exigir_permiso("epp.catalogo.leer"))])
+    def catalogo() -> list[dict[str, object]]:
         return [
             {
                 "codigo": elemento.codigo,
@@ -318,12 +371,87 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
                 "destino_declarado": elemento.destino_declarado,
                 "vida_util_dias": elemento.vida_util_dias,
                 "criterio_vida_util": elemento.criterio_vida_util,
+                "activo": elemento.activo,
+                "simulado": any(item.codigo_interno.startswith("SIM-") for item in c.catalogo.items_de(elemento.codigo)),
+                "items": [item.__dict__ for item in c.catalogo.items_de(elemento.codigo)],
             }
             for elemento in c.catalogo.listar_elementos()
         ]
 
-    @app.get("/stock")
-    def stock(_usuario: OperadorDeposito) -> list[dict[str, object]]:
+    @app.post("/catalogo/elementos/{codigo}", dependencies=[Depends(exigir_permiso("epp.catalogo.editar"))])
+    def alta_elemento(codigo: str, entrada: ElementoCatalogoEntrada):
+        return c.catalogo.guardar_elemento(ElementoEPP(codigo=codigo, activo=True, **entrada.model_dump()))
+
+    @app.put("/catalogo/elementos/{codigo}", dependencies=[Depends(exigir_permiso("epp.catalogo.editar"))])
+    def editar_elemento(codigo: str, entrada: ElementoCatalogoEntrada):
+        if c.catalogo.obtener_elemento(codigo) is None:
+            raise HTTPException(404, "Elemento inexistente")
+        return c.catalogo.guardar_elemento(ElementoEPP(codigo=codigo, activo=True, **entrada.model_dump()))
+
+    @app.delete("/catalogo/elementos/{codigo}", dependencies=[Depends(exigir_permiso("epp.catalogo.editar"))])
+    def baja_elemento(codigo: str):
+        try:
+            return c.catalogo.baja_elemento(codigo)
+        except ErrorDeCatalogo as exc:
+            raise HTTPException(404, str(exc)) from exc
+
+    @app.post("/catalogo/items/{codigo}", dependencies=[Depends(exigir_permiso("epp.catalogo.editar"))])
+    def alta_item(codigo: str, entrada: ItemCatalogoEntrada):
+        try:
+            return c.catalogo.guardar_item(ItemCatalogo(codigo_interno=codigo, estado="ACTIVO", activo=True, **entrada.model_dump()))
+        except ErrorDeCatalogo as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.put("/catalogo/items/{codigo}", dependencies=[Depends(exigir_permiso("epp.catalogo.editar"))])
+    def editar_item(codigo: str, entrada: ItemCatalogoEntrada):
+        try:
+            return c.catalogo.guardar_item(ItemCatalogo(codigo_interno=codigo, estado="ACTIVO", activo=True, **entrada.model_dump()))
+        except ErrorDeCatalogo as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.delete("/catalogo/items/{codigo}", dependencies=[Depends(exigir_permiso("epp.catalogo.editar"))])
+    def baja_item(codigo: str):
+        try:
+            return c.catalogo.baja_item(codigo)
+        except ErrorDeCatalogo as exc:
+            raise HTTPException(404, str(exc)) from exc
+
+    @app.post("/catalogo/importaciones", dependencies=[Depends(exigir_permiso("epp.catalogo.editar"))])
+    def previsualizar_importacion(entrada: ImportacionEntrada):
+        try:
+            return c.importaciones_catalogo.previsualizar(b64decode(entrada.contenido_base64, validate=True))
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.post("/catalogo/importaciones/{identificador}/aplicar", dependencies=[Depends(exigir_permiso("epp.catalogo.editar"))])
+    def aplicar_importacion(identificador: str):
+        try:
+            return c.importaciones_catalogo.aplicar(identificador)
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+
+    @app.get("/matriz/estado", dependencies=[Depends(exigir_permiso("epp.catalogo.leer"))])
+    def estado_matriz():
+        return {"estado": c.catalogo.estado_matriz, "validacion": c.catalogo.validacion_matriz, "historial": c.catalogo.historial_matriz}
+
+    @app.get("/matriz/puestos/{puesto}", dependencies=[Depends(exigir_permiso("epp.catalogo.leer"))])
+    def matriz_puesto(puesto: str):
+        return c.catalogo.matriz_puesto(puesto)
+
+    @app.put("/matriz/puestos/{puesto}", dependencies=[Depends(exigir_permiso("epp.matriz.editar"))])
+    def editar_matriz(puesto: str, entrada: MatrizEntrada, sesion: SesionActual):
+        requisitos = [RequisitoEPP(**r.model_dump(), origen="PUESTO") for r in entrada.requisitos]
+        try:
+            return c.catalogo.guardar_matriz_puesto(puesto, requisitos, sesion.actor)
+        except ErrorDeCatalogo as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.post("/matriz/validar", dependencies=[Depends(exigir_permiso("epp.matriz.editar"))])
+    def validar_matriz(sesion: SesionActual):
+        return c.catalogo.validar_matriz(sesion.actor)
+
+    @app.get("/stock", dependencies=[Depends(exigir_permiso("epp.stock.leer"))])
+    def stock() -> list[dict[str, object]]:
         return [
             {
                 "item_codigo": item.item_codigo,
@@ -334,16 +462,16 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             for item in c.stock.listar()
         ]
 
-    @app.put("/stock/{item_codigo}")
+    @app.put("/stock/{item_codigo}", dependencies=[Depends(exigir_permiso("epp.stock.editar"))])
     def configurar_stock(
         item_codigo: str,
         entrada: StockEntrada,
-        usuario: OperadorDeposito,
+        sesion: SesionActual,
     ) -> dict[str, object]:
         item = c.stock.configurar(item_codigo, entrada.disponible, entrada.minimo)
         c.bitacora.registrar(
             evento="STOCK_EPP_CONFIGURADO",
-            usuario=usuario.legajo,
+            usuario=sesion.actor,
             detalle={
                 "item_codigo": item.item_codigo,
                 "disponible": item.disponible,
@@ -357,8 +485,8 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             "estado": item.estado,
         }
 
-    @app.get("/stock/alertas")
-    def alertas_stock(_usuario: OperadorDeposito) -> list[dict[str, object]]:
+    @app.get("/stock/alertas", dependencies=[Depends(exigir_permiso("epp.stock.leer"))])
+    def alertas_stock() -> list[dict[str, object]]:
         return [
             {
                 **aviso,
@@ -369,7 +497,26 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             for aviso in c.stock.alertas_pendientes()
         ]
 
-    @app.post("/entregas")
+    @app.get("/stock/{item_codigo}/movimientos", dependencies=[Depends(exigir_permiso("epp.stock.leer"))])
+    def movimientos_stock(item_codigo: str):
+        return c.stock.movimientos(item_codigo)
+
+    @app.post("/stock/{item_codigo}/movimientos", dependencies=[Depends(exigir_permiso("epp.stock.editar"))])
+    def mover_stock(item_codigo: str, entrada: MovimientoEntrada, sesion: SesionActual):
+        return c.stock.registrar_movimiento(item_codigo, entrada.cantidad, entrada.tipo, entrada.motivo, sesion.actor)
+
+    @app.get("/avisos-compras", dependencies=[Depends(exigir_permiso("epp.aviso.gestionar"))])
+    def avisos_compras():
+        return c.stock.avisos()
+
+    @app.post("/avisos-compras/{aviso_id}/reenviar", dependencies=[Depends(exigir_permiso("epp.aviso.gestionar"))])
+    def reenviar_aviso(aviso_id: int):
+        try:
+            return c.stock.reenviar_alerta(aviso_id)
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+
+    @app.post("/entregas", dependencies=[Depends(exigir_permiso("epp.entrega.operar"))])
     def registrar(
         entrada: EntregaEntrada,
         usuario: OperadorDeposito,
@@ -408,10 +555,40 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             "anula_a": documento.anula_a,
         }
 
-    @app.get("/constancias/{id_entrega}.pdf")
+    @app.get("/entregas", dependencies=[Depends(exigir_permiso("epp.entrega.leer"))])
+    def buscar_entregas(desde: date, hasta: date, legajo: str | None = None, sector: str | None = None, item: str | None = None):
+        entregas = c.entregas.listar_periodo(desde, hasta)
+        return [
+            {"id": e.id, "legajo": e.legajo.legajo, "persona": e.legajo.nombre_completo,
+             "sector": e.legajo.sector, "fecha": e.fecha_entrega, "circuito": e.circuito,
+             "motivo": e.motivo, "lineas": [linea.__dict__ for linea in e.lineas]}
+            for e in entregas
+            if (not legajo or e.legajo.legajo == legajo)
+            and (not sector or e.legajo.sector == sector)
+            and (not item or any(l.item_codigo == item for l in e.lineas))
+        ]
+
+    @app.get("/entregas/{id_entrega}", dependencies=[Depends(exigir_permiso("epp.entrega.leer"))])
+    def ficha_entrega(id_entrega: str):
+        e = c.entregas.obtener(id_entrega)
+        if e is None:
+            raise HTTPException(404, "Entrega inexistente")
+        documento = c.obtener_constancia_pdf.ejecutar(id_entrega)
+        versiones = []
+        while documento is not None:
+            versiones.append({"id_entrega": documento.id_entrega,
+                              "version": documento.version, "sha256": documento.sha256,
+                              "firmado": documento.firmado, "anula_a": documento.anula_a,
+                              "archivo": f"/api/v1/rrhh-epp/constancias/{documento.id_entrega}.pdf"})
+            documento = (c.obtener_constancia_pdf.ejecutar(documento.anula_a)
+                         if documento.anula_a else None)
+        return {"id": e.id, "legajo": e.legajo.__dict__, "fecha": e.fecha_entrega,
+                "motivo": e.motivo, "lineas": [l.__dict__ for l in e.lineas],
+                "constancias": versiones}
+
+    @app.get("/constancias/{id_entrega}.pdf", dependencies=[Depends(exigir_permiso("epp.entrega.leer"))])
     def constancia_pdf(
         id_entrega: str,
-        _usuario: OperadorDeposito,
     ) -> Response:
         documento = c.obtener_constancia_pdf.ejecutar(id_entrega)
         if documento is None:
@@ -426,11 +603,10 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             },
         )
 
-    @app.get("/constancias/{id_entrega}", response_class=HTMLResponse)
+    @app.get("/constancias/{id_entrega}", response_class=HTMLResponse, dependencies=[Depends(exigir_permiso("epp.entrega.leer"))])
     def constancia(
         request: Request,
         id_entrega: str,
-        _usuario: OperadorDeposito,
     ) -> HTMLResponse:
         entrega = c.entregas.obtener(id_entrega)
         if entrega is None:
@@ -441,15 +617,14 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             context={"e": entrega, "modo_simulado": c.modo_simulado},
         )
 
-    @app.get("/bitacora")
+    @app.get("/bitacora", dependencies=[Depends(exigir_permiso("epp.entrega.leer"))])
     def bitacora(
-        _usuario: OperadorDeposito,
         n: int = 50,
     ) -> list[dict]:
         return c.bitacora.ultimos(n)
 
-    @app.get("/alertas-catalogo")
-    def alertas_catalogo(_usuario: OperadorDeposito) -> dict[str, object]:
+    @app.get("/alertas-catalogo", dependencies=[Depends(exigir_permiso("epp.catalogo.leer"))])
+    def alertas_catalogo() -> dict[str, object]:
         alertas = c.catalogo.alertas()
         return {
             "estado_vida_util": c.catalogo.estado_vida_util,
@@ -457,10 +632,9 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             "alertas": alertas,
         }
 
-    @app.get("/matriz", response_class=HTMLResponse)
+    @app.get("/matriz", response_class=HTMLResponse, dependencies=[Depends(exigir_permiso("epp.catalogo.leer"))])
     def revisar_matriz(
         request: Request,
-        _usuario: OperadorDeposito,
     ) -> HTMLResponse:
         """Revisión de sólo lectura; aprobar exige identidad real."""
         senales = ("PROPUESTA", "CONFIRMAR", "VERIFICAR", "REVISAR", "FALTA")

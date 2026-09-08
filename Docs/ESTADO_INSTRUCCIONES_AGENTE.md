@@ -1,6 +1,6 @@
 # Estado de ejecución — instrucciones del agente
 
-Fecha de corte: 2026-09-07. Rama: `codex/rrhh-epp-unificado`.
+Fecha de corte: 2026-09-08. Rama: `codex/rrhh-epp-unificado`.
 
 Este documento distingue código construido de operación real. Ninguna fuente,
 credencial, aprobación o dato corporativo faltante se reemplazó por una invención.
@@ -23,7 +23,7 @@ credencial, aprobación o dato corporativo faltante se reemplazó por una invenc
 | 4 Legajo digital | CONSTRUIDO CON ADAPTADORES | Reutiliza el puerto de legajos; adjuntos cifrados en memoria de prueba, PostgreSQL pendiente. |
 | 4 Salud | CONSTRUIDO CON ADAPTADORES | Rol médico, bitácora de lectura, catálogo muestra, reportes agregados y art. 208 preliminar. |
 | 5 Turnos | CONSTRUIDO CON ADAPTADORES | Cronograma, conciliación, propuesta y aprobación construidos; Time confinado al adaptador pendiente. |
-| Aplicación de gestión | ARMAZÓN OPERABLE | Next/React separado, menú por rol, empresa, marcas simuladas y conexión HTTP; faltan completar operaciones detalladas y los recorridos E2E de todos los pasos del plan. |
+| Aplicación de gestión — Bloque 2 | CONSTRUIDO Y PROBADO | Autorización API, cuatro áreas EPP y Selección operables; E2E Playwright por módulo. Identidad corporativa y datos reales siguen pendientes. |
 
 `apps/web` y `apps/consulta` no fueron modificados. Nexus continúa como fuente
 externa de sólo lectura y ningún componente escribe en Nexus o Time.
@@ -32,10 +32,10 @@ La aplicación interna vive en `apps/gestion`. Selección y Capacitaciones ya
 exponen una API de gestión en memoria para pruebas; no sustituyen la persistencia,
 identidad ni fuentes corporativas pendientes.
 
-El rechazo por ruta y el menú por perfil son únicamente UX mientras la identidad
-sea declarada; no se consideran seguridad. La API deberá autorizar desde una
-sesión real. El despliegue de Gestión se decidió como exportación estática, sin
-Node persistente en producción (ADR 0004).
+El menú por perfil es únicamente UX. El rechazo efectivo ya lo realiza la API con
+permisos declarados por ruta; `resolver_sesion()` mantiene aislada la identidad
+simulada y producción no arranca sin proveedor real. El despliegue de Gestión se
+decidió como exportación estática, sin Node persistente en producción (ADR 0004).
 
 ## Controles de prueba y de acceso
 
@@ -48,6 +48,9 @@ Node persistente en producción (ADR 0004).
   `infra/008_roles_modulos_local.sql`. La verificación ejecuta consultas con esos
   roles y confirma tanto el permiso propio como los rechazos cruzados.
 - Los README de los tres módulos conservan su tabla de deuda técnica actualizada.
+- Una prueba recorre las rutas reales, incluidas subaplicaciones montadas, y falla
+  si alguna carece de permiso. Los E2E de EPP y Selección se ejecutan con
+  `pnpm --filter @suite-juviar/gestion test:e2e` y servicios locales aislados.
 
 ## Límites de los adaptadores respetados
 

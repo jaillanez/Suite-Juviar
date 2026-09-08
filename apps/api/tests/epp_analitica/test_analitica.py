@@ -52,7 +52,9 @@ def test_precio_faltante_es_vacio_no_cero_y_exportacion_se_bloquea():
 
 def test_pantalla_tiene_franja_visible_y_produccion_se_niega():
     servicio = AnalizarEPP(FuenteEntregasSimulada([movimiento(0)]), PreciosSimulados())
-    html = TestClient(crear_app(servicio)).get("/", params={"desde": "2026-01-01", "hasta": "2026-12-31"}).text
+    html = TestClient(
+        crear_app(servicio), headers={"X-Perfil-Simulado": "COMPRAS"}
+    ).get("/", params={"desde": "2026-01-01", "hasta": "2026-12-31"}).text
     assert "DATOS SIMULADOS — SIN VALIDEZ" in html
     assert "@media print" in html
     with pytest.raises(FuenteSimuladaEnProduccion):

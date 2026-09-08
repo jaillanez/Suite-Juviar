@@ -69,6 +69,15 @@ CREATE TABLE IF NOT EXISTS stock_item (
     estado      TEXT NOT NULL,
     dueno_dato  TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS stock_movimiento (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_codigo TEXT NOT NULL,
+    cantidad INTEGER NOT NULL,
+    tipo TEXT NOT NULL,
+    motivo TEXT NOT NULL,
+    actor TEXT NOT NULL,
+    creado_en TEXT NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS aviso_compras (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -439,6 +448,52 @@ class StockSQLite:
             )
         self._cn.commit()
         return self.obtener(item_codigo)  # type: ignore[return-value]
+
+    def registrar_movimiento(
+        self, item_codigo: str, cantidad: int, tipo: str, motivo: str, actor: str
+    ) -> StockItem:
+        actual = self.obtener(item_codigo)
+        if actual is None:
+            raise StockInvalido(f"El ítem {item_codigo} no existe en el stock.")
+        nuevo = actual.disponible + cantidad
+        if nuevo < 0:
+            raise StockInsuficiente(
+                f"Stock insuficiente para {item_codigo}: disponible {actual.disponible}."
+            )
+        self._cn.execute(
+            "INSERT INTO stock_movimiento (item_codigo,cantidad,tipo,motivo,actor,creado_en) VALUES (?,?,?,?,?,?)",
+            (item_codigo, cantidad, tipo, motivo, actor, datetime.now(UTC).isoformat()),
+        )
+        return self.configurar(item_codigo, nuevo, actual.minimo)
+
+    def movimientos(self, item_codigo: str) -> list[dict[str, object]]:
+        return [dict(fila) for fila in self._cn.execute(
+            "SELECT * FROM stock_movimiento WHERE item_codigo=? ORDER BY id DESC",
+            (item_codigo,),
+        ).fetchall()]
+
+    def avisos(self) -> list[dict[str, object]]:
+        filas = self._cn.execute("SELECT * FROM aviso_compras ORDER BY id DESC").fetchall()
+        salida = []
+        for fila in filas:
+            aviso = dict(fila)
+            aviso["identificador"] = f"rrhh-epp-stock-{aviso['id']}"
+            aviso["proximo_reintento"] = None
+            salida.append(aviso)
+        return salida
+
+    def reenviar_alerta(self, aviso_id: int) -> dict[str, object]:
+        fila = self._cn.execute("SELECT * FROM aviso_compras WHERE id=?", (aviso_id,)).fetchone()
+        if fila is None:
+            raise LookupError("Aviso inexistente.")
+        if fila["estado"] == "ENVIADO":
+            raise StockInvalido("Un aviso enviado no se reabre manualmente.")
+        self._cn.execute(
+            "UPDATE aviso_compras SET estado='PENDIENTE', procesando_en=NULL WHERE id=?",
+            (aviso_id,),
+        )
+        self._cn.commit()
+        return next(aviso for aviso in self.avisos() if aviso["id"] == aviso_id)
 
     def alertas_pendientes(self) -> list[dict[str, object]]:
         filas = self._cn.execute(

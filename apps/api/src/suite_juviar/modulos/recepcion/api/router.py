@@ -12,8 +12,13 @@ from suite_juviar.modulos.recepcion.application.casos_uso import (
 )
 from suite_juviar.modulos.recepcion.domain.entidades import OrigenPeso
 from suite_juviar.modulos.recepcion.infrastructure.dependencias import abrir_romaneo
+from suite_juviar.plataforma.identidad.api.dependencias import exigir_permiso
 
-router = APIRouter(prefix="/recepcion", tags=["recepción"])
+router = APIRouter(
+    prefix="/recepcion",
+    tags=["recepción"],
+    dependencies=[Depends(exigir_permiso("recepcion.romaneo.crear"))],
+)
 
 
 class IngresoIn(BaseModel):

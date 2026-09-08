@@ -58,6 +58,7 @@ class ElementoEPP:
     familia: str = "Otros"
     destino_declarado: str | None = None
     criterio_vida_util: str = ""
+    activo: bool = True
 
 
 @dataclass(frozen=True)
@@ -71,6 +72,7 @@ class ItemCatalogo:
     talle: str
     color: str
     estado: str
+    activo: bool = True
 
 
 @dataclass(frozen=True)

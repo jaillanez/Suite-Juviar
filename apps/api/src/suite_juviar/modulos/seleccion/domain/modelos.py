@@ -131,3 +131,19 @@ class AvisoCoincidencia:
     id_original: str
     destinatario: str
     creado_en: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class ConfirmacionCampo:
+    id_original: str
+    campo: str
+    valor: str
+    confirmado_por: str
+    confirmado_en: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class ConsultaOriginal:
+    id_original: str
+    actor: str
+    consultado_en: datetime

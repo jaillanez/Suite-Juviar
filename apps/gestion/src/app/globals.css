@@ -377,6 +377,14 @@ aside svg {
   display: grid;
   gap: 18px;
 }
+.pestanas { display: flex; gap: 8px; margin: 0 0 18px; flex-wrap: wrap; }
+.pestanas button.activo { background: var(--verde); color: white; border-color: var(--verde); }
+.previsualizacion { margin-top: 16px; }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #f6f8f6; padding: 12px; border-radius: 8px; }
+.ficha-doble { display: grid; grid-template-columns: minmax(280px, .8fr) minmax(400px, 1.2fr); gap: 18px; }
+.campo-extraido { display: grid; gap: 8px; border-bottom: 1px solid var(--borde); padding: 12px 0; }
+.campo-extraido p { margin: 0; color: var(--muted); }
+.visor-original { height: 620px; margin-top: 0; }
 .tarjeta h2 {
   margin: 0 0 12px;
   font-size: 1.15rem;

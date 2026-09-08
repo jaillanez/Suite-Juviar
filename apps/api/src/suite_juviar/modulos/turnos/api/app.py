@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import date, time
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
+
+from suite_juviar.plataforma.identidad.api.dependencias import exigir_permiso
 
 from ..application.servicios import ConciliarTurnos
 from ..domain.entidades import FuenteSimuladaEnProduccion
@@ -27,7 +29,10 @@ class AprobacionEntrada(BaseModel):
 def crear_app(servicio: ConciliarTurnos, entorno: str = "prueba") -> FastAPI:
     if entorno.lower() == "produccion" and servicio.simulada:
         raise FuenteSimuladaEnProduccion("Turnos no arranca en producción con fichadas simuladas.")
-    app = FastAPI(title="Conciliación de turnos")
+    app = FastAPI(
+        title="Conciliación de turnos",
+        dependencies=[Depends(exigir_permiso("turnos.cronograma.leer"))],
+    )
 
     @app.get("/", response_class=HTMLResponse)
     def pantalla() -> str:

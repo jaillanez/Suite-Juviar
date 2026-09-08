@@ -41,6 +41,12 @@ limitado al aislamiento de las pruebas automatizadas.
   otro. Un empeoramiento antes del envío actualiza el aviso existente.
 - El rol PostgreSQL `suite_rrhh_epp` queda aislado de Selección y Capacitación y se
   comprueba contra la base local con el control de §6.5.
+- Gestión de escritorio incorpora catálogo con baja lógica, reemplazo Excel
+  previsualizado, matriz con firma e historial visibles, movimientos y outbox de
+  stock, y consulta de entregas/archivos versionados. El recorrido Playwright vive
+  en `apps/gestion/e2e/bloque-2.spec.ts`.
+- La autorización se declara por permiso en cada ruta. Los perfiles sólo agrupan
+  permisos y `resolver_sesion()` es la única costura que cambiará con identidad real.
 
 ## Deuda técnica y datos pendientes
 
@@ -48,7 +54,7 @@ limitado al aislamiento de las pruebas automatizadas.
 |---|---|---|
 | Protección criptográfica de DNI y legajo en RRHH/EPP | PENDIENTE | Aplicar HMAC + AES-GCM de `plataforma/cripto` antes de cargar datos reales. |
 | Umbral offline de 20 entregas o 24 horas | PROPUESTA_SIN_VALIDAR | Confirmación de Operaciones y de Higiene y Seguridad. |
-| Identidad real del operario | PENDIENTE | Integrar `plataforma/identidad`; el header local es suplantable. |
+| Identidad real del operario | COSTURA CONSTRUIDA, PROVEEDOR PENDIENTE | Sustituir el cuerpo de `resolver_sesion()`; producción rechaza la identidad simulada. |
 | Firma digital del PDF por la empresa | PENDIENTE | Certificado y motor real de `plataforma/firma`; el PDF actual sólo se imprime y firma en papel. |
 | Volumen diario de temporada alta | PENDIENTE | Observación presencial en depósito; la pantalla se diseñó como lista masiva mientras falta el dato. |
 | Ítems reales de marcas, modelos, talles y colores | SIMULADO | Reemplazar los 435 registros `SIM-*` cuando llegue el Excel maestro de Higiene y Seguridad. |

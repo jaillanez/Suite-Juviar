@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
+
+from suite_juviar.plataforma.identidad.api.dependencias import SesionActual, exigir_permiso
 
 from ..application.servicios import GestionarSalud
 from ..domain.modelos import (
@@ -25,7 +27,10 @@ class CertificadoEntrada(BaseModel):
 def crear_app(servicio: GestionarSalud, entorno: str = "prueba") -> FastAPI:
     if entorno.lower() == "produccion" and servicio.catalogo.simulada:
         raise FuenteSimuladaEnProduccion("Salud no arranca en producción con catálogo simulado.")
-    app = FastAPI(title="Salud laboral")
+    app = FastAPI(
+        title="Salud laboral",
+        dependencies=[Depends(exigir_permiso("salud.diagnostico.leer"))],
+    )
 
     @app.get("/", response_class=HTMLResponse)
     def pantalla() -> str:
@@ -43,10 +48,8 @@ def crear_app(servicio: GestionarSalud, entorno: str = "prueba") -> FastAPI:
     @app.post("/certificados")
     def cargar(
         entrada: CertificadoEntrada,
-        x_rol: str | None = Header(default=None, alias="X-Rol"),
+        _sesion: SesionActual,
     ):
-        if x_rol != "MEDICO":
-            raise HTTPException(403, "La carga de diagnósticos requiere el rol médico.")
         try:
             return servicio.cargar(
                 entrada.legajo, entrada.diagnostico_codigo, entrada.desde, entrada.hasta
@@ -57,11 +60,10 @@ def crear_app(servicio: GestionarSalud, entorno: str = "prueba") -> FastAPI:
     @app.get("/certificados/{certificado_id}")
     def consultar(
         certificado_id: str,
-        x_actor: str = Header(default="", alias="X-Actor"),
-        x_rol: str | None = Header(default=None, alias="X-Rol"),
+        sesion: SesionActual,
     ):
         try:
-            return servicio.consultar(certificado_id, x_actor, x_rol)
+            return servicio.consultar(certificado_id, sesion.actor, "MEDICO")
         except AccesoSaludDenegado as exc:
             raise HTTPException(403, str(exc)) from exc
 
@@ -73,9 +75,7 @@ def crear_app(servicio: GestionarSalud, entorno: str = "prueba") -> FastAPI:
             raise HTTPException(400, str(exc)) from exc
 
     @app.get("/bitacora")
-    def bitacora(x_rol: str | None = Header(default=None, alias="X-Rol")):
-        if x_rol != "MEDICO":
-            raise HTTPException(403, "La bitácora de salud requiere el rol médico.")
+    def bitacora():
         return servicio.repositorio.consultas
 
     @app.get("/articulo-208")

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, Response
+
+from suite_juviar.plataforma.identidad.api.dependencias import exigir_permiso
 
 from ..application.servicios import AnalizarEPP
 from ..domain.modelos import MARCA_SIMULADA, ExportacionNoPermitida, FuenteSimuladaEnProduccion
@@ -12,7 +14,10 @@ from ..domain.modelos import MARCA_SIMULADA, ExportacionNoPermitida, FuenteSimul
 def crear_app(servicio: AnalizarEPP, entorno: str = "prueba") -> FastAPI:
     if entorno.lower() == "produccion" and servicio.datos_simulados:
         raise FuenteSimuladaEnProduccion("Analítica EPP no arranca en producción con fuentes simuladas.")
-    app = FastAPI(title="Analítica EPP para Compras")
+    app = FastAPI(
+        title="Analítica EPP para Compras",
+        dependencies=[Depends(exigir_permiso("epp.analitica.leer"))],
+    )
 
     @app.get("/", response_class=HTMLResponse)
     def pantalla(desde: date, hasta: date) -> str:

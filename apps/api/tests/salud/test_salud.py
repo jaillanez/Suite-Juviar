@@ -46,7 +46,9 @@ def test_reporte_nominado_es_rechazado_y_art208_simulado_es_preliminar():
 
 def test_marca_visible_y_produccion_rechaza_catalogo_simulado():
     s = servicio()
-    assert "DATOS SIMULADOS — SIN VALIDEZ" in TestClient(crear_app(s)).get("/").text
+    assert "DATOS SIMULADOS — SIN VALIDEZ" in TestClient(
+        crear_app(s), headers={"X-Perfil-Simulado": "MEDICO"}
+    ).get("/").text
     with pytest.raises(FuenteSimuladaEnProduccion):
         crear_app(s, "produccion")
 
@@ -59,11 +61,12 @@ def test_api_rechaza_carga_y_consulta_sin_rol_medico():
         "desde": "2026-06-01",
         "hasta": "2026-06-03",
     }
-    assert cliente.post("/certificados", json=cuerpo).status_code == 403
-    creado = cliente.post("/certificados", json=cuerpo, headers={"X-Rol": "MEDICO"})
+    assert cliente.post("/certificados", json=cuerpo).status_code == 401
+    assert cliente.post("/certificados", json=cuerpo, headers={"X-Perfil-Simulado": "RRHH"}).status_code == 403
+    creado = cliente.post("/certificados", json=cuerpo, headers={"X-Perfil-Simulado": "MEDICO"})
     assert creado.status_code == 200
     identificador = creado.json()["id"]
-    assert cliente.get(f"/certificados/{identificador}").status_code == 403
+    assert cliente.get(f"/certificados/{identificador}").status_code == 401
     assert cliente.get(
-        f"/certificados/{identificador}", headers={"X-Rol": "RRHH", "X-Actor": "1"}
+        f"/certificados/{identificador}", headers={"X-Perfil-Simulado": "RRHH", "X-Actor-Simulado": "1"}
     ).status_code == 403

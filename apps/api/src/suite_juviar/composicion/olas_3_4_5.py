@@ -65,6 +65,6 @@ def construir_subaplicaciones(rrhh):
         "legajo": crear_legajo(legajo, entorno),
         "salud": crear_salud(salud, entorno),
         "turnos": crear_turnos(turnos, entorno),
-        "seleccion": crear_seleccion(perfiles_seleccion),
-        "capacitaciones": crear_capacitacion(configuracion_capacitacion),
+        "seleccion": crear_seleccion(perfiles_seleccion, entorno),
+        "capacitaciones": crear_capacitacion(configuracion_capacitacion, entorno),
     }

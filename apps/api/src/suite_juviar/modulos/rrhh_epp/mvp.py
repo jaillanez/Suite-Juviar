@@ -19,6 +19,7 @@ from suite_juviar.plataforma.parametria.infrastructure.perfiles_acceso_yaml impo
 )
 
 from .application.avisos_compras import DespacharAvisosCompras
+from .application.catalogo_admin import ImportacionesCatalogo
 from .application.constancias import ObtenerConstanciaPDF
 from .application.programadas import PlanificarEntregasProgramadas
 from .application.servicios_mvp import ConsultarLegajo, RegistrarEntrega
@@ -78,6 +79,7 @@ class Contenedor:
     modo_simulado: bool
     persistencia: str
     email_compras: str | None
+    importaciones_catalogo: ImportacionesCatalogo
 
 
 def construir_despachador_compras(c: Contenedor) -> DespacharAvisosCompras:
@@ -248,4 +250,5 @@ def construir(
         ),
         persistencia=tipo_persistencia,
         email_compras=email_compras,
+        importaciones_catalogo=ImportacionesCatalogo(catalogo),
     )

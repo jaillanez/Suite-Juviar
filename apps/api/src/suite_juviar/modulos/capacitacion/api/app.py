@@ -4,9 +4,14 @@ from dataclasses import asdict
 from datetime import date
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
+
+from suite_juviar.plataforma.identidad.api.dependencias import (
+    exigir_identidad_configurada,
+    exigir_permiso,
+)
 
 from ..application.servicios import AnularAsistencia, ReportesCapacitacion, planilla_imprimible
 from ..domain.modelos import Asistencia, Dictado, Participante, Tema
@@ -36,8 +41,12 @@ class AnulacionEntrada(BaseModel):
     actor: str = Field(min_length=1)
 
 
-def crear_app(configuracion) -> FastAPI:
-    app = FastAPI(title="Capacitaciones")
+def crear_app(configuracion, entorno: str = "prueba") -> FastAPI:
+    exigir_identidad_configurada(entorno)
+    app = FastAPI(
+        title="Capacitaciones",
+        dependencies=[Depends(exigir_permiso("capacitacion.gestionar"))],
+    )
     repo = CapacitacionEnMemoria()
     reportes = ReportesCapacitacion(repo, configuracion)
     anular = AnularAsistencia(repo)

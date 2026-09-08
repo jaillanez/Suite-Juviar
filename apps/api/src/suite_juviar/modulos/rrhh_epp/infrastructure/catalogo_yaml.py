@@ -10,6 +10,8 @@ que no existe.
 
 from __future__ import annotations
 
+from dataclasses import replace
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import ClassVar
 
@@ -56,6 +58,8 @@ class CatalogoYAML:
         self._estado_vida_util = "SIN_TABLA"
         self._estado_items = "SIN_CATALOGO"
         self._dueno_items = "SIN_DEFINIR"
+        self._historial_matriz: list[dict[str, object]] = []
+        self._validacion_matriz: dict[str, str] | None = None
         self._cargar_vida_util()
         self._cargar_catalogo()
         self._cargar_items()
@@ -229,6 +233,20 @@ class CatalogoYAML:
     def listar_elementos(self) -> list[ElementoEPP]:
         return sorted(self._elementos.values(), key=lambda e: _orden_codigo(e.codigo))
 
+    def guardar_elemento(self, elemento: ElementoEPP) -> ElementoEPP:
+        self._elementos[elemento.codigo] = elemento
+        return elemento
+
+    def baja_elemento(self, codigo: str) -> ElementoEPP:
+        elemento = self.obtener_elemento(codigo)
+        if elemento is None:
+            raise ErrorDeCatalogo(f"No existe el elemento {codigo}.")
+        actualizado = replace(elemento, activo=False)
+        self._elementos[codigo] = actualizado
+        for item in self.items_de(codigo):
+            self._items[item.codigo_interno] = replace(item, activo=False)
+        return actualizado
+
     def obtener_item(self, codigo_interno: str) -> ItemCatalogo | None:
         return self._items.get(str(codigo_interno).strip())
 
@@ -241,6 +259,64 @@ class CatalogoYAML:
             ),
             key=lambda item: item.codigo_interno,
         )
+
+    def listar_items(self) -> list[ItemCatalogo]:
+        return sorted(self._items.values(), key=lambda item: item.codigo_interno)
+
+    def guardar_item(self, item: ItemCatalogo) -> ItemCatalogo:
+        if item.elemento_codigo not in self._elementos:
+            raise ErrorDeCatalogo(f"El elemento {item.elemento_codigo} no existe.")
+        self._items[item.codigo_interno] = item
+        return item
+
+    def baja_item(self, codigo: str) -> ItemCatalogo:
+        item = self.obtener_item(codigo)
+        if item is None:
+            raise ErrorDeCatalogo(f"No existe el ítem {codigo}.")
+        actualizado = replace(item, activo=False)
+        self._items[codigo] = actualizado
+        return actualizado
+
+    def reemplazar_items(self, items: list[ItemCatalogo]) -> None:
+        entrantes = {item.codigo_interno: item for item in items}
+        for codigo, existente in self._items.items():
+            if codigo not in entrantes:
+                entrantes[codigo] = replace(existente, activo=False)
+        self._items = entrantes
+        self._estado_items = "IMPORTADO_HYS"
+
+    def matriz_puesto(self, puesto: str) -> list[RequisitoEPP]:
+        return list(self._puestos.get(puesto, []))
+
+    def guardar_matriz_puesto(
+        self, puesto: str, requisitos: list[RequisitoEPP], autor: str
+    ) -> dict[str, object]:
+        for requisito in requisitos:
+            if requisito.codigo not in self._elementos:
+                raise ErrorDeCatalogo(f"No existe el elemento {requisito.codigo}.")
+        momento = datetime.now(UTC).isoformat()
+        self._puestos[puesto] = requisitos
+        self._estado_matriz = "PROPUESTA_SIN_VALIDAR"
+        self._validacion_matriz = None
+        cambio = {"puesto": puesto, "autor": autor, "momento": momento,
+                  "elementos": [r.codigo for r in requisitos]}
+        self._historial_matriz.append(cambio)
+        return cambio
+
+    def validar_matriz(self, actor: str) -> dict[str, str]:
+        self._estado_matriz = "VALIDADA_HYS"
+        self._validacion_matriz = {
+            "firmada_por": actor, "firmada_en": datetime.now(UTC).isoformat()
+        }
+        return self._validacion_matriz
+
+    @property
+    def historial_matriz(self) -> list[dict[str, object]]:
+        return list(self._historial_matriz)
+
+    @property
+    def validacion_matriz(self) -> dict[str, str] | None:
+        return self._validacion_matriz
 
     def requisitos_de(self, sector_codigo: str, puesto_codigo: str) -> list[RequisitoEPP]:
         """Compone base + sector + puesto sin repetir ni reducir cantidades."""

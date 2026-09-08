@@ -22,7 +22,9 @@ def test_formatos_por_empresa_y_marca_visible():
     s = servicio()
     assert s.ficha("1")["formato"] == "FICHA_ENAV"
     assert s.ficha("2")["formato"] == "FICHA_JUBIAR"
-    assert "DATOS SIMULADOS — SIN VALIDEZ" in TestClient(crear_app(s)).get("/1").text
+    assert "DATOS SIMULADOS — SIN VALIDEZ" in TestClient(
+        crear_app(s), headers={"X-Perfil-Simulado": "RRHH"}
+    ).get("/1").text
 
 
 def test_adjunto_conserva_original_y_no_persiste_en_claro():

@@ -4,12 +4,25 @@ from base64 import b64decode, b64encode
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
+
+from suite_juviar.plataforma.identidad.api.dependencias import (
+    SesionActual,
+    exigir_identidad_configurada,
+    exigir_permiso,
+)
 
 from ..application.extraccion import ExtraerDatosCV
 from ..application.ranking import EvaluarBusqueda, ordenar_resultados
-from ..domain.modelos import Busqueda, CVOriginal, OrigenCV, PerfilBusqueda
+from ..domain.modelos import (
+    Busqueda,
+    ConfirmacionCampo,
+    ConsultaOriginal,
+    CVOriginal,
+    OrigenCV,
+    PerfilBusqueda,
+)
 from ..infrastructure.extraccion_pdf import CamposPorReglasProvisorias, TextoPDF
 from ..infrastructure.extracciones_memoria import ExtraccionesEnMemoria
 from ..infrastructure.memoria import OriginalesEnMemoria
@@ -18,7 +31,7 @@ from ..infrastructure.memoria import OriginalesEnMemoria
 class BusquedaEntrada(BaseModel):
     nombre: str = Field(min_length=1)
     perfil: PerfilBusqueda
-    definido_por: str = Field(min_length=1)
+    definido_por: str | None = None
     edad_minima: int | None = Field(default=None, ge=0)
     edad_maxima: int | None = Field(default=None, ge=0)
     secundaria_completa: bool = False
@@ -28,8 +41,16 @@ class LoteEntrada(BaseModel):
     archivos: list[dict[str, str]] = Field(min_length=1)
 
 
-def crear_app(perfiles) -> FastAPI:
-    app = FastAPI(title="Selección de personal")
+class ConfirmacionEntrada(BaseModel):
+    valor: str = Field(min_length=1)
+
+
+def crear_app(perfiles, entorno: str = "prueba") -> FastAPI:
+    exigir_identidad_configurada(entorno)
+    app = FastAPI(
+        title="Selección de personal",
+        dependencies=[Depends(exigir_permiso("seleccion.gestionar"))],
+    )
     originales = OriginalesEnMemoria()
     extracciones = ExtraccionesEnMemoria()
     extraer = ExtraerDatosCV(originales, extracciones, TextoPDF(), CamposPorReglasProvisorias())
@@ -44,11 +65,18 @@ def crear_app(perfiles) -> FastAPI:
     def listar_busquedas():
         return list(busquedas.values())
 
+    @app.get("/busquedas/{busqueda_id}")
+    def ver_busqueda(busqueda_id: str):
+        busqueda = busquedas.get(busqueda_id)
+        if busqueda is None:
+            raise HTTPException(404, "Búsqueda inexistente")
+        return busqueda
+
     @app.post("/busquedas", status_code=201)
-    def crear_busqueda(entrada: BusquedaEntrada):
+    def crear_busqueda(entrada: BusquedaEntrada, sesion: SesionActual):
         busqueda = Busqueda(
             id=str(uuid4()), nombre=entrada.nombre, perfil=entrada.perfil,
-            definido_por=entrada.definido_por, definido_en=datetime.now(UTC),
+            definido_por=sesion.actor, definido_en=datetime.now(UTC),
             edad_minima=entrada.edad_minima, edad_maxima=entrada.edad_maxima,
             secundaria_completa=entrada.secundaria_completa,
         )
@@ -93,12 +121,57 @@ def crear_app(perfiles) -> FastAPI:
             return [por_id[resultado.id_original] for resultado in ordenados]
         return filas
 
+    @app.get("/revision")
+    def revision():
+        return [fila for fila in listar_cvs() if fila["requiere_revision"]]
+
+    @app.get("/cvs/{cv_id}")
+    def ficha_cv(cv_id: str, busqueda_id: str | None = None):
+        original = originales.obtener_original(cv_id)
+        extraccion = extracciones.obtener_extraccion(cv_id)
+        if original is None or extraccion is None:
+            raise HTTPException(404, "CV inexistente")
+        busqueda = busquedas.get(busqueda_id) if busqueda_id else None
+        return {
+            "id": cv_id,
+            "nombre": original.nombre_archivo,
+            "campos": list(extraccion.campos),
+            "pendientes": list(extraccion.campos_pendientes),
+            "confirmaciones": extracciones.confirmaciones(cv_id),
+            "resultado": evaluar.ejecutar(busqueda, extraccion) if busqueda else None,
+            "marca": "DATOS SIMULADOS — SIN VALIDEZ",
+        }
+
+    @app.put("/cvs/{cv_id}/campos/{campo}/confirmacion")
+    def confirmar_campo(
+        cv_id: str,
+        campo: str,
+        entrada: ConfirmacionEntrada,
+        sesion: SesionActual,
+    ):
+        extraccion = extracciones.obtener_extraccion(cv_id)
+        if extraccion is None:
+            raise HTTPException(404, "CV inexistente")
+        extraido = next((valor for valor in extraccion.campos if valor.nombre == campo), None)
+        if extraido is None:
+            raise HTTPException(400, "No existe ese campo extraído")
+        confirmacion = ConfirmacionCampo(
+            cv_id, campo, entrada.valor, sesion.actor, datetime.now(UTC)
+        )
+        extracciones.confirmar(confirmacion)
+        return confirmacion
+
     @app.get("/cvs/{cv_id}/original")
-    def original(cv_id: str):
+    def original(cv_id: str, sesion: SesionActual):
         cv = originales.obtener_original(cv_id)
         if cv is None:
             raise HTTPException(404, "CV inexistente")
+        extracciones.auditar_original(ConsultaOriginal(cv_id, sesion.actor, datetime.now(UTC)))
         return {"nombre": cv.nombre_archivo, "contenido_base64": b64encode(cv.contenido).decode(),
                 "marca": "DATOS SIMULADOS — SIN VALIDEZ"}
+
+    @app.get("/cvs/{cv_id}/auditoria")
+    def auditoria(cv_id: str):
+        return extracciones.consultas_original(cv_id)
 
     return app

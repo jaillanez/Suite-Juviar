@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from base64 import b64decode, b64encode
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
+
+from suite_juviar.plataforma.identidad.api.dependencias import exigir_permiso
 
 from ..application.servicios import GestionarLegajo
 from ..domain.modelos import MARCA_SIMULADA, FuenteSimuladaEnProduccion
@@ -19,7 +21,9 @@ class AdjuntoEntrada(BaseModel):
 def crear_app(servicio: GestionarLegajo, entorno: str = "prueba") -> FastAPI:
     if entorno.lower() == "produccion" and servicio.legajos.simulada:
         raise FuenteSimuladaEnProduccion("Legajo no arranca en producción con Nexus simulado.")
-    app = FastAPI(title="Legajo digital")
+    app = FastAPI(
+        title="Legajo digital", dependencies=[Depends(exigir_permiso("legajo.leer"))]
+    )
 
     @app.get("/{legajo}", response_class=HTMLResponse)
     def ficha(legajo: str) -> str:

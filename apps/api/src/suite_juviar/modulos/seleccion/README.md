@@ -19,6 +19,10 @@ el registro se conserva y se vincula al legajo creado externamente en Nexus.
   valores y fragmentos se guardan cifrados; la búsqueda técnica usa HMAC.
 - El rol PostgreSQL `suite_seleccion_rrhh` puede operar únicamente este esquema;
   el control de §6.5 demuestra en la base local que no lee EPP ni Capacitación.
+- La aplicación de Gestión permite abrir búsquedas, cargar lotes manuales, ver el
+  ranking con razones, apartar ilegibles, consultar el original auditado y confirmar
+  campos explícitamente con autor y fecha. El criterio toma el autor de la sesión,
+  no de un valor enviado por el navegador.
 
 > El filtro por edad es una decisión de la empresa, no del sistema. El asesor legal
 > debe revisarlo antes de usarlo en una búsqueda real.

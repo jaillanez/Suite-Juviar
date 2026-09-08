@@ -45,17 +45,15 @@ def test_un_usuario_de_bascula_no_puede_entregar_epp(cliente):
     assert cliente.get("/matriz", headers=cabecera).status_code == 403
 
 
-def test_control_negativo_confirma_que_el_403_mide_el_guard_de_perfil(
+def test_control_negativo_confirma_que_el_403_mide_el_permiso(
     cliente,
     contenedor,
     monkeypatch,
 ):
     """Mutación equivalente a quitar el guard: el mismo pedido deja de dar 403."""
-    monkeypatch.setattr(
-        contenedor.perfiles_acceso,
-        "resolver",
-        lambda _puesto, _sector: "deposito",
-    )
+    from suite_juviar.plataforma.identidad.api.dependencias import PERMISOS_POR_PERFIL
+
+    monkeypatch.setitem(PERMISOS_POR_PERFIL, "CAMPO", PERMISOS_POR_PERFIL["CAMPO"] | {"epp.entrega.operar"})
     respuesta = cliente.get(
         "/legajos?q=Quiroga",
         headers={"X-Legajo-Usuario": "1501"},
