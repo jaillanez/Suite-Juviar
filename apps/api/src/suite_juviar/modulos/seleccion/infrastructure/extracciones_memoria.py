@@ -13,3 +13,5 @@ class ExtraccionesEnMemoria:
     def obtener_extraccion(self, id_original: str) -> ExtraccionCV | None:
         return self._datos.get(id_original)
 
+    def listar_extracciones(self) -> list[ExtraccionCV]:
+        return list(self._datos.values())

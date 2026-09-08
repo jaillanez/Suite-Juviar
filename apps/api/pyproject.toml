@@ -161,6 +161,12 @@ source_modules = ["suite_juviar.modulos", "suite_juviar.plataforma"]
 forbidden_modules = ["apps.web"]
 
 [[tool.importlinter.contracts]]
+name = "apps.gestion consume negocio solo por HTTP"
+type = "forbidden"
+source_modules = ["apps.gestion"]
+forbidden_modules = ["suite_juviar.modulos", "suite_juviar.plataforma"]
+
+[[tool.importlinter.contracts]]
 name = "Analitica EPP permanece de solo lectura"
 type = "forbidden"
 source_modules = ["suite_juviar.modulos.epp_analitica"]

@@ -8,6 +8,8 @@ Sistema unificado ENAV S.A. — Jubiar. Monolito modular con Domain-Driven Desig
 - Instrucciones Olas 3–5: [`Docs/INSTRUCCIONES_AGENTE_OLAS_3_4_5.md`](Docs/INSTRUCCIONES_AGENTE_OLAS_3_4_5.md)
 - Fuente inicial de RRHH/EPP: [`Docs/README_rrhh_epp.md`](Docs/README_rrhh_epp.md)
 - Estado real y bloqueos: [`Docs/ESTADO_INSTRUCCIONES_AGENTE.md`](Docs/ESTADO_INSTRUCCIONES_AGENTE.md)
+- Inventario de Gestión: [`Docs/INVENTARIO_APLICACION_GESTION.md`](Docs/INVENTARIO_APLICACION_GESTION.md)
+- Guía de ejecución: [`Docs/GUIA_APLICACION_GESTION.md`](Docs/GUIA_APLICACION_GESTION.md)
 - Arquitectura y decisiones: [`Docs/ARQUITECTURA.md`](Docs/ARQUITECTURA.md)
 - Decisiones registradas: [`Docs/adr/`](Docs/adr/)
 - README operativo vigente de EPP: [`apps/api/src/suite_juviar/modulos/rrhh_epp/README.md`](apps/api/src/suite_juviar/modulos/rrhh_epp/README.md)
@@ -19,6 +21,7 @@ apps/
   consulta/   bot de consulta externa — deployable aparte, DMZ, solo lectura
   web/        sitio público aislado (Next.js 16)
   mobile/     app única con tres perfiles (Capacitor 8.5.1)
+  gestion/    escritorio interno (Next.js 16, sólo consume HTTP)
 packages/
   contratos/  tipos generados desde el OpenAPI de la API
   ui/         componentes shadcn/ui compartidos
@@ -46,6 +49,12 @@ Para ejecutar los servicios:
 pnpm dev:web
 pnpm dev:mobile
 pnpm api:dev
+```
+
+Para levantar juntos API, tablet y Gestión en modo prueba:
+
+```bash
+./iniciar_prueba.sh
 ```
 
 Las claves incluidas en `.env.example` son solo marcadores de desarrollo y deben

@@ -23,9 +23,14 @@ credencial, aprobación o dato corporativo faltante se reemplazó por una invenc
 | 4 Legajo digital | CONSTRUIDO CON ADAPTADORES | Reutiliza el puerto de legajos; adjuntos cifrados en memoria de prueba, PostgreSQL pendiente. |
 | 4 Salud | CONSTRUIDO CON ADAPTADORES | Rol médico, bitácora de lectura, catálogo muestra, reportes agregados y art. 208 preliminar. |
 | 5 Turnos | CONSTRUIDO CON ADAPTADORES | Cronograma, conciliación, propuesta y aprobación construidos; Time confinado al adaptador pendiente. |
+| Aplicación de gestión | ARMAZÓN OPERABLE | Next/React separado, menú por rol, empresa, marcas simuladas y conexión HTTP; faltan completar operaciones detalladas y los recorridos E2E de todos los pasos del plan. |
 
 `apps/web` y `apps/consulta` no fueron modificados. Nexus continúa como fuente
 externa de sólo lectura y ningún componente escribe en Nexus o Time.
+
+La aplicación interna vive en `apps/gestion`. Selección y Capacitaciones ya
+exponen una API de gestión en memoria para pruebas; no sustituyen la persistencia,
+identidad ni fuentes corporativas pendientes.
 
 ## Controles de prueba y de acceso
 

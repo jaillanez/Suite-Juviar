@@ -24,6 +24,28 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  apps/gestion:
+    dependencies:
+      '@suite-juviar/contratos':
+        specifier: workspace:*
+        version: link:../../packages/contratos
+      '@suite-juviar/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      next:
+        specifier: ^16.0.0
+        version: 16.3.4(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.8
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.8(react@19.2.8)
+    devDependencies:
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
   apps/mobile:
     dependencies:
       '@capacitor/android':

@@ -16,6 +16,9 @@ class CatalogoDiagnosticoSimulado:
     def obtener(self, codigo: str) -> Diagnostico | None:
         return self._datos.get(codigo)
 
+    def listar(self) -> list[Diagnostico]:
+        return list(self._datos.values())
+
 
 class SaludMemoria:
     def __init__(self):

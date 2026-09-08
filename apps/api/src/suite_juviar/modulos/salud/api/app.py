@@ -36,6 +36,10 @@ def crear_app(servicio: GestionarSalud, entorno: str = "prueba") -> FastAPI:
             f"{marca}<h1>Salud laboral</h1><p>Acceso exclusivo del servicio médico.</p>"
         )
 
+    @app.get("/catalogo")
+    def catalogo():
+        return servicio.catalogo.listar()
+
     @app.post("/certificados")
     def cargar(
         entrada: CertificadoEntrada,
@@ -43,9 +47,12 @@ def crear_app(servicio: GestionarSalud, entorno: str = "prueba") -> FastAPI:
     ):
         if x_rol != "MEDICO":
             raise HTTPException(403, "La carga de diagnósticos requiere el rol médico.")
-        return servicio.cargar(
-            entrada.legajo, entrada.diagnostico_codigo, entrada.desde, entrada.hasta
-        )
+        try:
+            return servicio.cargar(
+                entrada.legajo, entrada.diagnostico_codigo, entrada.desde, entrada.hasta
+            )
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
 
     @app.get("/certificados/{certificado_id}")
     def consultar(
@@ -64,5 +71,15 @@ def crear_app(servicio: GestionarSalud, entorno: str = "prueba") -> FastAPI:
             return servicio.reporte_agregado(nominado)
         except ReporteNominadoProhibido as exc:
             raise HTTPException(400, str(exc)) from exc
+
+    @app.get("/bitacora")
+    def bitacora(x_rol: str | None = Header(default=None, alias="X-Rol")):
+        if x_rol != "MEDICO":
+            raise HTTPException(403, "La bitácora de salud requiere el rol médico.")
+        return servicio.repositorio.consultas
+
+    @app.get("/articulo-208")
+    def articulo_208(antiguedad_dias: int, cargas_familia: int):
+        return servicio.aviso_articulo_208(antiguedad_dias, cargas_familia, True)
 
     return app

@@ -23,3 +23,5 @@ class OriginalesEnMemoria:
     def existe_referencia(self, referencia_fuente: str) -> bool:
         return referencia_fuente in self._por_referencia
 
+    def listar_originales(self) -> list[CVOriginal]:
+        return sorted(self._por_id.values(), key=lambda cv: cv.incorporado_en, reverse=True)

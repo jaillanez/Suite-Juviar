@@ -5,6 +5,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from suite_juviar.modulos.capacitacion.api.app import crear_app as crear_capacitacion
+from suite_juviar.modulos.capacitacion.infrastructure.configuracion_yaml import (
+    ConfiguracionCapacitacionYAML,
+)
 from suite_juviar.modulos.epp_analitica.api.app import crear_app as crear_analitica
 from suite_juviar.modulos.epp_analitica.application.servicios import AnalizarEPP
 from suite_juviar.modulos.epp_analitica.infrastructure.simulados import (
@@ -23,6 +27,8 @@ from suite_juviar.modulos.salud.infrastructure.simulados import (
     CatalogoDiagnosticoSimulado,
     SaludMemoria,
 )
+from suite_juviar.modulos.seleccion.api.app import crear_app as crear_seleccion
+from suite_juviar.modulos.seleccion.infrastructure.perfiles_yaml import CriteriosPerfilYAML
 from suite_juviar.modulos.turnos.api.app import crear_app as crear_turnos
 from suite_juviar.modulos.turnos.application.servicios import ConciliarTurnos
 from suite_juviar.modulos.turnos.infrastructure.simulados import (
@@ -47,9 +53,18 @@ def construir_subaplicaciones(rrhh):
         FuenteFichadasSimulada([]),
         ExportadorArchivoSimulado(Path("var/turnos/bandeja")),
     )
+    raiz_modulos = Path(__file__).parents[1] / "modulos"
+    perfiles_seleccion = CriteriosPerfilYAML(
+        raiz_modulos / "seleccion" / "data" / "criterios_perfil.yaml"
+    )
+    configuracion_capacitacion = ConfiguracionCapacitacionYAML(
+        raiz_modulos / "capacitacion" / "data" / "configuracion.yaml"
+    )
     return {
         "epp-analitica": crear_analitica(analitica, entorno),
         "legajo": crear_legajo(legajo, entorno),
         "salud": crear_salud(salud, entorno),
         "turnos": crear_turnos(turnos, entorno),
+        "seleccion": crear_seleccion(perfiles_seleccion),
+        "capacitaciones": crear_capacitacion(configuracion_capacitacion),
     }
