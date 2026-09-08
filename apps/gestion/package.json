@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3002",
     "build": "next build",
+    "build:static": "SJ_GESTION_EXPORT=1 NEXT_PUBLIC_API_URL=/api/v1 next build",
     "start": "next start -p 3002",
     "lint": "tsc --noEmit",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/*.test.ts"

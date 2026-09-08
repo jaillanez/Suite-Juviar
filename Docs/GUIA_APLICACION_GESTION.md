@@ -14,6 +14,17 @@ El comando abre tres servicios y los mantiene activos hasta presionar `Ctrl+C`:
 - Tablet de depósito: <http://localhost:3001>
 - API y documentación: <http://127.0.0.1:8000/docs>
 
+## Construcción para la red interna
+
+```bash
+pnpm --filter @suite-juviar/gestion build:static
+```
+
+El resultado queda en `apps/gestion/out`. Son archivos estáticos: Node se usa
+para construirlos, pero no debe quedar ejecutándose en el servidor. El servidor
+HTTP interno publica ese directorio y deriva `/api/v1/*` a FastAPI en el mismo
+origen. Véase ADR 0004.
+
 ## Perfiles de Gestión
 
 El ingreso de escritorio ofrece un selector visible porque identidad todavía es

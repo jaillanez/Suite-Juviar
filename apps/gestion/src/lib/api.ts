@@ -3,7 +3,8 @@ export class ErrorApi extends Error {
 }
 
 export async function api<T>(ruta: string, opciones?: RequestInit): Promise<T> {
-  const respuesta = await fetch(`/backend/${ruta.replace(/^\//, "")}`, {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
+  const respuesta = await fetch(`${base}/${ruta.replace(/^\//, "")}`, {
     cache: "no-store",
     ...opciones,
     headers: { "Content-Type": "application/json", ...opciones?.headers },

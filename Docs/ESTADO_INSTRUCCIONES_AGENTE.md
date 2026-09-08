@@ -32,6 +32,11 @@ La aplicación interna vive en `apps/gestion`. Selección y Capacitaciones ya
 exponen una API de gestión en memoria para pruebas; no sustituyen la persistencia,
 identidad ni fuentes corporativas pendientes.
 
+El rechazo por ruta y el menú por perfil son únicamente UX mientras la identidad
+sea declarada; no se consideran seguridad. La API deberá autorizar desde una
+sesión real. El despliegue de Gestión se decidió como exportación estática, sin
+Node persistente en producción (ADR 0004).
+
 ## Controles de prueba y de acceso
 
 - La aplicación y cada constancia muestran `SIN VALIDEZ LEGAL` mientras la firma

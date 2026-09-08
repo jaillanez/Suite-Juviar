@@ -11,6 +11,7 @@ Sistema unificado ENAV S.A. — Jubiar. Monolito modular con Domain-Driven Desig
 - Inventario de Gestión: [`Docs/INVENTARIO_APLICACION_GESTION.md`](Docs/INVENTARIO_APLICACION_GESTION.md)
 - Guía de ejecución: [`Docs/GUIA_APLICACION_GESTION.md`](Docs/GUIA_APLICACION_GESTION.md)
 - Arquitectura y decisiones: [`Docs/ARQUITECTURA.md`](Docs/ARQUITECTURA.md)
+- Endpoints pendientes de Gestión: [`Docs/ENDPOINTS_GESTION_PENDIENTES.md`](Docs/ENDPOINTS_GESTION_PENDIENTES.md)
 - Decisiones registradas: [`Docs/adr/`](Docs/adr/)
 - README operativo vigente de EPP: [`apps/api/src/suite_juviar/modulos/rrhh_epp/README.md`](apps/api/src/suite_juviar/modulos/rrhh_epp/README.md)
 - Módulos nuevos: [Analítica EPP](apps/api/src/suite_juviar/modulos/epp_analitica/README.md), [Legajo](apps/api/src/suite_juviar/modulos/legajo/README.md), [Salud](apps/api/src/suite_juviar/modulos/salud/README.md) y [Turnos](apps/api/src/suite_juviar/modulos/turnos/README.md)

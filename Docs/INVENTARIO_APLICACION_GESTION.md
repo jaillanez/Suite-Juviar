@@ -20,18 +20,11 @@ No se modifica ni se reutiliza como aplicación interna.
 
 ## API disponible y brechas
 
-| Módulo | Disponible | Falta para el plan de gestión |
-|---|---|---|
-| EPP | sesión simulada, estado, personas, entregas programadas, catálogo de lectura, stock, mínimos, alertas básicas, entrega, constancias, bitácora y matriz de lectura | CRUD/importación de catálogo, edición/validación de matriz, movimientos, outbox detallado/reenvío, búsqueda global y versiones de entregas |
-| Analítica | pantalla HTML y exportación bloqueable | API JSON del tablero, comparación y detalle de muestra |
-| Selección | dominio, ingesta, extracción y ranking | toda la API de gestión |
-| Capacitaciones | dominio y persistencia | toda la API de gestión |
-| Legajo | ficha HTML, alta y lectura de adjunto | búsqueda/listado JSON, ficha JSON, listado de adjuntos y emisión PDF |
-| Salud | carga/consulta de certificado y reporte agregado | catálogo, listado, alerta art. 208 y bitácora consultable |
-| Turnos | carga de cronograma, conciliación y aprobación en lote | lectura/historial, propuestas persistidas y bandeja de salida |
-
-Una pantalla que necesite una operación de esta columna se sostendrá agregando el
-endpoint y su prueba al backend. La interfaz no reconstruirá esas reglas.
+El inventario detallado y priorizado se mantiene en
+[`ENDPOINTS_GESTION_PENDIENTES.md`](ENDPOINTS_GESTION_PENDIENTES.md). Selección
+y Capacitaciones ya tienen una primera API de gestión en memoria; no se consideran
+cerradas hasta incorporar autorización, persistencia y todos los recorridos de
+sus pantallas.
 
 ## Decisión tecnológica
 
@@ -48,3 +41,16 @@ rehace `apps/mobile`.
 Contrato 13: `apps/gestion` no puede importar `suite_juviar.modulos` ni
 `suite_juviar.plataforma`. La aplicación sólo puede compartir contratos de datos
 y componentes visuales del workspace, y comunicarse con negocio por HTTP.
+
+## Estado de la autorización
+
+El menú por perfil y el rechazo de rutas de `apps/gestion` son controles de
+experiencia de usuario, no controles de seguridad. La identidad actual es
+declarada por el navegador. `X-Rol` y `X-Legajo-Usuario` pueden falsificarse y no
+constituyen autenticación.
+
+Hasta conectar identidad real, sólo se puede demostrar el comportamiento de la
+interfaz. La demostración no debe afirmar que RRHH está técnicamente impedido de
+consultar Salud. La condición de cierre será que la API obtenga actor, empresa y
+roles de una sesión firmada y rechace cada endpoint con `401` o `403`, con pruebas
+negativas directas contra la API además del E2E.

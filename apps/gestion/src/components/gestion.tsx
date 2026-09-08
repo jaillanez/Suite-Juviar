@@ -8,6 +8,7 @@ import { ErrorVisible, Simulado, Tabla, Vacio } from "./compartidos";
 
 const VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.1.0";
 const COMMIT = process.env.NEXT_PUBLIC_GIT_COMMIT ?? "local";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
 
 type Stock = Record<string, unknown> & { item_codigo: string; disponible: number; minimo: number; estado: string };
 type Catalogo = Record<string, unknown> & { codigo: string; producto: string; familia: string; marca: string };
@@ -49,12 +50,12 @@ function Epp() {
 
 function Analitica() {
   const hoy = new Date().toISOString().slice(0, 10); const inicio = `${new Date().getFullYear()}-01-01`;
-  return <><Encabezado titulo="Analítica EPP" descripcion="Consumo, duración real y reclamos, siempre con el tamaño de muestra visible." /><div className="metricas"><article><span>Costo</span><strong>—</strong><small>Faltan precios reales de Compras</small></article><article><span>Exportación</span><strong>Bloqueada</strong><small>La fuente actual es simulada</small></article></div><section className="tarjeta"><h2>Tablero del período</h2><p>La API disponible todavía entrega esta vista como documento. Se abre dentro de Gestión sin habilitar una exportación inválida.</p><iframe className="visor" title="Tablero analítico" src={`/backend/epp-analitica/?desde=${inicio}&hasta=${hoy}`} /></section></>;
+  return <><Encabezado titulo="Analítica EPP" descripcion="Consumo, duración real y reclamos, siempre con el tamaño de muestra visible." /><div className="metricas"><article><span>Costo</span><strong>—</strong><small>Faltan precios reales de Compras</small></article><article><span>Exportación</span><strong>Bloqueada</strong><small>La fuente actual es simulada</small></article></div><section className="tarjeta"><h2>Tablero del período</h2><p>La API disponible todavía entrega esta vista como documento. Se abre dentro de Gestión sin habilitar una exportación inválida.</p><iframe className="visor" title="Tablero analítico" src={`${API_BASE}/epp-analitica/?desde=${inicio}&hasta=${hoy}`} /></section></>;
 }
 
 function Legajo() {
-  const [numero, setNumero] = useState("1042"); const [url, setUrl] = useState("/backend/legajo/1042");
-  return <><Encabezado titulo="Legajos" descripcion="Consulta documental con formato correspondiente a la empresa del trabajador." /><section className="tarjeta"><form className="form-linea" onSubmit={(e: FormEvent) => { e.preventDefault(); setUrl(`/backend/legajo/${numero}`); }}><label>Número de legajo<input value={numero} onChange={(e) => setNumero(e.target.value)} required /></label><button className="primario">Buscar</button></form><iframe className="visor" title="Ficha del legajo" src={url} /></section></>;
+  const [numero, setNumero] = useState("1042"); const [url, setUrl] = useState(`${API_BASE}/legajo/1042`);
+  return <><Encabezado titulo="Legajos" descripcion="Consulta documental con formato correspondiente a la empresa del trabajador." /><section className="tarjeta"><form className="form-linea" onSubmit={(e: FormEvent) => { e.preventDefault(); setUrl(`${API_BASE}/legajo/${numero}`); }}><label>Número de legajo<input value={numero} onChange={(e) => setNumero(e.target.value)} required /></label><button className="primario">Buscar</button></form><iframe className="visor" title="Ficha del legajo" src={url} /></section></>;
 }
 
 function Salud() {
