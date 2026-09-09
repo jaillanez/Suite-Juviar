@@ -80,6 +80,10 @@ class RepositorioEntregas(Protocol):
 
     def listar_periodo(self, desde: date, hasta: date) -> list[Entrega]: ...
 
+    def resumen_datos_prueba(self) -> dict[str, int]: ...
+
+    def limpiar_datos_prueba(self) -> dict[str, int]: ...
+
 
 class MotorFirma(Protocol):
     """Vive en plataforma/firma, no acá (§5.3 de la base común).

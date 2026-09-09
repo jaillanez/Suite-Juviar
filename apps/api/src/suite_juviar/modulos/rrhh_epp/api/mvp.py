@@ -147,6 +147,10 @@ class MovimientoEntrada(BaseModel):
     motivo: str = Field(min_length=1)
 
 
+class LimpiezaPruebaEntrada(BaseModel):
+    confirmacion: str
+
+
 def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
     c = contenedor or construir()
     app = FastAPI(
@@ -429,6 +433,24 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             return c.importaciones_catalogo.aplicar(identificador)
         except LookupError as exc:
             raise HTTPException(404, str(exc)) from exc
+
+    @app.get("/datos-prueba", dependencies=[Depends(exigir_permiso("epp.catalogo.editar"))])
+    def previsualizar_limpieza():
+        return {
+            "entorno": c.entorno,
+            **c.entregas.resumen_datos_prueba(),
+            "confirmacion_requerida": "LIMPIAR DATOS SIMULADOS",
+        }
+
+    @app.post("/datos-prueba/limpiar", dependencies=[Depends(exigir_permiso("epp.catalogo.editar"))])
+    def limpiar_datos_prueba(entrada: LimpiezaPruebaEntrada, sesion: SesionActual):
+        if c.entorno != "prueba":
+            raise HTTPException(409, "La limpieza sólo está habilitada en entorno de prueba.")
+        if entrada.confirmacion != "LIMPIAR DATOS SIMULADOS":
+            raise HTTPException(400, "La frase de confirmación no coincide.")
+        resultado = c.entregas.limpiar_datos_prueba()
+        c.bitacora.registrar("DATOS_SIMULADOS_LIMPIADOS", sesion.actor, resultado)
+        return {"limpiado": True, **resultado}
 
     @app.get("/matriz/estado", dependencies=[Depends(exigir_permiso("epp.catalogo.leer"))])
     def estado_matriz():

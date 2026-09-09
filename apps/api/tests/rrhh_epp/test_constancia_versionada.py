@@ -79,3 +79,29 @@ def test_api_conserva_constancia_al_confirmar_la_entrega(cliente):
     assert respuesta.json()["version_constancia"] == 1
     assert respuesta.json()["anula_a"] is None
     assert cliente.get("/constancias/TABLET-CONSTANCIA-1.pdf").status_code == 200
+
+
+def test_api_reposicion_no_cambia_bytes_ni_sha256_de_constancia_anterior(cliente):
+    primera = cliente.post("/entregas", json={
+        "id_cliente": "API-CONSTANCIA-V1", "legajo": "1077",
+        "items": [{"codigo": "69", "item_codigo": "SIM-69-02", "cantidad": 1}],
+        "evidencia_firma": "data:image/png;base64,AAAA",
+        "entregada_en": "2026-03-12T10:00:00-03:00", "motivo": "DESGASTE",
+    })
+    assert primera.status_code == 200
+    antes = cliente.get("/constancias/API-CONSTANCIA-V1.pdf")
+    sha_antes = antes.headers["X-Contenido-SHA256"]
+
+    reposicion = cliente.post("/entregas", json={
+        "id_cliente": "API-CONSTANCIA-V2", "legajo": "1077",
+        "items": [{"codigo": "68", "item_codigo": "SIM-68-01", "cantidad": 1}],
+        "evidencia_firma": "data:image/png;base64,AAAA",
+        "entregada_en": "2026-03-20T10:00:00-03:00", "motivo": "ROTURA",
+    })
+    assert reposicion.status_code == 200
+    assert reposicion.json()["version_constancia"] == 2
+    assert reposicion.json()["anula_a"] == "API-CONSTANCIA-V1"
+
+    despues = cliente.get("/constancias/API-CONSTANCIA-V1.pdf")
+    assert despues.content == antes.content
+    assert despues.headers["X-Contenido-SHA256"] == sha_antes

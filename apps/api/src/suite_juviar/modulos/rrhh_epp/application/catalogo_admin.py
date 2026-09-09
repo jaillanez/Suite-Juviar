@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import zipfile
 from dataclasses import asdict
+from datetime import date
 from uuid import uuid4
 from xml.etree import ElementTree
 
@@ -47,8 +48,9 @@ def leer_items_xlsx(contenido: bytes) -> list[ItemCatalogo]:
 
 
 class ImportacionesCatalogo:
-    def __init__(self, catalogo) -> None:
+    def __init__(self, catalogo, entregas) -> None:
         self.catalogo = catalogo
+        self.entregas = entregas
         self._pendientes: dict[str, list[ItemCatalogo]] = {}
 
     def previsualizar(self, contenido: bytes) -> dict[str, object]:
@@ -57,12 +59,19 @@ class ImportacionesCatalogo:
         self._pendientes[identificador] = items
         actuales = {item.codigo_interno: item for item in self.catalogo.listar_items()}
         nuevos = {item.codigo_interno: item for item in items}
+        desaparecen = actuales.keys() - nuevos.keys()
+        afectadas = [
+            entrega for entrega in self.entregas.listar_periodo(date.min, date.max)
+            if any(linea.item_codigo in desaparecen for linea in entrega.lineas)
+        ]
         return {
             "id": identificador,
             "agrega": sorted(nuevos.keys() - actuales.keys()),
             "cambia": sorted(codigo for codigo in nuevos.keys() & actuales.keys()
                               if asdict(nuevos[codigo]) != asdict(actuales[codigo])),
-            "desaparece": sorted(actuales.keys() - nuevos.keys()),
+            "desaparece": sorted(desaparecen),
+            "entregas_afectadas": len(afectadas),
+            "entregas_afectadas_ids": sorted(entrega.id for entrega in afectadas),
             "total": len(items),
         }
 

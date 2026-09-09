@@ -136,6 +136,25 @@ class EntregasPostgreSQL:
             )
             return [_a_entrega(fila) for fila in cur.fetchall()]
 
+    def resumen_datos_prueba(self) -> dict[str, int]:
+        with self._base.conectar() as cn, cn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM rrhh_epp.entrega_epp WHERE firma_simulada")
+            entregas = int(cur.fetchone()[0])
+            cur.execute("SELECT COUNT(*) FROM rrhh_epp.constancia_original WHERE simulado")
+            constancias = int(cur.fetchone()[0])
+            cur.execute("SELECT COUNT(*) FROM rrhh_epp.stock_item WHERE item_codigo LIKE 'SIM-%'")
+            items_stock = int(cur.fetchone()[0])
+        return {"entregas": entregas, "constancias": constancias, "items_stock": items_stock}
+
+    def limpiar_datos_prueba(self) -> dict[str, int]:
+        resumen = self.resumen_datos_prueba()
+        with self._base.conectar() as cn, cn.cursor() as cur:
+            cur.execute("DELETE FROM rrhh_epp.constancia_original WHERE simulado")
+            cur.execute("DELETE FROM rrhh_epp.entrega_epp WHERE firma_simulada")
+            cur.execute("DELETE FROM rrhh_epp.aviso_compras WHERE item_codigo LIKE 'SIM-%'")
+            cur.execute("DELETE FROM rrhh_epp.stock_item WHERE item_codigo LIKE 'SIM-%'")
+        return resumen
+
 
 class BitacoraPostgreSQL:
     def __init__(self, base: BasePostgreSQL) -> None:

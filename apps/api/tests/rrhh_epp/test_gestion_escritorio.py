@@ -28,7 +28,10 @@ def xlsx_items(filas: list[list[str]]) -> bytes:
     return salida.getvalue()
 
 
-def test_hys_previsualiza_y_aplica_reemplazo_sin_borrar_historicos(cliente):
+def test_hys_previsualiza_entregas_afectadas_y_aplica_sin_borrar_historicos(cliente, contenedor):
+    from .test_stock import _entregar
+
+    _entregar(contenedor, id_entrega="ENTREGA-SIM-AFECTADA")
     filas = [
         ["elemento_codigo", "codigo_interno", "marca", "modelo", "talle", "color"],
         ["68", "REAL-68-01", "Marca", "Modelo", "42", "Negro"],
@@ -41,6 +44,8 @@ def test_hys_previsualiza_y_aplica_reemplazo_sin_borrar_historicos(cliente):
     )
     assert previa.status_code == 200
     assert "REAL-68-01" in previa.json()["agrega"]
+    assert previa.json()["entregas_afectadas"] == 1
+    assert previa.json()["entregas_afectadas_ids"] == ["ENTREGA-SIM-AFECTADA"]
     aplicado = cliente.post(
         f"/catalogo/importaciones/{previa.json()['id']}/aplicar", headers=cabecera
     )
@@ -48,6 +53,36 @@ def test_hys_previsualiza_y_aplica_reemplazo_sin_borrar_historicos(cliente):
     antiguo = cliente.get("/catalogo", headers={"X-Legajo-Usuario": "1210"}).json()
     item_simulado = next(item for e in antiguo for item in e["items"] if item["codigo_interno"] == "SIM-68-01")
     assert item_simulado["activo"] is False
+
+
+def test_limpieza_explicita_elimina_solo_datos_simulados_y_conserva_auditoria(cliente, contenedor):
+    from .test_stock import _entregar
+
+    _entregar(contenedor, id_entrega="ENTREGA-A-LIMPIAR")
+    assert contenedor.obtener_constancia_pdf.ejecutar("ENTREGA-A-LIMPIAR") is not None
+    hys = {"X-Perfil-Simulado": "HYS", "X-Actor-Simulado": "hys-prueba"}
+    previa = cliente.get("/datos-prueba", headers=hys).json()
+    assert previa["entregas"] == 1
+    assert previa["constancias"] == 1
+    assert previa["items_stock"] == 435
+    assert cliente.post(
+        "/datos-prueba/limpiar", headers=hys, json={"confirmacion": "SI"}
+    ).status_code == 400
+
+    limpieza = cliente.post(
+        "/datos-prueba/limpiar", headers=hys,
+        json={"confirmacion": "LIMPIAR DATOS SIMULADOS"},
+    )
+    assert limpieza.status_code == 200
+    assert contenedor.entregas.obtener("ENTREGA-A-LIMPIAR") is None
+    assert contenedor.stock.listar() == []
+    assert contenedor.bitacora.ultimos(1)[0]["evento"] == "DATOS_SIMULADOS_LIMPIADOS"
+
+    contenedor.entorno = "desarrollo"
+    assert cliente.post(
+        "/datos-prueba/limpiar", headers=hys,
+        json={"confirmacion": "LIMPIAR DATOS SIMULADOS"},
+    ).status_code == 409
 
 
 def test_catalogo_exige_sesion_y_permiso(cliente):

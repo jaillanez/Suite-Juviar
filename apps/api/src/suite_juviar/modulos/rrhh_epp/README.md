@@ -45,6 +45,10 @@ limitado al aislamiento de las pruebas automatizadas.
   previsualizado, matriz con firma e historial visibles, movimientos y outbox de
   stock, y consulta de entregas/archivos versionados. El recorrido Playwright vive
   en `apps/gestion/e2e/bloque-2.spec.ts`.
+- La previsualización del reemplazo informa cuántas entregas quedarían vinculadas
+  a ítems dados de baja. Antes de cargar el catálogo real, HyS puede ejecutar una
+  limpieza confirmada de entregas, constancias y stock simulados; sólo funciona
+  en entorno `prueba` y conserva la bitácora del procedimiento.
 - La autorización se declara por permiso en cada ruta. Los perfiles sólo agrupan
   permisos y `resolver_sesion()` es la única costura que cambiará con identidad real.
 

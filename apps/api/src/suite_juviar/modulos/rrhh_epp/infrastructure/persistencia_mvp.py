@@ -236,6 +236,29 @@ class EntregasSQLite:
         ).fetchall()
         return [self._a_entrega(f) for f in filas]
 
+    def resumen_datos_prueba(self) -> dict[str, int]:
+        return {
+            "entregas": int(self._cn.execute(
+                "SELECT COUNT(*) FROM entrega_epp WHERE firma_simulada = 1"
+            ).fetchone()[0]),
+            "constancias": int(self._cn.execute(
+                "SELECT COUNT(*) FROM constancia_original WHERE simulado = 1"
+            ).fetchone()[0]),
+            "items_stock": int(self._cn.execute(
+                "SELECT COUNT(*) FROM stock_item WHERE item_codigo LIKE 'SIM-%'"
+            ).fetchone()[0]),
+        }
+
+    def limpiar_datos_prueba(self) -> dict[str, int]:
+        resumen = self.resumen_datos_prueba()
+        with self._cn:
+            self._cn.execute("DELETE FROM constancia_original WHERE simulado = 1")
+            self._cn.execute("DELETE FROM entrega_epp WHERE firma_simulada = 1")
+            self._cn.execute("DELETE FROM aviso_compras WHERE item_codigo LIKE 'SIM-%'")
+            self._cn.execute("DELETE FROM stock_movimiento WHERE item_codigo LIKE 'SIM-%'")
+            self._cn.execute("DELETE FROM stock_item WHERE item_codigo LIKE 'SIM-%'")
+        return resumen
+
 
 class BitacoraSQLite:
     def __init__(self, base: BaseLocal) -> None:

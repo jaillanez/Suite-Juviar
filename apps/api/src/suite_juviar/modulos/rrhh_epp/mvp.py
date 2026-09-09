@@ -250,5 +250,5 @@ def construir(
         ),
         persistencia=tipo_persistencia,
         email_compras=email_compras,
-        importaciones_catalogo=ImportacionesCatalogo(catalogo),
+        importaciones_catalogo=ImportacionesCatalogo(catalogo, entregas),
     )

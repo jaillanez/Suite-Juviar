@@ -58,6 +58,7 @@ API porque no dependen de la red ni del navegador.
 |---|---|---|
 | EPP | Catálogo, matriz, stock y entregas | Playwright |
 | EPP | Reposición y constancia anterior inmutable | `test_constancia_versionada.py` |
+| EPP | Reemplazo informa entregas afectadas y limpieza confirmada | `test_gestion_escritorio.py` |
 | EPP | URL/operación sin permiso | Playwright + `test_autorizacion.py` |
 | EPP | Entrega sin existencias | `test_stock.py` |
 | EPP | SMTP inválido/casilla inexistente | `test_stock.py` |
@@ -66,6 +67,12 @@ API porque no dependen de la red ni del navegador.
 | Selección | Perfil sin permiso | `test_api_gestion.py` |
 | Selección | Ilegible apartado, nunca descartado | Playwright + `test_api_gestion.py` |
 | Selección | Confirmación manual explícita con autor | `test_api_gestion.py` |
+
+Antes del reemplazo real, la previsualización debe indicar `entregas_afectadas`.
+La limpieza está disponible en Catálogo sólo para `SJ_ENTORNO=prueba` y requiere
+escribir exactamente `LIMPIAR DATOS SIMULADOS`. Elimina entregas, constancias y
+stock `SIM-*`; conserva la bitácora y no modifica el catálogo hasta que HyS aplique
+el reemplazo por separado.
 
 ## Tablet
 
