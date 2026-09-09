@@ -85,7 +85,7 @@ def test_entrega_estacional_no_cierra_vida_util_y_reclamos_son_proporcion():
     movimientos = [
         movimiento(0, "ROTURA"),
         MovimientoEPP(
-            "1", date(2026, 2, 1), "10", "BOD", "OPE", "68", "SIM-68-01", 1, None, "ESTACIONAL"
+            "1", date(2026, 2, 1), "10", "BOD", "OPE", "68", "SIM-68-01", 1, None, "ENTREGA_ESTACIONAL"
         ),
         MovimientoEPP(
             "2", date(2026, 3, 1), "10", "BOD", "OPE", "68", "SIM-68-01", 1, None, "ROTURA"

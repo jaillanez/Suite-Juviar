@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 node_modules/
 .next/
+apps/gestion/next-env.d.ts
 *.tsbuildinfo
 test-results/
 playwright-report/

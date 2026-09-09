@@ -73,3 +73,19 @@ test("Analítica: filtro, muestra, fecha de corte y bloqueo SIM explicado", asyn
   const rechazo = await request.get(`${base}/epp-analitica/tablero?desde=2026-01-01&hasta=2026-12-31`, { headers: { "X-Perfil-Simulado": "RRHH" } });
   expect(rechazo.status()).toBe(403);
 });
+
+test("Analítica: una reposición sólo estacional no se presenta como rotura", async ({ page, request }) => {
+  const base = "http://127.0.0.1:8012/api/v1";
+  const hys = { "X-Perfil-Simulado": "HYS" }; const deposito = { "X-Perfil-Simulado": "DEPOSITO", "X-Legajo-Usuario": "1210" };
+  const catalogo = await (await request.get(`${base}/rrhh-epp/catalogo`, { headers: hys })).json();
+  const elemento = catalogo.at(-1); const item = elemento.items[0].codigo_interno;
+  expect((await request.put(`${base}/rrhh-epp/stock/${item}`, { headers: deposito, data: { disponible: 10, minimo: 1 } })).ok()).toBeTruthy();
+  const comun = { legajo: "1210", items: [{ codigo: elemento.codigo, item_codigo: item, cantidad: 1 }], metodo_firma: "PIN", evidencia_firma: "1234" };
+  expect((await request.post(`${base}/rrhh-epp/entregas`, { headers: deposito, data: { ...comun, id_cliente: "ANA-EST-INICIAL-E2E", entregada_en: "2026-01-01T12:00:00Z", circuito: "ESPONTANEA", motivo: "DESGASTE" } })).ok()).toBeTruthy();
+  expect((await request.post(`${base}/rrhh-epp/entregas`, { headers: deposito, data: { ...comun, id_cliente: "ANA-EST-CONVENIO-E2E", entregada_en: "2026-07-01T12:00:00Z", circuito: "PROGRAMADA", motivo: "ENTREGA_ESTACIONAL" } })).ok()).toBeTruthy();
+  await ingresar(page, "HYS", "/analitica");
+  await page.getByLabel("Hasta").fill("2026-12-31"); await page.getByRole("button", { name: "Aplicar filtros" }).click();
+  const fila = page.getByRole("row").filter({ hasText: item });
+  await expect(fila).toContainText("Sin datos suficientes (N=0)");
+  await expect(fila).not.toContainText("días");
+});
