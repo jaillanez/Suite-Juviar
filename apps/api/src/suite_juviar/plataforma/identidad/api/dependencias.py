@@ -21,7 +21,7 @@ PERMISOS_POR_PERFIL: dict[str, frozenset[str]] = {
     "BASCULA": frozenset({"suite.acceder", "recepcion.romaneo.crear"}),
     "RRHH": frozenset({
         "suite.acceder", "epp.catalogo.leer", "epp.entrega.leer", "epp.stock.leer",
-        "seleccion.gestionar", "capacitacion.gestionar", "legajo.leer",
+        "seleccion.gestionar", "capacitacion.gestionar", "legajo.leer", "legajo.adjuntos.gestionar",
         "turnos.cronograma.leer", "turnos.imputacion.aprobar",
     }),
     "MEDICO": frozenset({"suite.acceder", "salud.diagnostico.leer", "salud.certificado.gestionar"}),

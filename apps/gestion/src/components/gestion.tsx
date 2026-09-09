@@ -4,19 +4,16 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { Empresa, nombres, puedeEntrar, Perfil, perfiles, Seccion } from "@/lib/acceso";
 import { api, ErrorApi } from "@/lib/api";
-import { ErrorVisible, Simulado, Tabla, Vacio } from "./compartidos";
+import { ErrorVisible, Simulado } from "./compartidos";
 import { EppGestion } from "./epp-gestion";
 import { SeleccionGestion } from "./seleccion-gestion";
 import { CapacitacionesGestion } from "./capacitaciones-gestion";
 import { AnaliticaGestion } from "./analitica-gestion";
+import { LegajoGestion } from "./legajo-gestion";
+import { SaludGestion } from "./salud-gestion";
 
 const VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.1.0";
 const COMMIT = process.env.NEXT_PUBLIC_GIT_COMMIT ?? "local";
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
-
-type Stock = Record<string, unknown> & { item_codigo: string; disponible: number; minimo: number; estado: string };
-type Catalogo = Record<string, unknown> & { codigo: string; producto: string; familia: string; marca: string };
-
 function Icono({ nombre }: { nombre: Seccion }) {
   const rutas: Record<Seccion, string> = {
     inicio: "M4 5h16v14H4z M8 9h3v3H8z M14 9h2 M14 13h2 M8 16h8",
@@ -55,14 +52,11 @@ function Analitica() {
 }
 
 function Legajo() {
-  const [numero, setNumero] = useState("1042"); const [url, setUrl] = useState(`${API_BASE}/legajo/1042`);
-  return <><Encabezado titulo="Legajos" descripcion="Consulta documental con formato correspondiente a la empresa del trabajador." /><section className="tarjeta"><form className="form-linea" onSubmit={(e: FormEvent) => { e.preventDefault(); setUrl(`${API_BASE}/legajo/${numero}`); }}><label>Número de legajo<input value={numero} onChange={(e) => setNumero(e.target.value)} required /></label><button className="primario">Buscar</button></form><iframe className="visor" title="Ficha del legajo" src={url} /></section></>;
+  return <><Encabezado titulo="Legajos" descripcion="Búsqueda, ficha de Nexus en sólo lectura y documentación cifrada." /><LegajoGestion /></>;
 }
 
 function Salud() {
-  const [mensaje, setMensaje] = useState(""); const [error, setError] = useState("");
-  async function cargar(e: FormEvent<HTMLFormElement>) { e.preventDefault(); setError(""); const f = new FormData(e.currentTarget); try { const r = await api<{ id: string }>("salud/certificados", { method: "POST", headers: { "X-Rol": "MEDICO" }, body: JSON.stringify(Object.fromEntries(f)) }); setMensaje(`Certificado ${r.id} cargado y auditado.`); } catch (x) { setError(x instanceof Error ? x.message : "No fue posible cargar el certificado."); } }
-  return <><Encabezado titulo="Salud laboral" descripcion="Área separada. Acceso exclusivo del Servicio Médico." />{error && <ErrorVisible mensaje={error} />}{mensaje && <div className="aviso-exito" role="status">{mensaje}</div>}<section className="tarjeta"><h2>Nuevo certificado</h2><form className="form-grid" onSubmit={cargar}><label>Legajo<input name="legajo" required defaultValue="1042" /></label><label>Diagnóstico del catálogo<select name="diagnostico_codigo" required><option value="MUESTRA-RESP">Afección respiratoria (muestra)</option><option value="MUESTRA-TRAU">Traumatismo (muestra)</option></select></label><label>Desde<input name="desde" type="date" required /></label><label>Hasta<input name="hasta" type="date" required /></label><button className="primario">Registrar certificado</button></form><p className="preliminar">La evaluación del artículo 208 es preliminar hasta contar con las fuentes reales.</p></section></>;
+  return <><Encabezado titulo="Salud laboral" descripcion="Área separada, auditada y exclusiva del Servicio Médico." /><SaludGestion /></>;
 }
 
 function Turnos() {
@@ -70,9 +64,6 @@ function Turnos() {
   async function cargar(e: FormEvent<HTMLFormElement>) { e.preventDefault(); const f = Object.fromEntries(new FormData(e.currentTarget)); try { const r = await api<{ id: string }>("turnos/cronogramas", { method: "POST", body: JSON.stringify(f) }); setSalida(`Cronograma ${r.id} registrado. Todavía no genera una imputación.`); } catch (x) { setError(x instanceof Error ? x.message : "No fue posible registrar."); } }
   return <><Encabezado titulo="Turnos y conciliación" descripcion="Cronogramas, desvíos y propuestas que RRHH debe aprobar expresamente." />{error && <ErrorVisible mensaje={error} />}{salida && <div className="aviso-exito">{salida}</div>}<section className="tarjeta"><h2>Cargar cronograma</h2><form className="form-grid" onSubmit={cargar}><label>Legajo<input name="legajo" defaultValue="1042" required /></label><label>Sector<input name="sector" defaultValue="Bodega" required /></label><label>Fecha<input name="fecha" type="date" required /></label><label>Desde<input name="desde" type="time" required /></label><label>Hasta<input name="hasta" type="time" required /></label><input type="hidden" name="autor" value="supervisor-prueba" /><button className="primario">Guardar cronograma</button></form><p className="ayuda">Guardar un cronograma no imputa novedades. La aprobación se realiza luego, en lote, por RRHH.</p></section></>;
 }
-
-type Busqueda = Record<string, unknown> & { id: string; nombre: string; perfil: string; definido_por: string; definido_en: string };
-type Cv = Record<string, unknown> & { id: string; nombre: string; requiere_revision: boolean; resultado?: { puntaje: number; razones: string[] } };
 
 function Seleccion() {
   return <><Encabezado titulo="Selección" descripcion="Búsquedas explicables, ranking revisable y originales siempre conservados." /><SeleccionGestion /></>;

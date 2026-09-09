@@ -67,6 +67,18 @@ button:hover {
 .primario:hover {
   background: var(--verde2);
 }
+.boton {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  color: var(--verde);
+  background: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
 .peligro {
   background: var(--rojo);
   color: #fff;
@@ -544,6 +556,10 @@ th button {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+.acciones-inlinea {
+  display: inline-flex;
+  gap: 8px;
 }
 .carga {
   display: inline-flex;

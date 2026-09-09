@@ -23,7 +23,12 @@ class GestionarLegajo:
             "sector": persona.sector,
             "puesto": persona.puesto,
             "formato": formato,
+            "origen": "Nexus",
+            "solo_lectura": True,
         }
+
+    def buscar(self, **filtros):
+        return self.legajos.buscar(**filtros)
 
     def adjuntar(self, legajo: str, nombre: str, contenido: bytes) -> Adjunto:
         if self.legajos.obtener(legajo) is None:
@@ -31,3 +36,11 @@ class GestionarLegajo:
         adjunto = Adjunto(str(uuid4()), legajo, nombre, bytes(contenido))
         self.adjuntos.guardar(adjunto)
         return adjunto
+
+    def baja_adjunto(self, adjunto_id: str, motivo: str, actor: str) -> Adjunto:
+        adjunto = self.adjuntos.obtener(adjunto_id)
+        if adjunto is None:
+            raise LookupError("Adjunto inexistente")
+        actualizado = adjunto.dar_baja(motivo, actor)
+        self.adjuntos.reemplazar(actualizado)
+        return actualizado

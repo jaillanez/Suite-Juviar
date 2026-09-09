@@ -23,14 +23,16 @@ credencial, aprobación o dato corporativo faltante se reemplazó por una invenc
 | 4 Legajo digital | CONSTRUIDO CON ADAPTADORES | Reutiliza el puerto de legajos; adjuntos cifrados en memoria de prueba, PostgreSQL pendiente. |
 | 4 Salud | CONSTRUIDO CON ADAPTADORES | Rol médico, bitácora de lectura, catálogo muestra, reportes agregados y art. 208 preliminar. |
 | 5 Turnos | CONSTRUIDO CON ADAPTADORES | Cronograma, conciliación, propuesta y aprobación construidos; Time confinado al adaptador pendiente. |
-| Aplicación de gestión — Bloque 2 | CONSTRUIDO Y PROBADO | Autorización API, cuatro áreas EPP y Selección operables; E2E Playwright por módulo. Identidad corporativa y datos reales siguen pendientes. |
+| Aplicación de gestión — Bloques 2 a 4 | CONSTRUIDO Y PROBADO | EPP, Selección, Capacitaciones, Analítica, Legajo y Salud operables; autorización efectiva en API y E2E por bloque. Identidad corporativa y datos reales siguen pendientes. |
 
 `apps/web` y `apps/consulta` no fueron modificados. Nexus continúa como fuente
 externa de sólo lectura y ningún componente escribe en Nexus o Time.
 
-La aplicación interna vive en `apps/gestion`. Selección y Capacitaciones ya
-exponen una API de gestión en memoria para pruebas; no sustituyen la persistencia,
-identidad ni fuentes corporativas pendientes.
+La aplicación interna vive en `apps/gestion`. Selección, Capacitaciones, Legajo y
+Salud exponen una API de gestión en memoria para pruebas; no sustituyen la
+persistencia, identidad ni fuentes corporativas pendientes. En Salud, la bitácora
+es inmutable, no registra diagnósticos, y el cálculo preliminar del artículo 208
+no admite impresión ni exportación.
 
 El menú por perfil es únicamente UX. El rechazo efectivo ya lo realiza la API con
 permisos declarados por ruta; `resolver_sesion()` mantiene aislada la identidad
@@ -49,7 +51,7 @@ decidió como exportación estática, sin Node persistente en producción (ADR 0
   roles y confirma tanto el permiso propio como los rechazos cruzados.
 - Los README de los tres módulos conservan su tabla de deuda técnica actualizada.
 - Una prueba recorre las rutas reales, incluidas subaplicaciones montadas, y falla
-  si alguna carece de permiso. Los E2E de EPP y Selección se ejecutan con
+  si alguna carece de permiso. Los E2E de los Bloques 2, 3 y 4 se ejecutan con
   `pnpm --filter @suite-juviar/gestion test:e2e` y servicios locales aislados.
 
 ## Límites de los adaptadores respetados

@@ -9,7 +9,8 @@ MARCA_SIMULADA = "DATOS SIMULADOS — SIN VALIDEZ"
 @dataclass(frozen=True, slots=True)
 class Diagnostico:
     codigo: str
-    nombre: str
+    descripcion: str
+    padre_codigo: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,13 +20,25 @@ class CertificadoMedico:
     diagnostico_codigo: str
     desde: date
     hasta: date
+    dias: int
+    profesional: str
+    adjunto_id: str
 
 
 @dataclass(frozen=True, slots=True)
 class ConsultaAuditoria:
-    certificado_id: str
+    id: str
     actor: str
     momento: datetime
+    legajo: str | None
+    accion: str
+
+
+@dataclass(frozen=True, slots=True)
+class AdjuntoSalud:
+    id: str
+    nombre: str
+    contenido: bytes
 
 
 class AccesoSaludDenegado(Exception):

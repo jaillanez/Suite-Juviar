@@ -24,7 +24,9 @@ from suite_juviar.modulos.legajo.infrastructure.simulados import (
 from suite_juviar.modulos.salud.api.app import crear_app as crear_salud
 from suite_juviar.modulos.salud.application.servicios import GestionarSalud
 from suite_juviar.modulos.salud.infrastructure.simulados import (
+    AdjuntosSaludCifradosMemoria,
     CatalogoDiagnosticoSimulado,
+    FuenteLaboralSimulada,
     SaludMemoria,
 )
 from suite_juviar.modulos.seleccion.api.app import crear_app as crear_seleccion
@@ -48,7 +50,10 @@ def construir_subaplicaciones(rrhh):
     legajo = GestionarLegajo(
         FuenteLegajosDesdePuerto(rrhh.legajos), AdjuntosCifradosMemoria(clave_adjuntos)
     )
-    salud = GestionarSalud(CatalogoDiagnosticoSimulado(), SaludMemoria())
+    salud = GestionarSalud(
+        CatalogoDiagnosticoSimulado(), SaludMemoria(),
+        AdjuntosSaludCifradosMemoria(clave_adjuntos), FuenteLaboralSimulada(),
+    )
     turnos = ConciliarTurnos(
         FuenteFichadasSimulada([]),
         ExportadorArchivoSimulado(Path("var/turnos/bandeja")),

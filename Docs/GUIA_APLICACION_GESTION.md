@@ -86,6 +86,27 @@ de corte visibles, y el bloqueo explicado de exportación ante `SIM-*`. La durac
 sólo se cierra ante reposición por rotura o desgaste; los casos estacionales y la
 muestra insuficiente se verifican en `test_analitica.py`.
 
+## Cobertura del Bloque 4
+
+Los recorridos de navegador están en `apps/gestion/e2e/bloque-4.spec.ts`.
+
+| Módulo | Caso | Prueba |
+|---|---|---|
+| Legajo | Búsqueda por apellido, legajo, sector y empresa | API + Playwright |
+| Legajo | Ficha Nexus de sólo lectura y formato según empresa del legajo | API + Playwright |
+| Legajo | Original cifrado, visualización y baja lógica con motivo | API + Playwright |
+| Legajo | Ningún campo o indicador médico cruza a la respuesta | API + Playwright |
+| Salud | Certificado completo y escaneo original cifrado | API + Playwright |
+| Salud | RRHH recibe 403 aunque intente la URL directa | API + Playwright |
+| Salud | Artículo 208 preliminar sin imprimir ni exportar | API + Playwright |
+| Salud | Reporte nunca nominado y grupos unitarios suprimidos | API + Playwright |
+| Salud | Bitácora sin diagnóstico, consulta auditada e inmutabilidad | API + Playwright |
+| Salud | Control por mutación: permisos médicos agregados a RRHH son detectables | API |
+
+Los adjuntos de ambos módulos viven cifrados en memoria sólo para la demostración.
+No deben cargarse legajos ni certificados reales hasta conectar la persistencia
+PostgreSQL definitiva y sus claves administradas.
+
 ## Tablet
 
 En <http://localhost:3001>, ingrese con el legajo `1210` (depósito) y busque al
