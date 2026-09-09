@@ -42,6 +42,7 @@ class FuenteEntregasDesdePuerto:
                 linea.item_codigo,
                 linea.cantidad,
                 linea.reclamo_calidad,
+                entrega.motivo,
             )
             for entrega in self._repositorio.listar_periodo(desde, hasta)
             for linea in entrega.lineas

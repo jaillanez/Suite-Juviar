@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from collections import defaultdict
 from datetime import UTC, date, datetime
 from uuid import UUID, uuid5
 
@@ -70,24 +69,62 @@ class ReportesCapacitacion:
         self._repositorio = repositorio
         self._configuracion = configuracion
 
-    def porcentaje_tema(self, tema_id: str) -> float:
-        registros = [
-            asistencia
-            for dictado in self._repositorio.dictados_del_tema(tema_id)
-            for asistencia in self._repositorio.asistencias_del_dictado(dictado.id)
-        ]
-        return self._porcentaje(registros)
+    def resumen_tema(self, tema_id: str, corte: date | None = None) -> dict[str, object]:
+        dictados = self._repositorio.dictados_del_tema(tema_id)
+        convocados = {legajo for d in dictados for legajo in d.convocados}
+        asistentes = {
+            a.participante.legajo
+            for d in dictados
+            for a in self._repositorio.asistencias_del_dictado(d.id)
+            if a.presente
+        }
+        tiene_convocatoria = any(d.convocatoria_tipo for d in dictados)
+        porcentaje = (
+            round(100 * len(asistentes & convocados) / len(convocados), 2)
+            if tiene_convocatoria and convocados
+            else None
+        )
+        return {
+            "tema_id": tema_id,
+            "asistentes": len(asistentes),
+            "convocados": len(convocados) if tiene_convocatoria else None,
+            "porcentaje": porcentaje,
+            "convocatoria": [
+                {
+                    "dictado_id": d.id,
+                    "tipo": d.convocatoria_tipo,
+                    "detalle": d.convocatoria_detalle,
+                    "cantidad": len(d.convocados),
+                }
+                for d in dictados
+                if d.convocatoria_tipo
+            ],
+            "fecha_corte": (corte or datetime.now(UTC).date()).isoformat(),
+        }
 
-    def porcentaje_persona(self, legajo: str) -> float:
-        registros = [
-            asistencia
-            for asistencia in self._repositorio.todas_las_asistencias()
-            if asistencia.participante.legajo == legajo
-        ]
-        return self._porcentaje(registros)
+    def porcentaje_tema(self, tema_id: str) -> float | None:
+        return self.resumen_tema(tema_id)["porcentaje"]  # type: ignore[return-value]
+
+    def porcentaje_persona(self, legajo: str) -> float | None:
+        temas_convocados = {
+            d.tema_id
+            for tema in self._temas()
+            for d in self._repositorio.dictados_del_tema(tema.id)
+            if legajo in d.convocados
+        }
+        if not temas_convocados:
+            return None
+        temas_asistidos = {
+            d.tema_id
+            for a in self._repositorio.todas_las_asistencias()
+            if a.participante.legajo == legajo
+            and a.presente
+            and (d := self._repositorio.obtener_dictado(a.dictado_id)) is not None
+        }
+        return round(100 * len(temas_asistidos & temas_convocados) / len(temas_convocados), 2)
 
     def horas_por_persona(self, legajo: str, anio: int) -> float:
-        total = 0.0
+        temas_contados: set[str] = set()
         for asistencia in self._repositorio.todas_las_asistencias():
             if asistencia.participante.legajo != legajo or not asistencia.presente:
                 continue
@@ -95,24 +132,71 @@ class ReportesCapacitacion:
             if dictado is None or dictado.fecha.year != anio:
                 continue
             tema = self._repositorio.obtener_tema(dictado.tema_id)
-            total += tema.horas if tema else 0
-        return total
+            if tema:
+                temas_contados.add(tema.id)
+        return sum(
+            self._repositorio.obtener_tema(t).horas
+            for t in temas_contados
+            if self._repositorio.obtener_tema(t)
+        )
 
     def alertas_supervisores(self) -> list[AlertaSupervisor]:
-        por_tema_y_legajo: dict[tuple[str, str], list[Asistencia]] = defaultdict(list)
+        por_tema_y_legajo: dict[tuple[str, str], Participante] = {}
         for asistencia in self._repositorio.todas_las_asistencias():
             if not asistencia.participante.supervisor:
                 continue
             dictado = self._repositorio.obtener_dictado(asistencia.dictado_id)
             if dictado:
-                por_tema_y_legajo[(dictado.tema_id, asistencia.participante.legajo)].append(
-                    asistencia
+                por_tema_y_legajo[(dictado.tema_id, asistencia.participante.legajo)] = (
+                    asistencia.participante
                 )
         return [
             AlertaSupervisor(tema, legajo, porcentaje, self._configuracion.umbral_supervisor)
-            for (tema, legajo), registros in por_tema_y_legajo.items()
-            if (porcentaje := self._porcentaje(registros)) < self._configuracion.umbral_supervisor
+            for (tema, legajo), _ in por_tema_y_legajo.items()
+            if (porcentaje := self.porcentaje_persona_tema(legajo, tema)) is not None
+            and porcentaje < self._configuracion.umbral_supervisor
         ]
+
+    def recapacitaciones(self, corte: date | None = None) -> list[dict[str, object]]:
+        fecha_corte = corte or datetime.now(UTC).date()
+        ultimas: dict[tuple[str, str], tuple[date, str]] = {}
+        for asistencia in self._repositorio.todas_las_asistencias():
+            if not asistencia.presente:
+                continue
+            dictado = self._repositorio.obtener_dictado(asistencia.dictado_id)
+            tema = self._repositorio.obtener_tema(dictado.tema_id) if dictado else None
+            if not dictado or not tema or tema.periodicidad_meses is None:
+                continue
+            clave = (tema.id, asistencia.participante.legajo)
+            if clave not in ultimas or dictado.fecha > ultimas[clave][0]:
+                ultimas[clave] = (dictado.fecha, asistencia.participante.nombre_completo)
+        avisos = []
+        for (tema_id, legajo), (ultima, nombre) in ultimas.items():
+            tema = self._repositorio.obtener_tema(tema_id)
+            if tema is None or tema.periodicidad_meses is None:
+                continue
+            indice = ultima.year * 12 + ultima.month - 1 + tema.periodicidad_meses
+            vencimiento = date(indice // 12, indice % 12 + 1, min(ultima.day, 28))
+            if vencimiento <= fecha_corte:
+                avisos.append({"tema_id": tema_id, "tema": tema.nombre, "legajo": legajo,
+                               "nombre": nombre, "ultima_asistencia": ultima.isoformat(),
+                               "recapacitar_desde": vencimiento.isoformat(), "dueno_periodicidad": "Higiene y Seguridad"})
+        return avisos
+
+    def porcentaje_persona_tema(self, legajo: str, tema_id: str) -> float | None:
+        dictados = self._repositorio.dictados_del_tema(tema_id)
+        if not any(legajo in d.convocados for d in dictados):
+            return None
+        asistio = any(
+            a.participante.legajo == legajo and a.presente
+            for d in dictados
+            for a in self._repositorio.asistencias_del_dictado(d.id)
+        )
+        return 100.0 if asistio else 0.0
+
+    def _temas(self):
+        temas = getattr(self._repositorio, "temas", None)
+        return list(temas.values()) if temas is not None else []
 
     @staticmethod
     def _porcentaje(registros: list[Asistencia]) -> float:

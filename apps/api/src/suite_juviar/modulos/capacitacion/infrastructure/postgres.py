@@ -38,17 +38,28 @@ class CapacitacionPostgreSQL:
     def guardar_tema(self, tema: Tema) -> None:
         with self._conectar() as cn, cn.cursor() as cur:
             cur.execute(
-                """INSERT INTO capacitacion.tema (id, nombre, horas, dueno_dato)
-                   VALUES (%s,%s,%s,'RRHH') ON CONFLICT (id) DO NOTHING""",
-                (tema.id, tema.nombre, tema.horas),
+                """INSERT INTO capacitacion.tema (id, nombre, horas, periodicidad_meses, dueno_dato)
+                   VALUES (%s,%s,%s,%s,'RRHH') ON CONFLICT (id) DO NOTHING""",
+                (tema.id, tema.nombre, tema.horas, tema.periodicidad_meses),
             )
 
     def guardar_dictado(self, dictado: Dictado) -> None:
         with self._conectar() as cn, cn.cursor() as cur:
             cur.execute(
-                """INSERT INTO capacitacion.dictado (id, tema_id, fecha, instructor)
-                   VALUES (%s,%s,%s,%s) ON CONFLICT (id) DO NOTHING""",
-                (dictado.id, dictado.tema_id, dictado.fecha, dictado.instructor),
+                """INSERT INTO capacitacion.dictado
+                   (id, tema_id, fecha, instructor, duracion_horas, convocatoria_tipo,
+                    convocatoria_detalle, convocados_json)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s::jsonb) ON CONFLICT (id) DO NOTHING""",
+                (
+                    dictado.id,
+                    dictado.tema_id,
+                    dictado.fecha,
+                    dictado.instructor,
+                    dictado.duracion_horas,
+                    dictado.convocatoria_tipo,
+                    dictado.convocatoria_detalle,
+                    __import__("json").dumps(dictado.convocados),
+                ),
             )
 
     def guardar_asistencia(self, asistencia: Asistencia) -> None:
@@ -89,10 +100,14 @@ class CapacitacionPostgreSQL:
                     legajo_hmac,
                 ),
             )
-            if cur.fetchone() is None and self.obtener_anulacion(
-                anulacion.dictado_id,
-                anulacion.legajo,
-            ) is None:
+            if (
+                cur.fetchone() is None
+                and self.obtener_anulacion(
+                    anulacion.dictado_id,
+                    anulacion.legajo,
+                )
+                is None
+            ):
                 raise ValueError("No existe la asistencia")
 
     def obtener_anulacion(
@@ -161,7 +176,12 @@ class CapacitacionPostgreSQL:
 
     @staticmethod
     def _tema(fila: dict[str, object]) -> Tema:
-        return Tema(str(fila["id"]), str(fila["nombre"]), float(fila["horas"]))
+        return Tema(
+            str(fila["id"]),
+            str(fila["nombre"]),
+            float(fila["horas"]),
+            int(fila["periodicidad_meses"]) if fila.get("periodicidad_meses") else None,
+        )
 
     @staticmethod
     def _dictado(fila: dict[str, object]) -> Dictado:
@@ -170,6 +190,10 @@ class CapacitacionPostgreSQL:
             str(fila["tema_id"]),
             fila["fecha"],  # type: ignore[arg-type]
             str(fila["instructor"]),
+            float(fila.get("duracion_horas") or 1),
+            str(fila["convocatoria_tipo"]) if fila.get("convocatoria_tipo") else None,
+            str(fila["convocatoria_detalle"]) if fila.get("convocatoria_detalle") else None,
+            tuple(fila.get("convocados_json") or ()),
         )
 
     def _asistencia(self, fila: dict[str, object]) -> Asistencia:

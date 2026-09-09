@@ -18,6 +18,7 @@ class MovimientoEPP:
     item_codigo: str
     cantidad: int
     reclamo_calidad: str | None = None
+    motivo_entrega: str = "DESGASTE"
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,6 +28,9 @@ class MetricasItem:
     puesto: str
     consumo: int
     reclamos: dict[str, int]
+    reclamos_total: int
+    reclamos_proporcion: float
+    muestra_entregas: int
     muestra_duracion: int
     duracion_promedio_dias: float | None
     estado_duracion: str

@@ -4,10 +4,12 @@ Módulo de sólo lectura sobre un puerto de entregas. No crea tablas ni modifica
 
 | Componente | Estado |
 |---|---|
-| Fuente de entregas | SIMULADA; reemplazar por proyección de sólo lectura de RRHH/EPP |
+| Fuente de entregas | Proyección de sólo lectura de RRHH/EPP; conserva la marca si contiene ítems `SIM-*` |
 | Precios | SIMULADOS/SIN DATOS; dueño Compras |
-| Duración | Construida; no publica promedio con menos de `N` reposiciones |
+| Duración | Sólo entrega → reposición por rotura/desgaste. Estacional, baja, cambio de puesto o talle no cierran vida útil; no publica promedio con menos de `N` casos concluyentes |
+| Reclamos | Proporción sobre entregas del mismo ítem, conteo absoluto y N visibles |
+| Comparador | Sólo ítems del mismo elemento normativo y ambos con muestra suficiente |
 | Costos | Vacíos mientras falte cualquier precio; nunca se presentan como cero |
 | Exportación | Bloqueada si existen fuentes o ítems simulados |
 
-Deuda: conectar la fuente real de lectura, recibir precios de Compras y validar `N`.
+Deuda: recibir precios de Compras y validar el valor operativo de `N`.

@@ -30,9 +30,16 @@ def configuracion() -> ConfiguracionCapacitacionYAML:
 def repositorio() -> CapacitacionEnMemoria:
     repo = CapacitacionEnMemoria()
     repo.guardar_tema(Tema("SEG", "Seguridad en bodega", 2))
-    repo.guardar_dictado(Dictado("SEG-1", "SEG", date(2026, 3, 1), "HyS"))
-    repo.guardar_dictado(Dictado("SEG-2", "SEG", date(2026, 3, 8), "HyS"))
-    repo.guardar_dictado(Dictado("SEG-3", "SEG", date(2026, 3, 15), "HyS"))
+    convocatoria = ("1001", "2001", "2002")
+    repo.guardar_dictado(
+        Dictado("SEG-1", "SEG", date(2026, 3, 1), "HyS", 2, "LISTA", "Turno A", convocatoria)
+    )
+    repo.guardar_dictado(
+        Dictado("SEG-2", "SEG", date(2026, 3, 8), "HyS", 2, "LISTA", "Turno B", convocatoria)
+    )
+    repo.guardar_dictado(
+        Dictado("SEG-3", "SEG", date(2026, 3, 15), "HyS", 2, "LISTA", "Refuerzo", convocatoria)
+    )
     return repo
 
 
@@ -87,9 +94,9 @@ async def test_reportes_suman_dictados_por_tema_persona_y_anio():
     await caso.ejecutar("SEG-2", persona, True)
     await caso.ejecutar("SEG-3", persona, False)
     reportes = ReportesCapacitacion(repo, configuracion())
-    assert reportes.porcentaje_tema("SEG") == 66.67
-    assert reportes.porcentaje_persona("1001") == 66.67
-    assert reportes.horas_por_persona("1001", 2026) == 4
+    assert reportes.porcentaje_tema("SEG") == 33.33
+    assert reportes.porcentaje_persona("1001") == 100.0
+    assert reportes.horas_por_persona("1001", 2026) == 2
 
 
 @pytest.mark.asyncio
@@ -102,7 +109,37 @@ async def test_alerta_solo_supervisores_con_asistencia_baja():
         await caso.ejecutar("SEG-1", persona, True)
         await caso.ejecutar("SEG-2", persona, False)
     alertas = ReportesCapacitacion(repo, configuracion()).alertas_supervisores()
-    assert [(alerta.legajo, alerta.porcentaje) for alerta in alertas] == [("2001", 50.0)]
+    assert alertas == []  # fue a una tanda: cuenta como asistencia al tema
+
+
+@pytest.mark.asyncio
+async def test_sin_convocatoria_informa_cantidad_y_no_inventa_porcentaje():
+    repo = CapacitacionEnMemoria()
+    repo.guardar_tema(Tema("SEG", "Seguridad", 2))
+    repo.guardar_dictado(Dictado("D1", "SEG", date(2026, 3, 1), "HyS"))
+    await RegistrarAsistencia(repo, MotorFirmaSimulado()).ejecutar(
+        "D1", Participante("1", "Persona"), True
+    )
+    resumen = ReportesCapacitacion(repo, configuracion()).resumen_tema("SEG")
+    assert resumen["asistentes"] == 1
+    assert resumen["porcentaje"] is None
+    assert resumen["convocados"] is None
+
+
+@pytest.mark.asyncio
+async def test_recapacitacion_solo_aparece_si_hys_definio_periodicidad():
+    repo = CapacitacionEnMemoria()
+    repo.guardar_tema(Tema("CON", "Con plazo", 1, 6))
+    repo.guardar_tema(Tema("SIN", "Sin plazo", 1))
+    repo.guardar_dictado(Dictado("D1", "CON", date(2025, 1, 10), "HyS"))
+    repo.guardar_dictado(Dictado("D2", "SIN", date(2025, 1, 10), "HyS"))
+    registrar = RegistrarAsistencia(repo, MotorFirmaSimulado())
+    for dictado in ("D1", "D2"):
+        await registrar.ejecutar(dictado, Participante("1", "Persona"), True)
+    avisos = ReportesCapacitacion(repo, configuracion()).recapacitaciones(date(2026, 1, 1))
+    assert [(a["tema"], a["dueno_periodicidad"]) for a in avisos] == [
+        ("Con plazo", "Higiene y Seguridad")
+    ]
 
 
 @pytest.mark.parametrize("valor", ["", None])

@@ -15,12 +15,19 @@ class Tema:
     id: str
     nombre: str
     horas: float
+    periodicidad_meses: int | None = None
 
     def __post_init__(self) -> None:
         _obligatorio("El identificador del tema", self.id)
         _obligatorio("El nombre del tema", self.nombre)
-        if isinstance(self.horas, bool) or not isinstance(self.horas, int | float) or self.horas <= 0:
+        if (
+            isinstance(self.horas, bool)
+            or not isinstance(self.horas, int | float)
+            or self.horas <= 0
+        ):
             raise ValueError("Las horas del tema deben ser mayores a cero")
+        if self.periodicidad_meses is not None and self.periodicidad_meses <= 0:
+            raise ValueError("La periodicidad debe ser mayor a cero")
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,11 +36,21 @@ class Dictado:
     tema_id: str
     fecha: date
     instructor: str
+    duracion_horas: float = 1.0
+    convocatoria_tipo: str | None = None
+    convocatoria_detalle: str | None = None
+    convocados: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         _obligatorio("El identificador del dictado", self.id)
         _obligatorio("El tema del dictado", self.tema_id)
         _obligatorio("El instructor", self.instructor)
+        if self.duracion_horas <= 0:
+            raise ValueError("La duración debe ser mayor a cero")
+        if self.convocatoria_tipo not in {None, "SECTOR", "PUESTO", "LISTA"}:
+            raise ValueError("Tipo de convocatoria inválido")
+        if self.convocatoria_tipo and not self.convocados:
+            raise ValueError("Una convocatoria debe declarar las personas alcanzadas")
 
 
 @dataclass(frozen=True, slots=True)

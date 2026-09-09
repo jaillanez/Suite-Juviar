@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import date
 
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import Response
 
 from suite_juviar.plataforma.identidad.api.dependencias import exigir_permiso
 
@@ -13,28 +14,43 @@ from ..domain.modelos import MARCA_SIMULADA, ExportacionNoPermitida, FuenteSimul
 
 def crear_app(servicio: AnalizarEPP, entorno: str = "prueba") -> FastAPI:
     if entorno.lower() == "produccion" and servicio.datos_simulados:
-        raise FuenteSimuladaEnProduccion("Analítica EPP no arranca en producción con fuentes simuladas.")
+        raise FuenteSimuladaEnProduccion(
+            "Analítica EPP no arranca en producción con fuentes simuladas."
+        )
     app = FastAPI(
         title="Analítica EPP para Compras",
         dependencies=[Depends(exigir_permiso("epp.analitica.leer"))],
     )
 
-    @app.get("/", response_class=HTMLResponse)
-    def pantalla(desde: date, hasta: date) -> str:
-        marca = f'<div class="simulada">{MARCA_SIMULADA}</div>' if servicio.datos_simulados else ""
-        filas = "".join(
-            f"<tr><td>{m.item_codigo}</td><td>{m.sector}</td><td>{m.puesto}</td>"
-            f"<td>{m.consumo}</td><td>{m.estado_duracion}</td></tr>"
-            for m in servicio.metricas(desde, hasta)
-        )
-        return (
-            "<style>.simulada{background:#b00020;color:white;padding:16px;font-weight:bold}"
-            "@media print{.simulada{display:block}}</style>"
-            f"{marca}<h1>Analítica EPP para Compras</h1>"
-            "<p>Los costos quedan vacíos hasta recibir precios reales de Compras.</p>"
-            "<table><tr><th>Ítem</th><th>Sector</th><th>Puesto</th>"
-            f"<th>Consumo</th><th>Duración</th></tr>{filas}</table>"
-        )
+    @app.get("/")
+    @app.get("/tablero")
+    def pantalla(desde: date, hasta: date, sector: str | None = None, puesto: str | None = None):
+        metricas = servicio.metricas(desde, hasta)
+        if sector:
+            metricas = [m for m in metricas if m.sector == sector]
+        if puesto:
+            metricas = [m for m in metricas if m.puesto == puesto]
+        return {
+            "metricas": [asdict(m) for m in metricas],
+            "fecha_corte": hasta.isoformat(),
+            "desde": desde.isoformat(),
+            "hasta": hasta.isoformat(),
+            "datos_simulados": servicio.datos_simulados,
+            "marca": MARCA_SIMULADA if servicio.datos_simulados else None,
+            "costo": None,
+            "costo_leyenda": "Faltan precios reales de Compras",
+            "exportacion": {
+                "habilitada": not servicio.datos_simulados,
+                "motivo": "Hay entregas contra ítems SIM-*" if servicio.datos_simulados else None,
+            },
+        }
+
+    @app.get("/comparador")
+    def comparador(item_a: str, item_b: str, desde: date, hasta: date):
+        try:
+            return servicio.comparar(item_a, item_b, desde, hasta)
+        except Exception as exc:
+            raise HTTPException(400, str(exc)) from exc
 
     @app.get("/exportar")
     def exportar(desde: date, hasta: date) -> Response:

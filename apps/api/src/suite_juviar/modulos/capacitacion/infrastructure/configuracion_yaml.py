@@ -23,4 +23,3 @@ class ConfiguracionCapacitacionYAML:
     @property
     def umbral_supervisor(self) -> float:
         return self._umbral
-

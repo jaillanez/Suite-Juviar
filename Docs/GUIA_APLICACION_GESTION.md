@@ -74,6 +74,18 @@ escribir exactamente `LIMPIAR DATOS SIMULADOS`. Elimina entregas, constancias y
 stock `SIM-*`; conserva la bitácora y no modifica el catálogo hasta que HyS aplique
 el reemplazo por separado.
 
+## Cobertura del Bloque 3
+
+Los recorridos de navegador están en `apps/gestion/e2e/bloque-3.spec.ts`.
+Capacitaciones cubre convocatoria, dos tandas, deduplicación por persona y tema,
+anulación visible, ausencia de porcentaje sin convocatoria y rechazo 403. La carga
+histórica usa un `.xlsx` con previsualización y conserva las desapariciones.
+
+Analítica cubre filtros, comparación entre dos ítems del mismo elemento, N y fecha
+de corte visibles, y el bloqueo explicado de exportación ante `SIM-*`. La duración
+sólo se cierra ante reposición por rotura o desgaste; los casos estacionales y la
+muestra insuficiente se verifican en `test_analitica.py`.
+
 ## Tablet
 
 En <http://localhost:3001>, ingrese con el legajo `1210` (depósito) y busque al

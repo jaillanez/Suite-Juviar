@@ -7,6 +7,8 @@ import { api, ErrorApi } from "@/lib/api";
 import { ErrorVisible, Simulado, Tabla, Vacio } from "./compartidos";
 import { EppGestion } from "./epp-gestion";
 import { SeleccionGestion } from "./seleccion-gestion";
+import { CapacitacionesGestion } from "./capacitaciones-gestion";
+import { AnaliticaGestion } from "./analitica-gestion";
 
 const VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.1.0";
 const COMMIT = process.env.NEXT_PUBLIC_GIT_COMMIT ?? "local";
@@ -49,8 +51,7 @@ function Epp() {
 }
 
 function Analitica() {
-  const hoy = new Date().toISOString().slice(0, 10); const inicio = `${new Date().getFullYear()}-01-01`;
-  return <><Encabezado titulo="Analítica EPP" descripcion="Consumo, duración real y reclamos, siempre con el tamaño de muestra visible." /><div className="metricas"><article><span>Costo</span><strong>—</strong><small>Faltan precios reales de Compras</small></article><article><span>Exportación</span><strong>Bloqueada</strong><small>La fuente actual es simulada</small></article></div><section className="tarjeta"><h2>Tablero del período</h2><p>La API disponible todavía entrega esta vista como documento. Se abre dentro de Gestión sin habilitar una exportación inválida.</p><iframe className="visor" title="Tablero analítico" src={`${API_BASE}/epp-analitica/?desde=${inicio}&hasta=${hoy}`} /></section></>;
+  return <><Encabezado titulo="Analítica EPP" descripcion="Consumo, duración concluyente y reclamos en proporción, con el tamaño de muestra visible." /><AnaliticaGestion /></>;
 }
 
 function Legajo() {
@@ -77,12 +78,8 @@ function Seleccion() {
   return <><Encabezado titulo="Selección" descripcion="Búsquedas explicables, ranking revisable y originales siempre conservados." /><SeleccionGestion /></>;
 }
 
-type Tema = Record<string, unknown> & { id: string; nombre: string; horas: number; dictados: Array<{ id: string; fecha: string; instructor: string }> };
 function Capacitaciones() {
-  const [temas, setTemas] = useState<Tema[]>([]); const [error, setError] = useState("");
-  const recargar = () => api<Tema[]>("capacitaciones/temas").then(setTemas).catch((e) => setError(e.message)); useEffect(() => { recargar(); }, []);
-  async function crear(e: FormEvent<HTMLFormElement>) { e.preventDefault(); const f = Object.fromEntries(new FormData(e.currentTarget)); try { await api("capacitaciones/temas", { method: "POST", body: JSON.stringify({ nombre: f.nombre, horas: Number(f.horas) }) }); e.currentTarget.reset(); recargar(); } catch (x) { setError(x instanceof Error ? x.message : "No se pudo crear el tema."); } }
-  return <><Encabezado titulo="Capacitaciones" descripcion="Temas, dictados, asistencia firmada y seguimiento anual." />{error && <ErrorVisible mensaje={error} />}<div className="rejilla"><section className="tarjeta"><h2>Nuevo tema</h2><form className="form-linea" onSubmit={crear}><label>Nombre<input name="nombre" required /></label><label>Horas<input name="horas" type="number" min="0.5" step="0.5" required /></label><button className="primario">Crear tema</button></form></section><section className="tarjeta"><div className="titulo-fila"><h2>Temas y tandas</h2><Simulado nivel="tabla" /></div>{temas.length ? <Tabla etiqueta="Temas" filas={temas} columnas={[{ clave: "nombre", titulo: "Tema" }, { clave: "horas", titulo: "Horas" }, { clave: "dictados", titulo: "Tandas", valor: (f) => f.dictados.length }]} /> : <Vacio>No hay temas cargados.</Vacio>}</section><section className="tarjeta"><h2>Supervisores con asistencia baja</h2><Vacio>Sin alertas con la muestra actual.</Vacio></section></div></>;
+  return <><Encabezado titulo="Capacitaciones" descripcion="Temas, dictados, convocatorias, asistencia firmada y seguimiento anual." /><CapacitacionesGestion /></>;
 }
 
 function Pendiente({ seccion }: { seccion: Seccion }) { return <><Encabezado titulo={nombres[seccion]} descripcion="Módulo incorporado al armazón de Gestión." /><section className="tarjeta"><h2>Integración en curso</h2><p>El dominio existe, pero su API de gestión todavía debe completarse antes de habilitar esta operación. No se simulan reglas en el navegador.</p></section></>; }
@@ -94,7 +91,7 @@ function Contenido({ seccion, empresa }: { seccion: Seccion; empresa: Empresa })
 function AccesoDenegado({ perfil, seccion }: { perfil: Perfil; seccion: Seccion }) {
   const [resultadoApi, setResultadoApi] = useState("Verificando autorización con la API…");
   useEffect(() => {
-    const sondas: Partial<Record<Seccion, string>> = { salud: "salud/catalogo" };
+    const sondas: Partial<Record<Seccion, string>> = { salud: "salud/catalogo", capacitaciones: "capacitaciones/temas", analitica: `epp-analitica/tablero?desde=${new Date().getFullYear()}-01-01&hasta=${new Date().toISOString().slice(0, 10)}` };
     const ruta = sondas[seccion];
     if (!ruta) { setResultadoApi("La sección no está habilitada para esta sesión."); return; }
     api(ruta).then(() => setResultadoApi("Advertencia: la API permitió un acceso que la interfaz oculta."))

@@ -1,2 +1,1 @@
 """Capacitaciones, dictados y asistencia."""
-

@@ -54,6 +54,15 @@ class CapacitacionEnMemoria:
             and (asistencia.dictado_id, asistencia.participante.legajo) not in self.anulaciones
         ]
 
+    def asistencias_del_dictado_con_anuladas(
+        self, dictado_id: str
+    ) -> list[tuple[Asistencia, AnulacionAsistencia | None]]:
+        return [
+            (asistencia, self.anulaciones.get((dictado_id, asistencia.participante.legajo)))
+            for asistencia in self.asistencias.values()
+            if asistencia.dictado_id == dictado_id
+        ]
+
     def todas_las_asistencias(self) -> list[Asistencia]:
         return [
             asistencia

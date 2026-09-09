@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS capacitacion.tema (
     id          text PRIMARY KEY,
     nombre      text NOT NULL,
     horas       numeric(8,2) NOT NULL CHECK (horas > 0),
+    periodicidad_meses integer CHECK (periodicidad_meses > 0),
     dueno_dato  text NOT NULL DEFAULT 'RRHH'
 );
 
@@ -14,7 +15,17 @@ CREATE TABLE IF NOT EXISTS capacitacion.dictado (
     tema_id     text NOT NULL REFERENCES capacitacion.tema(id),
     fecha       date NOT NULL,
     instructor  text NOT NULL
+    ,duracion_horas numeric(8,2) NOT NULL DEFAULT 1 CHECK (duracion_horas > 0)
+    ,convocatoria_tipo text CHECK (convocatoria_tipo IN ('SECTOR','PUESTO','LISTA'))
+    ,convocatoria_detalle text
+    ,convocados_json jsonb NOT NULL DEFAULT '[]'::jsonb
 );
+
+ALTER TABLE capacitacion.tema ADD COLUMN IF NOT EXISTS periodicidad_meses integer CHECK (periodicidad_meses > 0);
+ALTER TABLE capacitacion.dictado ADD COLUMN IF NOT EXISTS duracion_horas numeric(8,2) NOT NULL DEFAULT 1 CHECK (duracion_horas > 0);
+ALTER TABLE capacitacion.dictado ADD COLUMN IF NOT EXISTS convocatoria_tipo text CHECK (convocatoria_tipo IN ('SECTOR','PUESTO','LISTA'));
+ALTER TABLE capacitacion.dictado ADD COLUMN IF NOT EXISTS convocatoria_detalle text;
+ALTER TABLE capacitacion.dictado ADD COLUMN IF NOT EXISTS convocados_json jsonb NOT NULL DEFAULT '[]'::jsonb;
 
 CREATE TABLE IF NOT EXISTS capacitacion.asistencia (
     id                  bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
