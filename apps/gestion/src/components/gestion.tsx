@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Empresa, nombres, puedeEntrar, Perfil, perfiles, Seccion } from "@/lib/acceso";
 import { api, ErrorApi } from "@/lib/api";
 import { ErrorVisible, Simulado } from "./compartidos";
@@ -11,6 +11,7 @@ import { CapacitacionesGestion } from "./capacitaciones-gestion";
 import { AnaliticaGestion } from "./analitica-gestion";
 import { LegajoGestion } from "./legajo-gestion";
 import { SaludGestion } from "./salud-gestion";
+import { TurnosGestion } from "./turnos-gestion";
 
 const VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.1.0";
 const COMMIT = process.env.NEXT_PUBLIC_GIT_COMMIT ?? "local";
@@ -60,9 +61,7 @@ function Salud() {
 }
 
 function Turnos() {
-  const [salida, setSalida] = useState(""); const [error, setError] = useState("");
-  async function cargar(e: FormEvent<HTMLFormElement>) { e.preventDefault(); const f = Object.fromEntries(new FormData(e.currentTarget)); try { const r = await api<{ id: string }>("turnos/cronogramas", { method: "POST", body: JSON.stringify(f) }); setSalida(`Cronograma ${r.id} registrado. Todavía no genera una imputación.`); } catch (x) { setError(x instanceof Error ? x.message : "No fue posible registrar."); } }
-  return <><Encabezado titulo="Turnos y conciliación" descripcion="Cronogramas, desvíos y propuestas que RRHH debe aprobar expresamente." />{error && <ErrorVisible mensaje={error} />}{salida && <div className="aviso-exito">{salida}</div>}<section className="tarjeta"><h2>Cargar cronograma</h2><form className="form-grid" onSubmit={cargar}><label>Legajo<input name="legajo" defaultValue="1042" required /></label><label>Sector<input name="sector" defaultValue="Bodega" required /></label><label>Fecha<input name="fecha" type="date" required /></label><label>Desde<input name="desde" type="time" required /></label><label>Hasta<input name="hasta" type="time" required /></label><input type="hidden" name="autor" value="supervisor-prueba" /><button className="primario">Guardar cronograma</button></form><p className="ayuda">Guardar un cronograma no imputa novedades. La aprobación se realiza luego, en lote, por RRHH.</p></section></>;
+  return <><Encabezado titulo="Turnos y conciliación" descripcion="Cronogramas versionados, desvíos y propuestas que nunca se imputan solas." /><TurnosGestion /></>;
 }
 
 function Seleccion() {
@@ -100,5 +99,5 @@ export default function Gestion({ seccionSolicitada }: { seccionSolicitada: Secc
   if (!sesion) return <Ingreso entrar={entrar} />;
   const valida = Object.hasOwn(nombres, seccionSolicitada) ? seccionSolicitada : "inicio";
   const permitido = puedeEntrar(sesion.perfil, valida);
-  return <div className="aplicacion"><aside><div className="marca"><span className="isotipo">SJ</span><div><strong>Suite Juviar</strong><small>Gestión interna</small></div></div><nav aria-label="Secciones">{perfiles[sesion.perfil].secciones.map((s) => <Link key={s} href={s === "inicio" ? "/" : `/${s}`} className={s === valida ? "activo" : ""}><Icono nombre={s} />{nombres[s]}</Link>)}</nav><div className="modo-prueba"><strong>Modo prueba</strong><label>Perfil<select value={sesion.perfil} onChange={(e) => entrar(sesion.empresa, e.target.value as Perfil)}>{Object.entries(perfiles).map(([id, p]) => <option key={id} value={id}>{p.nombre}</option>)}</select></label></div></aside><div className="principal-contenedor"><div className="franja">DATOS SIMULADOS · SIN VALIDEZ PRODUCTIVA</div><header className="barra"><div><span className="pulso" /> API interna</div><label>Empresa<select value={sesion.empresa} onChange={(e) => entrar(e.target.value as Empresa, sesion.perfil)}><option>ENAV</option><option>JUBIAR</option></select></label><button className="salir" onClick={() => { sessionStorage.removeItem("gestion-sesion"); setSesion(null); }}>Salir</button></header><main>{permitido ? <Contenido seccion={valida} empresa={sesion.empresa} /> : <AccesoDenegado perfil={sesion.perfil} seccion={valida} />}</main><footer>Suite Juviar Gestión v{VERSION} · commit {COMMIT}</footer></div></div>;
+  return <div className="aplicacion"><aside><div className="marca"><span className="isotipo">SJ</span><div><strong>Suite Juviar</strong><small>Gestión interna</small></div></div><nav aria-label="Secciones">{perfiles[sesion.perfil].secciones.map((s) => <Link key={s} href={s === "inicio" ? "/" : `/${s}`} className={s === valida ? "activo" : ""}><Icono nombre={s} />{nombres[s]}</Link>)}</nav><div className="modo-prueba"><strong>Modo prueba</strong><label>Perfil<select value={sesion.perfil} onChange={(e) => entrar(sesion.empresa, e.target.value as Perfil)}>{Object.entries(perfiles).map(([id, p]) => <option key={id} value={id}>{p.nombre}</option>)}</select></label></div></aside><div className="principal-contenedor"><div className="franja">DATOS SIMULADOS · SIN VALIDEZ PRODUCTIVA</div><header className="barra"><div><span className="pulso" /> API interna</div><label>Empresa<select value={sesion.empresa} onChange={(e) => entrar(e.target.value as Empresa, sesion.perfil)}><option>ENAV</option><option>JUBIAR</option></select></label><button className="salir" onClick={() => { sessionStorage.removeItem("gestion-sesion"); setSesion(null); }}>Salir</button></header><main>{permitido ? <Contenido key={sesion.perfil} seccion={valida} empresa={sesion.empresa} /> : <AccesoDenegado perfil={sesion.perfil} seccion={valida} />}</main><footer>Suite Juviar Gestión v{VERSION} · commit {COMMIT}</footer></div></div>;
 }

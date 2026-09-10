@@ -107,6 +107,29 @@ Los adjuntos de ambos módulos viven cifrados en memoria sólo para la demostrac
 No deben cargarse legajos ni certificados reales hasta conectar la persistencia
 PostgreSQL definitiva y sus claves administradas.
 
+## Cobertura del Bloque 5
+
+Los recorridos de navegador están en `apps/gestion/e2e/bloque-5.spec.ts`.
+
+| Caso de Turnos | Prueba |
+|---|---|
+| Cronograma semanal por sector y vista de turnos | Playwright + API |
+| Supervisor limitado a su sector | Playwright/API |
+| Día cerrado bloqueado para edición directa | Playwright/API |
+| Cambio tardío versionado, visible y contado en el reporte | Playwright + API |
+| Conciliación plan contra fichadas con semáforo diario | Playwright + API |
+| Aprobar, rechazar o cambiar propuestas en lote | Playwright + API |
+| Autor y fecha registrados en cada día resuelto | API |
+| Pendiente conserva estado y muestra antigüedad | Playwright + API |
+| Bandeja marcada como simulada y sin escritura externa | Playwright + API |
+| Control por mutación del permiso de aprobación | API |
+
+Para el recorrido positivo, ingrese primero como Supervisión. El adaptador de
+prueba asigna ese perfil al sector Bodega. Registre la semana y, para el ejemplo
+histórico, use `Registrar cambio tardío`; luego cambie el perfil a RRHH sin salir
+de Turnos, concilie septiembre de 2026 y resuelva las propuestas seleccionadas.
+La bandeja muestra únicamente un archivo local de intercambio.
+
 ## Tablet
 
 En <http://localhost:3001>, ingrese con el legajo `1210` (depósito) y busque al

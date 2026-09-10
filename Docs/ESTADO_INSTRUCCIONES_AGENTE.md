@@ -1,6 +1,6 @@
 # Estado de ejecución — instrucciones del agente
 
-Fecha de corte: 2026-09-08. Rama: `codex/rrhh-epp-unificado`.
+Fecha de corte: 2026-09-10. Rama: `codex/rrhh-epp-unificado`.
 
 Este documento distingue código construido de operación real. Ninguna fuente,
 credencial, aprobación o dato corporativo faltante se reemplazó por una invención.
@@ -23,7 +23,7 @@ credencial, aprobación o dato corporativo faltante se reemplazó por una invenc
 | 4 Legajo digital | CONSTRUIDO CON ADAPTADORES | Reutiliza el puerto de legajos; adjuntos cifrados en memoria de prueba, PostgreSQL pendiente. |
 | 4 Salud | CONSTRUIDO CON ADAPTADORES | Rol médico, bitácora de lectura, catálogo muestra, reportes agregados y art. 208 preliminar. |
 | 5 Turnos | CONSTRUIDO CON ADAPTADORES | Cronograma, conciliación, propuesta y aprobación construidos; Time confinado al adaptador pendiente. |
-| Aplicación de gestión — Bloques 2 a 4 | CONSTRUIDO Y PROBADO | EPP, Selección, Capacitaciones, Analítica, Legajo y Salud operables; autorización efectiva en API y E2E por bloque. Identidad corporativa y datos reales siguen pendientes. |
+| Aplicación de gestión — Bloques 2 a 5 | COMPLETA CON ADAPTADORES | Las seis olas tienen pantalla operable; autorización efectiva en API y E2E por bloque. Identidad corporativa y datos reales siguen pendientes. |
 
 `apps/web` y `apps/consulta` no fueron modificados. Nexus continúa como fuente
 externa de sólo lectura y ningún componente escribe en Nexus o Time.
@@ -63,19 +63,32 @@ decidió como exportación estática, sin Node persistente en producción (ADR 0
   catálogo médico, Identidad y persistencia real siguen confinados a adaptadores.
 - **Ola 5 — Turnos:** el flujo existe sin nombres de campos supuestos. El adaptador
   real falla de forma explícita hasta recibir el diccionario contractual de Time.
+  El cronograma no reescribe días cerrados: versiona cambios tardíos con fecha de
+  conocimiento. Las propuestas nunca se autoimputan, RRHH las resuelve en lote y
+  la bandeja simulada sólo genera un archivo local.
 
-## Decisiones o datos requeridos para continuar
+## Llaves de la empresa que destraban la operación real
 
-1. Validación firmada de la matriz EPP y catálogo real de ítems por HyS.
-2. Certificado empresarial, proveedor de sello de tiempo y visto del asesor legal.
-   Iniciar el trámite durante la semana del 7 de septiembre de 2026.
-3. Autenticador de `plataforma/identidad` y perfiles reales de RRHH/Capacitación/Salud.
-4. Muestra de 20 a 30 CV por un canal seguro de RRHH antes de diciembre de 2026.
-   La ruta de sólo lectura de Chimbas puede resolverse después de la calibración.
-5. DSN/credenciales de sólo lectura de Nexus.
-6. Diccionario de Time y protocolo de cambios de turno.
-7. Canal a Compras: correo implementado con outbox durable y reintentos; falta
-   configurar `SJ_COMPRAS_EMAIL`, host/remitente SMTP y credenciales del entorno.
+1. **Catálogo y matriz EPP firmada por HyS:** reemplaza los `SIM-*`, habilita la
+   asignación real por puesto y permite limpiar las entregas de demostración.
+2. **Certificado empresarial, sello de tiempo y visto legal:** habilita constancias
+   con validez probatoria; el trámite externo continúa siendo crítico por su plazo.
+3. **Identidad y perfiles corporativos:** reemplaza el selector simulado y vincula
+   permisos, actores y sectores del supervisor con usuarios reales.
+4. **Precios de Compras:** habilita impacto económico y comparaciones monetarias
+   sin convertir datos faltantes en cero.
+5. **Nexus de sólo lectura:** aporta legajos, antigüedad y cargas familiares reales;
+   vuelve definitivo el aviso del artículo 208.
+6. **Diccionario contractual de Time y protocolo de cambios:** permite leer fichadas
+   reales y definir el archivo de intercambio sin contaminar dominio ni pantallas.
+
+Además hace falta la **instancia PostgreSQL definitiva con claves administradas**:
+destraba persistencia productiva de Legajo, Salud, Selección, Capacitaciones y
+Turnos. Hasta entonces no se cargan certificados médicos ni documentación real.
+
+Dependencias operativas ya construidas: el aviso a Compras usa outbox durable y
+reintentos, pero faltan casilla y credenciales SMTP. La muestra segura de 20 a 30
+CV sigue requerida antes de diciembre de 2026 para calibrar extracción y ranking.
 
 El orden EPP → Selección → Capacitaciones → resto quedó confirmado en §6.2 de
 la Base Común v0.4. La Base, el README fuente de EPP y el plan se conservan en

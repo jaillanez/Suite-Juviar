@@ -1,13 +1,4 @@
-"""Turnos rotativos, cronogramas, fichadas, desvíos e imputaciones.
-
-El problema real: los supervisores cambian los turnos rotativos en bodega y no
-avisan a administración, y aparecen diferencias de 8 horas entre ausencia y
-hora extra. El cambio nace en producción, no en RRHH.
-
-Contrato §5.2: el cambio se carga una sola vez, donde ocurre, con el mínimo
-posible de datos —legajo saliente, legajo entrante, fecha y horario—. La lógica
-no conoce sistemas externos y nunca aprueba una imputación automáticamente.
-"""
+"""Modelo de cronogramas versionados, conciliación y propuestas de Turnos."""
 
 from __future__ import annotations
 
@@ -25,8 +16,6 @@ class EstadoSincronizacion(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class CambioDeTurno:
-    """Lo que carga el supervisor en la pantalla ultra simple de bodega."""
-
     legajo_saliente: str
     legajo_entrante: str
     fecha: date
@@ -43,9 +32,6 @@ class CambioDeTurno:
 
 @dataclass(slots=True)
 class Desvio:
-    """Lo que hoy se audita en un Excel. El objetivo de la etapa 1 es que este
-    Excel deje de existir, no que conviva con el sistema (§6.4)."""
-
     legajo: str
     fecha: date
     minutos_planificados: int
@@ -61,17 +47,43 @@ class Desvio:
 class EstadoImputacion(StrEnum):
     PROPUESTA = "PROPUESTA"
     APROBADA = "APROBADA"
+    RECHAZADA = "RECHAZADA"
+
+
+class EstadoDia(StrEnum):
+    PLANIFICADO = "PLANIFICADO"
+    REGULARIZADO_TARDE = "REGULARIZADO_TARDE"
+    SIN_INFORMAR = "SIN_INFORMAR"
 
 
 @dataclass(frozen=True, slots=True)
 class Cronograma:
+    id: UUID
     legajo: str
     sector: str
     fecha: date
     desde: time
     hasta: time
     autor: str
-    modificado_en: datetime = field(default_factory=lambda: datetime.now(UTC))
+    conocido_en: datetime = field(default_factory=lambda: datetime.now(UTC))
+    reemplaza_id: UUID | None = None
+    cambio_tardio: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class CambioCronograma:
+    id: UUID
+    cronograma_id: UUID
+    legajo: str
+    sector: str
+    fecha_afectada: date
+    desde_anterior: time
+    hasta_anterior: time
+    desde_nuevo: time
+    hasta_nuevo: time
+    autor: str
+    conocido_en: datetime
+    tardio: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,6 +103,39 @@ class Imputacion:
     minutos_desvio: int
     estado: EstadoImputacion = EstadoImputacion.PROPUESTA
     aprobada_por: str | None = None
+    resuelta_en: datetime | None = None
+    motivo_final: str | None = None
+    sector: str = ""
+    creada_en: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+
+@dataclass(frozen=True, slots=True)
+class DiaConciliado:
+    legajo: str
+    sector: str
+    fecha: date
+    desde_plan: time
+    hasta_plan: time
+    primera_marca: datetime | None
+    ultima_marca: datetime | None
+    minutos_planificados: int
+    minutos_marcados: int
+    minutos_desvio: int
+    tipo_desvio: str | None
+    estado_dia: EstadoDia
+    propuesta_id: UUID | None
+
+
+@dataclass(frozen=True, slots=True)
+class SalidaBandeja:
+    id: UUID
+    creada_en: datetime
+    estado: str
+    formato: str
+    archivo: str
+    cantidad_dias: int
+    personas: tuple[str, ...]
+    simulada: bool = True
 
 
 class FuenteSimuladaEnProduccion(Exception):

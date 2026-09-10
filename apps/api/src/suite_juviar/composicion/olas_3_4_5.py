@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
+from datetime import UTC, date, datetime, time
 from pathlib import Path
+from uuid import uuid4
 
 from suite_juviar.modulos.capacitacion.api.app import crear_app as crear_capacitacion
 from suite_juviar.modulos.capacitacion.infrastructure.configuracion_yaml import (
@@ -33,6 +35,7 @@ from suite_juviar.modulos.seleccion.api.app import crear_app as crear_seleccion
 from suite_juviar.modulos.seleccion.infrastructure.perfiles_yaml import CriteriosPerfilYAML
 from suite_juviar.modulos.turnos.api.app import crear_app as crear_turnos
 from suite_juviar.modulos.turnos.application.servicios import ConciliarTurnos
+from suite_juviar.modulos.turnos.domain.entidades import Cronograma, Fichada
 from suite_juviar.modulos.turnos.infrastructure.simulados import (
     ExportadorArchivoSimulado,
     FuenteFichadasSimulada,
@@ -55,9 +58,16 @@ def construir_subaplicaciones(rrhh):
         AdjuntosSaludCifradosMemoria(clave_adjuntos), FuenteLaboralSimulada(),
     )
     turnos = ConciliarTurnos(
-        FuenteFichadasSimulada([]),
+        FuenteFichadasSimulada([
+            Fichada("1042", datetime(2026, 9, 15, 8, tzinfo=UTC), "ENTRADA"),
+            Fichada("1042", datetime(2026, 9, 15, 15, tzinfo=UTC), "SALIDA"),
+        ]),
         ExportadorArchivoSimulado(Path("var/turnos/bandeja")),
     )
+    turnos.cronogramas.append(Cronograma(
+        uuid4(), "1042", "Bodega", date(2026, 9, 1), time(8), time(16),
+        "supervisor-muestra", datetime(2026, 8, 25, 12, tzinfo=UTC),
+    ))
     raiz_modulos = Path(__file__).parents[1] / "modulos"
     perfiles_seleccion = CriteriosPerfilYAML(
         raiz_modulos / "seleccion" / "data" / "criterios_perfil.yaml"
