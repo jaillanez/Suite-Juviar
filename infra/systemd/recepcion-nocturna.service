@@ -1,0 +1,12 @@
+[Unit]
+Description=Suite Juviar: sincronización nocturna de recepción
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=suite
+WorkingDirectory=/opt/suite/apps/api
+EnvironmentFile=/etc/suite/recepcion.env
+ExecStart=/opt/suite/.venv/bin/python -m suite_juviar.modulos.recepcion.integracion_aynux.worker nocturna
+TimeoutStartSec=1800

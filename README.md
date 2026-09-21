@@ -14,6 +14,7 @@ Sistema unificado ENAV S.A. — Jubiar. Monolito modular con Domain-Driven Desig
 - Endpoints pendientes de Gestión: [`Docs/ENDPOINTS_GESTION_PENDIENTES.md`](Docs/ENDPOINTS_GESTION_PENDIENTES.md)
 - Decisiones registradas: [`Docs/adr/`](Docs/adr/)
 - README operativo vigente de EPP: [`apps/api/src/suite_juviar/modulos/rrhh_epp/README.md`](apps/api/src/suite_juviar/modulos/rrhh_epp/README.md)
+- Integración de recepción con Aynux: [`Docs/RECEPCION_CAMIONES_AYNUX.md`](Docs/RECEPCION_CAMIONES_AYNUX.md)
 - Módulos nuevos: [Analítica EPP](apps/api/src/suite_juviar/modulos/epp_analitica/README.md), [Legajo](apps/api/src/suite_juviar/modulos/legajo/README.md), [Salud](apps/api/src/suite_juviar/modulos/salud/README.md) y [Turnos](apps/api/src/suite_juviar/modulos/turnos/README.md)
 
 ```
