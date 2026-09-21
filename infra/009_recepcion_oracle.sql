@@ -1,6 +1,9 @@
 -- Base de Suite: almacenamiento durable de la vista Oracle de Juviar-ENAV.
 CREATE SCHEMA IF NOT EXISTS recepcion;
 
+DO $$ BEGIN CREATE ROLE recepcion_worker LOGIN;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
 CREATE TABLE IF NOT EXISTS recepcion.descarga (
     id bigserial PRIMARY KEY,
     sede text NOT NULL,
@@ -73,3 +76,7 @@ CREATE TABLE IF NOT EXISTS recepcion.corrida (
 );
 CREATE INDEX IF NOT EXISTS ix_corrida_sede_inicio
     ON recepcion.corrida (sede, inicio DESC);
+
+GRANT USAGE ON SCHEMA recepcion TO recepcion_worker;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA recepcion TO recepcion_worker;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA recepcion TO recepcion_worker;

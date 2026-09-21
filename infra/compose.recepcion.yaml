@@ -1,0 +1,44 @@
+name: suite-juviar-recepcion
+
+services:
+  suite-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: suite_juviar
+      POSTGRES_USER: suite_admin
+      POSTGRES_PASSWORD: ${RECEPCION_SUITE_ADMIN_PASSWORD:?required}
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - suite_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U suite_admin -d suite_juviar"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    mem_limit: 768m
+    cpus: 0.75
+
+  dmz-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: suite_juviar_dmz
+      POSTGRES_USER: dmz_admin
+      POSTGRES_PASSWORD: ${RECEPCION_DMZ_ADMIN_PASSWORD:?required}
+    ports:
+      - "127.0.0.1:55433:5432"
+    volumes:
+      - dmz_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dmz_admin -d suite_juviar_dmz"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    mem_limit: 512m
+    cpus: 0.5
+
+volumes:
+  suite_data:
+  dmz_data:

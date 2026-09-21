@@ -6,7 +6,8 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 User=suite
-WorkingDirectory=/opt/suite/apps/api
+WorkingDirectory=/opt/suite-juviar/apps/api
 EnvironmentFile=/etc/suite/recepcion.env
-ExecStart=/opt/suite/.venv/bin/python -m suite_juviar.modulos.recepcion.integracion_oracle.worker ventana
+Environment=PYTHONPATH=src
+ExecStart=/opt/suite-juviar/.venv/bin/python -m suite_juviar.modulos.recepcion.integracion_oracle.worker ventana
 TimeoutStartSec=240
