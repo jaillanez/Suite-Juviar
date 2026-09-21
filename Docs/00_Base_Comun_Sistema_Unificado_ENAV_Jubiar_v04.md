@@ -3,7 +3,7 @@
 **Versión:** 0.4
 **Uso:** este documento se copia sin modificar en todos los proyectos de trabajo. Si algo cambia acá, se actualiza en todos.
 
-**Cambios respecto de la v0.3:** incorpora el sitio público aislado, los contratos 8 y 9, el postulante y el comprador exterior dentro de Terceros, confirma el orden EPP → Selección → Capacitaciones y explicita el control negativo del criterio de verificación.
+**Cambios respecto de la v0.3:** incorpora el sitio público aislado, los contratos de arquitectura 8 a 13, el postulante y el comprador exterior dentro de Terceros, confirma el orden EPP → Selección → Capacitaciones, integra la recepción de camiones desde Oracle y explicita el control negativo del criterio de verificación.
 
 ---
 
@@ -190,7 +190,7 @@ Cualquier módulo nuevo, sin excepción:
 6. **Define su dueño del dato.** Cada tabla maestra tiene un área responsable de mantenerla. Si no se puede nombrar al dueño, el maestro está mal planteado.
 7. **Funciona sin conexión o falla de forma clara.** En depósito, báscula y viña la red se cae. El módulo espera y reintenta, o avisa; nunca pierde el registro en silencio.
 
-Estas siete reglas se verifican en integración continua con **import-linter**. Los siete contratos originales controlan las capas y dependencias de la suite; los contratos 8 y 9 aíslan `apps/web` de `modulos` y `plataforma`, salvo su DTO, y evitan la dependencia inversa. Si alguien introduce una dependencia que viola cualquiera de los nueve contratos, el build se rompe antes de integrar el cambio.
+Estas siete reglas se verifican en integración continua con **import-linter**. Los trece contratos vigentes controlan capas, independencia entre módulos, pureza del dominio, límites de adaptadores, aislamiento del sitio público y de Gestión, lectura exclusiva de Analítica EPP, separación Legajo–Salud y confinamiento de las integraciones de Turnos. Si alguien introduce una dependencia que viola cualquiera de los trece contratos, el build se rompe antes de integrar el cambio.
 
 La operación móvil se concentra en **una sola aplicación** con tres perfiles internos: **campo** (fichaje y tareaje), **depósito** (entrega de EPP con firma) y **báscula** (pesadas y romaneos). El perfil corresponde al puesto y sector del legajo; no lo elige el usuario.
 
@@ -240,6 +240,7 @@ Los permisos de base se prueban conectando o ejecutando bajo el rol restringido 
 ### 7.1 Prioritarias
 
 - [x] **Arquitectura de acceso.** Acceso a Nexus por Vistas y Stored Procedures en SQL Server vía VPN; PostgreSQL 18.6 como base propia de la suite.
+- [x] **Recepción Oracle de Juviar-ENAV.** Lectura de `V_DETALLE_MOVIMIENTOS` desde la IP fija del VPS productivo; clave validada `(sede, CIU, ID)` sobre 18.595 filas; PostgreSQL interno y proyección DMZ aislados. Los registros históricos sin `FECHA` se clasifican como incompletos, no como camiones en descarga.
 - [x] **Motor de firma como servicio compartido.** Vive en la base transversal y es invocado por los módulos que generan documentos firmados.
 - [ ] **Qué es la declaración jurada.** El término se usa para cosas muy distintas: DDJJ de existencias y cosecha ante el INV, DDJJ de salud o domicilio del empleado, DDJJ de carga del transportista. Cada una tiene otro firmante, otro destinatario y otro plazo legal. Sin esto no se puede ubicar el módulo.
 - [ ] **Quién consulta el bot y qué puede ver.** Productores, transportistas o ambos. Define autenticación y canal.
