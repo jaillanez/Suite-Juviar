@@ -7,7 +7,7 @@ from datetime import datetime
 import psycopg
 from psycopg.rows import dict_row
 
-from .modelo import AUSENTE, COLUMNAS_DESTINO
+from .modelo import AUSENTE, COLUMNAS_DESTINO, ClaveDescarga
 from .planificador import EstadoLocal, Plan
 
 _COLUMNAS = ", ".join(COLUMNAS_DESTINO)
@@ -34,14 +34,16 @@ class RepositorioSuite:
     @staticmethod
     def estado_local(
         conexion: psycopg.Connection, sede: str, desde: datetime
-    ) -> dict[str, EstadoLocal]:
+    ) -> dict[ClaveDescarga, EstadoLocal]:
         filas = conexion.execute(
-            """SELECT ciu, huella_origen, estado FROM recepcion.descarga
+            """SELECT ciu, id_origen, huella_origen, estado FROM recepcion.descarga
                WHERE sede = %s AND (fecha >= %s OR fecha IS NULL)""",
             (sede, desde),
         ).fetchall()
         return {
-            fila["ciu"]: EstadoLocal(fila["ciu"], fila["huella_origen"], fila["estado"])
+            ClaveDescarga(fila["ciu"], fila["id_origen"]): EstadoLocal(
+                fila["ciu"], fila["id_origen"], fila["huella_origen"], fila["estado"]
+            )
             for fila in filas
         }
 
@@ -101,15 +103,22 @@ class RepositorioSuite:
                            (descarga_id, huella_anterior, huella_nueva, valores_anteriores)
                        SELECT id, huella_origen, %(huella)s, to_jsonb(d.*)
                        FROM recepcion.descarga d
-                       WHERE sede = %(sede)s AND ciu = %(ciu)s""",
-                    {"sede": sede, "ciu": fila.ciu, "huella": fila.huella},
+                       WHERE sede = %(sede)s AND ciu = %(ciu)s
+                         AND id_origen = %(id_origen)s""",
+                    {
+                        "sede": sede,
+                        "ciu": fila.ciu,
+                        "id_origen": fila.clave.id_origen,
+                        "huella": fila.huella,
+                    },
                 )
                 conexion.execute(
                     f"""UPDATE recepcion.descarga SET
                             {_ASIGNACIONES}, estado = %(estado)s,
                             huella_origen = %(huella)s, ultima_vez_visto = now(),
                             actualizado_en = now(), pendiente_publicar = true
-                        WHERE sede = %(sede)s AND ciu = %(ciu)s""",
+                        WHERE sede = %(sede)s AND ciu = %(ciu)s
+                          AND id_origen = %(id_origen)s""",
                     {
                         **fila.valores,
                         "sede": sede,
@@ -118,23 +127,26 @@ class RepositorioSuite:
                     },
                 )
             if plan.sin_cambio:
-                conexion.execute(
+                conexion.executemany(
                     """UPDATE recepcion.descarga SET ultima_vez_visto = now()
-                       WHERE sede = %s AND ciu = ANY(%s)""",
-                    (sede, plan.sin_cambio),
+                       WHERE sede = %s AND ciu = %s AND id_origen = %s""",
+                    [(sede, clave.ciu, clave.id_origen) for clave in plan.sin_cambio],
                 )
             if plan.ausentes:
-                conexion.execute(
+                conexion.executemany(
                     """UPDATE recepcion.descarga SET estado = %s,
                            actualizado_en = now(), pendiente_publicar = true
-                       WHERE sede = %s AND ciu = ANY(%s)""",
-                    (AUSENTE, sede, plan.ausentes),
+                       WHERE sede = %s AND ciu = %s AND id_origen = %s""",
+                    [
+                        (AUSENTE, sede, clave.ciu, clave.id_origen)
+                        for clave in plan.ausentes
+                    ],
                 )
 
     @staticmethod
     def pendientes_de_publicar(conexion: psycopg.Connection, limite: int = 5000) -> list[dict]:
         return conexion.execute(
-            """SELECT id, sede, ciu, fecha, nroinscripto, neto, descvariedad,
+            """SELECT id, sede, ciu, id_origen, fecha, nroinscripto, neto, descvariedad,
                       azucar, estado, actualizado_en
                FROM recepcion.descarga WHERE pendiente_publicar
                ORDER BY id LIMIT %s""",
@@ -166,12 +178,12 @@ class RepositorioDmz:
         ):
             cursor.executemany(
                 """INSERT INTO consulta.descarga_publica
-                           (sede, ciu, fecha, nroinscripto, neto, variedad, azucar,
+                           (sede, ciu, id_origen, fecha, nroinscripto, neto, variedad, azucar,
                             estado, actualizado_en)
                        VALUES
-                           (%(sede)s, %(ciu)s, %(fecha)s, %(nroinscripto)s, %(neto)s,
+                           (%(sede)s, %(ciu)s, %(id_origen)s, %(fecha)s, %(nroinscripto)s, %(neto)s,
                             %(descvariedad)s, %(azucar)s, %(estado)s, %(actualizado_en)s)
-                       ON CONFLICT (sede, ciu) DO UPDATE SET
+                       ON CONFLICT (sede, ciu, id_origen) DO UPDATE SET
                            fecha = EXCLUDED.fecha,
                            nroinscripto = EXCLUDED.nroinscripto,
                            neto = EXCLUDED.neto,

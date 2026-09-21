@@ -43,9 +43,14 @@ cd apps/api
 python -m suite_juviar.modulos.recepcion.integracion_oracle.worker inicial
 ```
 
-La clave es `(sede, ciu)`. Las correcciones conservan la versión anterior en
+La clave, verificada sobre las 18.595 filas de la vista, es `(sede, ciu, id_origen)`.
+Las correcciones conservan la versión anterior en
 `recepcion.descarga_cambio`; una ausencia nunca borra la fila. Una publicación fallida
 permanece con `pendiente_publicar = true` y se reintenta en la corrida siguiente.
+
+Los registros históricos con `FECHA` nula se importan como `incompleto_en_origen`, no
+como camiones en descarga. Sólo una fila nueva sin fecha detectada por la ventana
+operativa se publica como `en_descarga`.
 
 ## Servicios
 

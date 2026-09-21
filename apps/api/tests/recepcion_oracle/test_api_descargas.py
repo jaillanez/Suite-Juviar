@@ -19,6 +19,7 @@ class RepoFalso:
         return Descarga(
             "chimbas",
             "12247369",
+            "0000000476",
             datetime(2026, 3, 3, 12, 58, tzinfo=UTC),
             11560,
             "Cereza",
@@ -31,6 +32,7 @@ class RepoFalso:
             Descarga(
                 "chimbas",
                 "1",
+                "ID-1",
                 datetime(2026, 3, 3, tzinfo=UTC),
                 11560,
                 "Cereza",
@@ -40,6 +42,7 @@ class RepoFalso:
             Descarga(
                 "chimbas",
                 "2",
+                "ID-2",
                 datetime(2026, 3, 3, tzinfo=UTC),
                 11740,
                 "Cereza",
@@ -49,7 +52,9 @@ class RepoFalso:
         ]
 
     def en_descarga(self, nroinscripto):
-        return [Descarga("chimbas", "3", None, None, "Cereza", None, "en_descarga")]
+        return [
+            Descarga("chimbas", "3", "ID-3", None, None, "Cereza", None, "en_descarga")
+        ]
 
     def rango(self, nroinscripto, desde, hasta, limite):
         return []
@@ -94,6 +99,7 @@ def test_clave_correcta_responde_y_registra(cliente) -> None:
     respuesta = cliente.get(URL, headers={"X-Api-Key": CLAVE})
     assert respuesta.status_code == 200
     assert respuesta.json()["descarga"]["neto_kg"] == 11560
+    assert respuesta.json()["descarga"]["id_origen"] == "0000000476"
     assert cliente.repo.registros[0][1] == "J80123"
 
 

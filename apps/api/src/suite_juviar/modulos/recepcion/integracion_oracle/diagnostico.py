@@ -52,24 +52,44 @@ def main(argv: list[str]) -> int:
         for fila in cursor:
             print("   ", fila)
 
-        print("\n== 3. ¿CIU sirve de clave?")
-        total, con_ciu, distintos = _uno(
-            cursor, f"SELECT COUNT(*), COUNT(CIU), COUNT(DISTINCT CIU) FROM {VISTA}"
+        print("\n== 3. ¿(CIU, ID) sirve de clave?")
+        total, con_ciu, con_id = _uno(
+            cursor, f"SELECT COUNT(*), COUNT(CIU), COUNT(ID) FROM {VISTA}"
         )
-        print(f"   filas={total}  con CIU={con_ciu}  CIU distintos={distintos}")
+        (claves_distintas,) = _uno(
+            cursor,
+            f"""SELECT COUNT(*) FROM (
+                    SELECT CIU, ID FROM {VISTA} GROUP BY CIU, ID
+                )""",
+        )
+        print(
+            f"   filas={total}  con CIU={con_ciu}  con ID={con_id}  "
+            f"claves distintas={claves_distintas}"
+        )
         if con_ciu != total:
             print("   !! hay filas sin CIU")
             bloqueante = True
-        if distintos != con_ciu:
-            print("   !! CIU repetido. Primeros casos:")
+        if con_id != total:
+            print("   !! hay filas sin ID")
+            bloqueante = True
+        if claves_distintas != total:
+            print("   !! combinación (CIU, ID) repetida. Primeros casos:")
             cursor.execute(
-                f"""SELECT CIU, COUNT(*) FROM {VISTA}
-                    GROUP BY CIU HAVING COUNT(*) > 1
+                f"""SELECT CIU, ID, COUNT(*) FROM {VISTA}
+                    GROUP BY CIU, ID HAVING COUNT(*) > 1
                     ORDER BY COUNT(*) DESC FETCH FIRST 10 ROWS ONLY"""
             )
             for fila in cursor:
                 print("     ", fila)
             bloqueante = True
+
+        (cius_reutilizados,) = _uno(
+            cursor,
+            f"""SELECT COUNT(*) FROM (
+                    SELECT CIU FROM {VISTA} GROUP BY CIU HAVING COUNT(*) > 1
+                )""",
+        )
+        print(f"   CIU reutilizados con distinto ID: {cius_reutilizados}")
 
         print("\n== 4. ¿ID se repite entre temporadas?")
         ids, distintos_id = _uno(cursor, f"SELECT COUNT(ID), COUNT(DISTINCT ID) FROM {VISTA}")

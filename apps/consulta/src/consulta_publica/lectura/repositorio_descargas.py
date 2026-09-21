@@ -8,7 +8,7 @@ import psycopg
 from consulta_publica.api.descargas import Descarga
 from psycopg.rows import dict_row
 
-_CAMPOS = "sede, ciu, fecha, neto, variedad, azucar, estado"
+_CAMPOS = "sede, ciu, id_origen, fecha, neto, variedad, azucar, estado"
 _VISIBLE = "estado <> 'ausente_en_origen'"
 
 
@@ -25,6 +25,7 @@ class RepositorioDescargasPg:
         return Descarga(
             fila["sede"],
             fila["ciu"],
+            fila["id_origen"],
             fila["fecha"],
             fila["neto"],
             fila["variedad"],

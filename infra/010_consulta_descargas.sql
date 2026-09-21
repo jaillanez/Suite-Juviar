@@ -4,6 +4,7 @@ CREATE SCHEMA IF NOT EXISTS consulta;
 CREATE TABLE IF NOT EXISTS consulta.descarga_publica (
     sede text NOT NULL,
     ciu text NOT NULL,
+    id_origen text NOT NULL,
     fecha timestamp,
     nroinscripto text,
     neto bigint,
@@ -11,7 +12,7 @@ CREATE TABLE IF NOT EXISTS consulta.descarga_publica (
     azucar numeric,
     estado text NOT NULL,
     actualizado_en timestamptz NOT NULL,
-    PRIMARY KEY (sede, ciu)
+    PRIMARY KEY (sede, ciu, id_origen)
 );
 CREATE INDEX IF NOT EXISTS ix_publica_productor
     ON consulta.descarga_publica (nroinscripto, fecha DESC);

@@ -39,6 +39,7 @@ def exigir_clave(x_api_key: str | None = Header(default=None)) -> str:
 class Descarga:
     sede: str
     ciu: str
+    id_origen: str
     fecha: datetime | None
     neto: int | None
     variedad: str | None
@@ -76,6 +77,7 @@ def _dto(descarga: Descarga) -> dict:
     return {
         "sede": descarga.sede,
         "ciu": descarga.ciu,
+        "id_origen": descarga.id_origen,
         "fecha": descarga.fecha.isoformat() if descarga.fecha else None,
         "neto_kg": descarga.neto,
         "variedad": descarga.variedad,

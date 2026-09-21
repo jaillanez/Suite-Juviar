@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime
 from decimal import Decimal
 from hashlib import sha256
@@ -41,10 +41,19 @@ COLUMNAS_DESTINO = tuple(MAPEO.values())
 EN_DESCARGA = "en_descarga"
 DESCARGADO = "descargado"
 AUSENTE = "ausente_en_origen"
+INCOMPLETO = "incompleto_en_origen"
 
 
 class FilaInvalida(ValueError):
     pass
+
+
+@dataclass(frozen=True, order=True)
+class ClaveDescarga:
+    """Identidad estable comprobada contra la vista completa de Oracle."""
+
+    ciu: str
+    id_origen: str
 
 
 @dataclass(frozen=True)
@@ -52,6 +61,7 @@ class FilaOrigen:
     sede: str
     ciu: str
     valores: dict[str, object]
+    estado_sin_fecha: str = EN_DESCARGA
 
     @classmethod
     def desde_oracle(cls, sede: str, crudo: dict[str, object]) -> FilaOrigen:
@@ -65,13 +75,21 @@ class FilaOrigen:
         if ciu is None:
             raise FilaInvalida(f"fila sin CIU en {sede}: ID={valores['id_origen']}")
         valores["ciu"] = str(ciu).strip()
-        if valores["id_origen"] is not None:
-            valores["id_origen"] = str(valores["id_origen"])
+        if valores["id_origen"] is None:
+            raise FilaInvalida(f"fila sin ID en {sede}: CIU={valores['ciu']}")
+        valores["id_origen"] = str(valores["id_origen"]).strip()
         return cls(sede=sede, ciu=valores["ciu"], valores=valores)
 
     @property
+    def clave(self) -> ClaveDescarga:
+        return ClaveDescarga(self.ciu, str(self.valores["id_origen"]))
+
+    @property
     def estado(self) -> str:
-        return EN_DESCARGA if self.valores["fecha"] is None else DESCARGADO
+        return self.estado_sin_fecha if self.valores["fecha"] is None else DESCARGADO
+
+    def como_incompleta(self) -> FilaOrigen:
+        return replace(self, estado_sin_fecha=INCOMPLETO)
 
     @property
     def huella(self) -> str:

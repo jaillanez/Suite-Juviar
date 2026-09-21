@@ -45,6 +45,11 @@ def test_sin_ciu_se_rechaza() -> None:
         FilaOrigen.desde_oracle("chimbas", _crudo(CIU=None))
 
 
+def test_sin_id_se_rechaza() -> None:
+    with pytest.raises(FilaInvalida):
+        FilaOrigen.desde_oracle("chimbas", _crudo(ID=None))
+
+
 def test_fecha_nula_es_camion_en_descarga() -> None:
     assert FilaOrigen.desde_oracle("chimbas", _crudo(FECHA=None, NETO=None)).estado == EN_DESCARGA
     assert FilaOrigen.desde_oracle("chimbas", _crudo()).estado == DESCARGADO

@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS recepcion.descarga (
     id bigserial PRIMARY KEY,
     sede text NOT NULL,
     ciu text NOT NULL,
-    id_origen text,
+    id_origen text NOT NULL,
     nro_delegacion integer,
     fecha timestamp,
     nroinscripto text,
@@ -30,14 +30,14 @@ CREATE TABLE IF NOT EXISTS recepcion.descarga (
     tipocosecha text,
     tipouva text,
     estado text NOT NULL CHECK (
-        estado IN ('en_descarga', 'descargado', 'ausente_en_origen')
+        estado IN ('en_descarga', 'descargado', 'incompleto_en_origen', 'ausente_en_origen')
     ),
     huella_origen text NOT NULL,
     pendiente_publicar boolean NOT NULL DEFAULT true,
     primera_vez_visto timestamptz NOT NULL DEFAULT now(),
     ultima_vez_visto timestamptz NOT NULL DEFAULT now(),
     actualizado_en timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT uq_descarga_sede_ciu UNIQUE (sede, ciu)
+    CONSTRAINT uq_descarga_sede_ciu_id UNIQUE (sede, ciu, id_origen)
 );
 
 CREATE INDEX IF NOT EXISTS ix_descarga_ventana ON recepcion.descarga (sede, fecha);

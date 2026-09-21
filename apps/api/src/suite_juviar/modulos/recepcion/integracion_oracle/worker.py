@@ -39,6 +39,11 @@ def sincronizar_sede(sede: Sede, modo: str, config: Config) -> int:
         leidas, plan = 0, None
         try:
             filas = fuente.leer_ventana(desde)
+            if modo == "inicial":
+                filas = [
+                    fila.como_incompleta() if fila.valores["fecha"] is None else fila
+                    for fila in filas
+                ]
             leidas = len(filas)
             plan = planificar(
                 filas,
