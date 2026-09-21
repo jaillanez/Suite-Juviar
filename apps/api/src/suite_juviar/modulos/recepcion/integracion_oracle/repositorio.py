@@ -127,21 +127,23 @@ class RepositorioSuite:
                     },
                 )
             if plan.sin_cambio:
-                conexion.executemany(
-                    """UPDATE recepcion.descarga SET ultima_vez_visto = now()
-                       WHERE sede = %s AND ciu = %s AND id_origen = %s""",
-                    [(sede, clave.ciu, clave.id_origen) for clave in plan.sin_cambio],
-                )
+                with conexion.cursor() as cursor:
+                    cursor.executemany(
+                        """UPDATE recepcion.descarga SET ultima_vez_visto = now()
+                           WHERE sede = %s AND ciu = %s AND id_origen = %s""",
+                        [(sede, clave.ciu, clave.id_origen) for clave in plan.sin_cambio],
+                    )
             if plan.ausentes:
-                conexion.executemany(
-                    """UPDATE recepcion.descarga SET estado = %s,
-                           actualizado_en = now(), pendiente_publicar = true
-                       WHERE sede = %s AND ciu = %s AND id_origen = %s""",
-                    [
-                        (AUSENTE, sede, clave.ciu, clave.id_origen)
-                        for clave in plan.ausentes
-                    ],
-                )
+                with conexion.cursor() as cursor:
+                    cursor.executemany(
+                        """UPDATE recepcion.descarga SET estado = %s,
+                               actualizado_en = now(), pendiente_publicar = true
+                           WHERE sede = %s AND ciu = %s AND id_origen = %s""",
+                        [
+                            (AUSENTE, sede, clave.ciu, clave.id_origen)
+                            for clave in plan.ausentes
+                        ],
+                    )
 
     @staticmethod
     def pendientes_de_publicar(conexion: psycopg.Connection, limite: int = 5000) -> list[dict]:
