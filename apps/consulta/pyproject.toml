@@ -8,6 +8,7 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.43",
     "asyncpg>=0.30",
     "psycopg[binary]>=3.2",
+    "httpx>=0.28",
 ]
 
 # Deliberadamente NO depende de suite-juviar-api. Si algún día lo importa,
