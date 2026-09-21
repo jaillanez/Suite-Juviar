@@ -1,4 +1,4 @@
-"""Normalización y huella estable de las filas de V_DETALLE_MOVIMIENTOS."""
+"""Normalización Oracle y huella estable de V_DETALLE_MOVIMIENTOS."""
 
 from __future__ import annotations
 

@@ -8,5 +8,5 @@ Type=oneshot
 User=suite
 WorkingDirectory=/opt/suite/apps/api
 EnvironmentFile=/etc/suite/recepcion.env
-ExecStart=/opt/suite/.venv/bin/python -m suite_juviar.modulos.recepcion.integracion_aynux.worker ventana
+ExecStart=/opt/suite/.venv/bin/python -m suite_juviar.modulos.recepcion.integracion_oracle.worker ventana
 TimeoutStartSec=240

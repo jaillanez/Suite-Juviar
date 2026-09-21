@@ -1,4 +1,4 @@
-"""Configuración del worker de recepción, exclusivamente por entorno."""
+"""Configuración del worker Oracle de recepción, exclusivamente por entorno."""
 
 from __future__ import annotations
 

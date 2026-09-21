@@ -1,4 +1,4 @@
-"""Planificación pura de altas, cambios, reapariciones y ausencias."""
+"""Planificación pura de altas, cambios, reapariciones y ausencias de Oracle."""
 
 from __future__ import annotations
 

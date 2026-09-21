@@ -63,7 +63,7 @@ class RepoFalso:
 
 @pytest.fixture()
 def cliente(monkeypatch):
-    monkeypatch.setenv("CONSULTA_API_KEY_AYNUX", CLAVE)
+    monkeypatch.setenv("CONSULTA_API_KEY_JUVIAR", CLAVE)
     api._clave.cache_clear()
     repo = RepoFalso()
     app = FastAPI()
@@ -119,12 +119,12 @@ def test_resumen_suma_kilos_y_cuenta_camiones_en_curso(cliente) -> None:
 
 @pytest.mark.parametrize("valor", ["", "corta"])
 def test_sin_clave_configurada_no_arranca(monkeypatch, valor) -> None:
-    monkeypatch.setenv("CONSULTA_API_KEY_AYNUX", valor)
+    monkeypatch.setenv("CONSULTA_API_KEY_JUVIAR", valor)
     with pytest.raises(RuntimeError):
         cargar_clave()
 
 
 def test_clave_ausente_en_entorno_no_arranca(monkeypatch) -> None:
-    monkeypatch.delenv("CONSULTA_API_KEY_AYNUX", raising=False)
+    monkeypatch.delenv("CONSULTA_API_KEY_JUVIAR", raising=False)
     with pytest.raises(RuntimeError):
         cargar_clave()

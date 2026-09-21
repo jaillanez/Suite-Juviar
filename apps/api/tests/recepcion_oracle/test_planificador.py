@@ -2,13 +2,13 @@ from datetime import UTC, datetime
 
 import pytest
 
-from suite_juviar.modulos.recepcion.integracion_aynux.modelo import (
+from suite_juviar.modulos.recepcion.integracion_oracle.modelo import (
     AUSENTE,
     DESCARGADO,
     EN_DESCARGA,
     FilaOrigen,
 )
-from suite_juviar.modulos.recepcion.integracion_aynux.planificador import (
+from suite_juviar.modulos.recepcion.integracion_oracle.planificador import (
     ClaveDuplicada,
     EstadoLocal,
     planificar,

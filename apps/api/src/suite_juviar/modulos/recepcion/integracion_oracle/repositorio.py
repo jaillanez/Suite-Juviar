@@ -1,4 +1,4 @@
-"""Persistencia durable en Suite y publicación de la copia mínima a DMZ."""
+"""Persistencia durable de Oracle en Suite y publicación mínima a DMZ."""
 
 from __future__ import annotations
 

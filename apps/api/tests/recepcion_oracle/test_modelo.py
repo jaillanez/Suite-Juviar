@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from suite_juviar.modulos.recepcion.integracion_aynux.modelo import (
+from suite_juviar.modulos.recepcion.integracion_oracle.modelo import (
     DESCARGADO,
     EN_DESCARGA,
     FilaInvalida,

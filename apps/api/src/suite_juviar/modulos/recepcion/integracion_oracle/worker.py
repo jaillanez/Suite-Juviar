@@ -1,4 +1,4 @@
-"""Worker Aynux: ``python -m ...integracion_aynux.worker ventana|nocturna|inicial``."""
+"""Worker Oracle: ``python -m ...integracion_oracle.worker ventana|nocturna|inicial``."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from .fuente_oracle import FuenteOracle
 from .planificador import planificar
 from .repositorio import RepositorioDmz, RepositorioSuite
 
-log = logging.getLogger("recepcion.integracion_aynux")
+log = logging.getLogger("recepcion.integracion_oracle")
 INICIO_HISTORICO = datetime(2000, 1, 1)  # noqa: DTZ001 - FECHA Oracle no tiene zona
 
 

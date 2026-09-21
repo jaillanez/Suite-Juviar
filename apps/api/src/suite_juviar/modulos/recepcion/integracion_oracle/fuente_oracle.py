@@ -1,4 +1,4 @@
-"""Adaptador de solo lectura para V_DETALLE_MOVIMIENTOS."""
+"""Adaptador Oracle de solo lectura para V_DETALLE_MOVIMIENTOS."""
 
 from __future__ import annotations
 

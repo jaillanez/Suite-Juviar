@@ -1,4 +1,4 @@
-"""API autenticada que Aynux consume desde la DMZ."""
+"""API autenticada de consulta de descargas de Juviar-ENAV."""
 
 from __future__ import annotations
 
@@ -16,10 +16,10 @@ PATRON_INSCRIPTO = r"^[A-Za-z0-9./-]{1,40}$"
 
 
 def cargar_clave() -> str:
-    clave = os.environ.get("CONSULTA_API_KEY_AYNUX", "")
+    clave = os.environ.get("CONSULTA_API_KEY_JUVIAR", "")
     if len(clave) < LONGITUD_MINIMA_CLAVE:
         raise RuntimeError(
-            f"CONSULTA_API_KEY_AYNUX ausente o menor a {LONGITUD_MINIMA_CLAVE} caracteres"
+            f"CONSULTA_API_KEY_JUVIAR ausente o menor a {LONGITUD_MINIMA_CLAVE} caracteres"
         )
     return clave
 
@@ -32,7 +32,7 @@ def _clave() -> str:
 def exigir_clave(x_api_key: str | None = Header(default=None)) -> str:
     if not x_api_key or not hmac.compare_digest(x_api_key.encode(), _clave().encode()):
         raise HTTPException(status_code=401, detail="no autorizado")
-    return "aynux"
+    return "juviar-enav"
 
 
 @dataclass(frozen=True)

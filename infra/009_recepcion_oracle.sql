@@ -1,4 +1,4 @@
--- Base de Suite: almacenamiento durable de la vista Oracle de Aynux.
+-- Base de Suite: almacenamiento durable de la vista Oracle de Juviar-ENAV.
 CREATE SCHEMA IF NOT EXISTS recepcion;
 
 CREATE TABLE IF NOT EXISTS recepcion.descarga (

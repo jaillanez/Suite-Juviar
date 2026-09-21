@@ -1,6 +1,6 @@
 """Diagnóstico bloqueante de la vista Oracle antes de la primera importación.
 
-Uso: python -m suite_juviar.modulos.recepcion.integracion_aynux.diagnostico chimbas
+Uso: python -m suite_juviar.modulos.recepcion.integracion_oracle.diagnostico chimbas
 """
 
 from __future__ import annotations
