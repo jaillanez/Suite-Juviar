@@ -27,7 +27,7 @@ class Config:
     tope_ausencias: float
 
     @classmethod
-    def desde_entorno(cls) -> Config:
+    def desde_entorno(cls, *, requerir_destinos: bool = True) -> Config:
         def requerida(nombre: str) -> str:
             valor = os.environ.get(nombre, "").strip()
             if not valor:
@@ -48,12 +48,17 @@ class Config:
             )
             for codigo in activas
         )
+        dsn_suite = os.environ.get("RECEPCION_DSN_SUITE", "").strip()
+        dsn_dmz = os.environ.get("RECEPCION_DSN_DMZ", "").strip()
+        if requerir_destinos:
+            dsn_suite = requerida("RECEPCION_DSN_SUITE")
+            dsn_dmz = requerida("RECEPCION_DSN_DMZ")
         return cls(
             sedes=sedes,
             usuario=requerida("RECEPCION_ORACLE_USUARIO"),
             clave=requerida("RECEPCION_ORACLE_CLAVE"),
-            dsn_suite=requerida("RECEPCION_DSN_SUITE"),
-            dsn_dmz=requerida("RECEPCION_DSN_DMZ"),
+            dsn_suite=dsn_suite,
+            dsn_dmz=dsn_dmz,
             ventana_dias=int(os.environ.get("RECEPCION_VENTANA_DIAS", "15")),
             ventana_nocturna_dias=int(os.environ.get("RECEPCION_VENTANA_NOCTURNA_DIAS", "200")),
             minimo_filas=int(os.environ.get("RECEPCION_MINIMO_FILAS", "1")),

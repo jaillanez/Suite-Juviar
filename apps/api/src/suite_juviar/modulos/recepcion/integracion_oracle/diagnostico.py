@@ -23,7 +23,9 @@ def main(argv: list[str]) -> int:
     if len(argv) != 2:
         print(__doc__)
         return 2
-    config = Config.desde_entorno()
+    # El diagnóstico precede deliberadamente a las migraciones: sólo necesita
+    # el origen Oracle y no debe exigir todavía los DSN de Suite y DMZ.
+    config = Config.desde_entorno(requerir_destinos=False)
     sede = next((item for item in config.sedes if item.codigo == argv[1]), None)
     if sede is None:
         print(f"sede {argv[1]} no está en RECEPCION_SEDES_ACTIVAS")
