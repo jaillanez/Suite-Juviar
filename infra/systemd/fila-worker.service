@@ -1,0 +1,22 @@
+[Unit]
+Description=Suite Juviar - cierre de viajes de la fila
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=suite
+Group=suite
+WorkingDirectory=/opt/suite-juviar
+Environment=PYTHONPATH=/opt/suite-juviar:/opt/suite-juviar/apps/fila/src
+EnvironmentFile=/etc/suite/fila.env
+ExecStart=/opt/suite-juviar/.venv/bin/python -m fila_app.worker
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

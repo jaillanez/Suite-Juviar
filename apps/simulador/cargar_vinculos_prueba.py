@@ -12,13 +12,13 @@ PREFIJO = "549000000"
 
 def publicar(suite: psycopg.Connection, dsn_dmz: str) -> int:
     vinculos = suite.execute(
-        "SELECT telefono, clientecuit, activo FROM terceros.contacto_whatsapp"
+        "SELECT telefono, clientecuit, activo, tareas FROM terceros.contacto_whatsapp"
     ).fetchall()
     with psycopg.connect(dsn_dmz) as dmz, dmz.transaction(), dmz.cursor() as cursor:
         cursor.execute("DELETE FROM consulta.telefono_productor")
         cursor.executemany(
             """INSERT INTO consulta.telefono_productor
-                   (telefono, clientecuit, activo) VALUES (%s, %s, %s)""",
+                   (telefono, clientecuit, activo, tareas) VALUES (%s, %s, %s, %s)""",
             vinculos,
         )
     return len(vinculos)

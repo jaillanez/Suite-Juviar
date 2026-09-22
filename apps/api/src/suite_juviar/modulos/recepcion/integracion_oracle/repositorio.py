@@ -181,13 +181,14 @@ class RepositorioDmz:
         ):
             cursor.executemany(
                 """INSERT INTO consulta.descarga_publica
-                           (sede, ciu, id_origen, fecha, nroinscripto, clientecuit, neto,
+                           (id_suite, sede, ciu, id_origen, fecha, nroinscripto, clientecuit, neto,
                             variedad, azucar, estado, actualizado_en)
                        VALUES
-                           (%(sede)s, %(ciu)s, %(id_origen)s, %(fecha)s, %(nroinscripto)s,
+                           (%(id)s, %(sede)s, %(ciu)s, %(id_origen)s, %(fecha)s, %(nroinscripto)s,
                             %(clientecuit)s, %(neto)s, %(descvariedad)s, %(azucar)s,
                             %(estado)s, %(actualizado_en)s)
                        ON CONFLICT (sede, ciu, id_origen) DO UPDATE SET
+                           id_suite = EXCLUDED.id_suite,
                            fecha = EXCLUDED.fecha,
                            nroinscripto = EXCLUDED.nroinscripto,
                            clientecuit = EXCLUDED.clientecuit,
