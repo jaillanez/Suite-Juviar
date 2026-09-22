@@ -4,6 +4,10 @@ from uuid import UUID
 from fastapi.testclient import TestClient
 from fila_app.main import app, repo_guardia, repo_publico, repo_turnos
 
+GUARDIA_TOKEN = "g" * 32
+PANTALLA_TOKEN = "p" * 32
+TURNOS_TOKEN = "t" * 32
+
 
 class Falso:
     def __init__(self):
@@ -36,9 +40,9 @@ class Falso:
 
 
 def cliente(monkeypatch):
-    monkeypatch.setenv("FILA_GUARDIA_TOKEN", "guardia-segura")
-    monkeypatch.setenv("FILA_PANTALLA_TOKEN", "pantalla-segura")
-    monkeypatch.setenv("FILA_TURNOS_TOKEN", "turnos-seguro")
+    monkeypatch.setenv("FILA_GUARDIA_TOKEN", GUARDIA_TOKEN)
+    monkeypatch.setenv("FILA_PANTALLA_TOKEN", PANTALLA_TOKEN)
+    monkeypatch.setenv("FILA_TURNOS_TOKEN", TURNOS_TOKEN)
     falso = Falso()
     app.dependency_overrides[repo_publico] = lambda: falso
     app.dependency_overrides[repo_guardia] = lambda: falso
@@ -90,14 +94,14 @@ def test_ticket_muestra_solo_estado_operativo(monkeypatch):
 def test_guardia_exige_credencial(monkeypatch):
     c, _ = cliente(monkeypatch)
     assert c.get("/api/guardia/chimbas").status_code == 403
-    assert c.get("/api/guardia/chimbas", headers={"x-guardia-token": "guardia-segura"}).status_code == 200
+    assert c.get("/api/guardia/chimbas", headers={"x-guardia-token": GUARDIA_TOKEN}).status_code == 200
 
 
 def test_confirmacion_acepta_idempotencia_de_tablet(monkeypatch):
     c, _ = cliente(monkeypatch)
     r = c.post(
         "/api/guardia/viajes/4/confirmar",
-        headers={"x-guardia-token": "guardia-segura"},
+        headers={"x-guardia-token": GUARDIA_TOKEN},
         json={
             "id_cliente": str(UUID("e72e072a-d725-4cf5-9127-0e8e972fd550")),
             "clientecuit": "20-12345678-9",
@@ -112,7 +116,7 @@ def test_guardia_puede_dar_alta_sin_celular(monkeypatch):
     c, _ = cliente(monkeypatch)
     r = c.post(
         "/api/guardia/viajes/directo",
-        headers={"x-guardia-token": "guardia-segura"},
+        headers={"x-guardia-token": GUARDIA_TOKEN},
         json={
             "id_cliente": "668e1368-b577-4cef-a112-a1934c4831af",
             "sede": "chimbas",
@@ -130,7 +134,7 @@ def test_pantalla_exige_token_y_no_tiene_productores(monkeypatch):
     c, _ = cliente(monkeypatch)
     assert c.get("/api/pantalla/chimbas").status_code == 404
     assert c.get("/api/pantalla/chimbas?token=mal").status_code == 404
-    respuesta = c.get("/api/pantalla/chimbas?token=pantalla-segura")
+    respuesta = c.get(f"/api/pantalla/chimbas?token={PANTALLA_TOKEN}")
     assert respuesta.json() == {"llamados": []}
 
 
@@ -145,4 +149,26 @@ def test_turno_exige_token(monkeypatch):
         "pedido_por": "5492645000001",
     }
     assert c.post("/api/turnos", json=datos).status_code == 403
-    assert c.post("/api/turnos", json=datos, headers={"x-turnos-token": "turnos-seguro"}).status_code == 201
+    assert c.post("/api/turnos", json=datos, headers={"x-turnos-token": TURNOS_TOKEN}).status_code == 201
+
+
+def test_tokens_ausentes_o_vacios_nunca_autorizan(monkeypatch):
+    c, _ = cliente(monkeypatch)
+    monkeypatch.delenv("FILA_GUARDIA_TOKEN")
+    monkeypatch.delenv("FILA_PANTALLA_TOKEN")
+    monkeypatch.delenv("FILA_TURNOS_TOKEN")
+    assert c.get("/api/guardia/chimbas", headers={"x-guardia-token": ""}).status_code == 403
+    assert c.get("/api/pantalla/chimbas?token=").status_code == 404
+
+
+def test_accion_desconocida_no_llega_al_repositorio(monkeypatch):
+    c, _ = cliente(monkeypatch)
+    respuesta = c.post(
+        "/api/guardia/viajes/4/borrar",
+        headers={"x-guardia-token": GUARDIA_TOKEN},
+        json={
+            "id_cliente": "999de681-2cc1-45e9-8948-d9af0793f093",
+            "momento_cliente": datetime.now(UTC).isoformat(),
+        },
+    )
+    assert respuesta.status_code == 404

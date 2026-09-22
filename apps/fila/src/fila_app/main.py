@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import os
 from functools import lru_cache
 from typing import Annotated
@@ -39,9 +40,17 @@ def repo_turnos() -> RepositorioFila:
     return RepositorioFila(dsn)
 
 
+def _token_valido(recibido: str | None, variable: str) -> bool:
+    esperado = os.environ.get(variable, "")
+    return (
+        len(esperado) >= 32
+        and recibido is not None
+        and hmac.compare_digest(recibido, esperado)
+    )
+
+
 def autenticar_guardia(x_guardia_token: str | None = Header(default=None)) -> str:
-    esperado = os.environ.get("FILA_GUARDIA_TOKEN", "")
-    if not esperado or x_guardia_token != esperado:
+    if not _token_valido(x_guardia_token, "FILA_GUARDIA_TOKEN"):
         raise HTTPException(403, "credencial de guardia inválida")
     return "guardia:tablet"
 
@@ -184,7 +193,7 @@ def accionar(
     actor: Guardia,
     repositorio: GuardiaRepoDep,
 ):
-    if accion not in {"llamar", "paso", "no_vino"}:
+    if accion not in {"llamar", "paso", "no_vino", "rechazar", "cancelar"}:
         raise HTTPException(404)
     try:
         return repositorio.accionar(
@@ -200,7 +209,7 @@ def datos_pantalla(
     repositorio: GuardiaRepoDep,
     token: str | None = None,
 ):
-    if token != os.environ.get("FILA_PANTALLA_TOKEN", ""):
+    if not _token_valido(token, "FILA_PANTALLA_TOKEN"):
         raise HTTPException(404)
     tablero = repositorio.tablero(sede)
     return {"llamados": tablero["llamados"]}
@@ -212,7 +221,7 @@ def reservar_turno(
     repositorio: TurnosRepoDep,
     x_turnos_token: str | None = Header(default=None),
 ):
-    if x_turnos_token != os.environ.get("FILA_TURNOS_TOKEN", ""):
+    if not _token_valido(x_turnos_token, "FILA_TURNOS_TOKEN"):
         raise HTTPException(403)
     try:
         return repositorio.reservar_turno(pedido.model_dump())

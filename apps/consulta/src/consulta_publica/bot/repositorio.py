@@ -69,7 +69,9 @@ class RepositorioBot:
         with self._conexion() as conexion:
             filas = conexion.execute(
                 """SELECT clientecuit FROM consulta.telefono_productor
-                   WHERE telefono = %s AND activo ORDER BY clientecuit""",
+                   WHERE telefono = %s AND activo
+                     AND 'ver_informes' = ANY(tareas)
+                   ORDER BY clientecuit""",
                 (telefono,),
             ).fetchall()
         return [fila["clientecuit"] for fila in filas]

@@ -86,15 +86,19 @@ sessionStorage.setItem('guardia-token',token);const H={{'content-type':'applicat
 const id=()=>crypto.randomUUID(),ahora=()=>new Date().toISOString();let datos={{pendientes:[],espera:[],llamados:[]}};
 function filaHtml(x,acciones=''){{return `<article class="row"><div><strong>${{x.numero_dia||''}} ${{x.patente}}</strong>
 <div class="muted">${{x.productor_texto||''}}</div></div><div class="acciones">${{acciones}}</div></article>`}}
-function pintar(){{pendientes.innerHTML=datos.pendientes.map(x=>filaHtml(x,`<button onclick="confirmar(${{x.id}})">Confirmar</button>`)).join('')||'<p class="muted">Ninguno.</p>';
- fila.innerHTML=datos.espera.map((x,i)=>filaHtml(x,`<span class="tag">${{['','Orgánico','Con turno','Espontáneo'][x.grupo]}}</span><button class="secondary" onclick="llamar(${{x.id}},${{i}})">Llamar</button>`)).join('')||'<p class="muted">Fila vacía.</p>';
- llamados.innerHTML=datos.llamados.map(x=>filaHtml(x,`<button onclick="accion(${{x.id}},'paso')">Pasó</button><button class="secondary" onclick="accion(${{x.id}},'no_vino')">No vino</button>`)).join('')||'<p class="muted">Ninguno.</p>';}}
+function pintar(){{pendientes.innerHTML=datos.pendientes.map(x=>filaHtml(x,`<button onclick="confirmar(${{x.id}})">Confirmar</button><button class="danger" onclick="cerrar(${{x.id}},'rechazar')">Rechazar</button>`)).join('')||'<p class="muted">Ninguno.</p>';
+ fila.innerHTML=datos.espera.map((x,i)=>filaHtml(x,`<span class="tag">${{['','Orgánico','Con turno','Espontáneo'][x.grupo]}}</span><button class="secondary" onclick="llamar(${{x.id}},${{i}})">Llamar</button><button class="danger" onclick="cerrar(${{x.id}},'cancelar')">Sacar de la fila</button>`)).join('')||'<p class="muted">Fila vacía.</p>';
+ llamados.innerHTML=datos.llamados.map(x=>filaHtml(x,`<button onclick="accion(${{x.id}},'paso')">Pasó</button><button class="secondary" onclick="accion(${{x.id}},'no_vino')">No vino</button><button class="danger" onclick="cerrar(${{x.id}},'cancelar')">Cancelar</button>`)).join('')||'<p class="muted">Ninguno.</p>';}}
 async function cargar(){{try{{const r=await fetch('/api/guardia/{sede}',{{headers:H}});if(!r.ok)throw 0;datos=await r.json();pintar();offline.classList.add('oculto')}}catch{{offline.classList.remove('oculto')}}}}
-async function enviar(url,body){{if(!navigator.onLine){{await cola(url,body);return}}const r=await fetch(url,{{method:'POST',headers:H,body:JSON.stringify(body)}});if(!r.ok)alert((await r.json()).detail);await cargar()}}
+async function enviar(url,body){{if(!navigator.onLine){{await cola(url,body);return}}try{{const r=await fetch(url,{{method:'POST',headers:H,body:JSON.stringify(body)}});if(!r.ok){{alert((await r.json()).detail);return}}await cargar()}}catch{{await cola(url,body)}}}}
 async function confirmar(viaje){{const c=prompt('CUIT del productor');if(!c)return;await enviar('/api/guardia/viajes/'+viaje+'/confirmar',{{id_cliente:id(),clientecuit:c,clientecodigo:null,declara_organica:confirm('¿Carga orgánica?'),momento_cliente:ahora()}})}}
 altaDirecta.onclick=async()=>{{const patente=prompt('Patente');if(!patente)return;const productor=prompt('Productor');if(!productor)return;const clientecuit=prompt('CUIT real');if(!clientecuit)return;
  await enviar('/api/guardia/viajes/directo',{{id_cliente:id(),sede,patente,productor,telefono:null,clientecuit,clientecodigo:null,declara_organica:confirm('¿Carga orgánica?'),momento_cliente:ahora()}})}};
-async function llamar(viaje,pos){{let motivo=null;if(pos>0){{motivo=prompt('Motivo: no_responde, documentacion_incompleta, problema_mecanico, indicacion_de_planta u otro');if(!motivo)return}}await accion(viaje,'llamar',motivo)}}
+const motivosSalto=['no_responde','documentacion_incompleta','problema_mecanico','indicacion_de_planta','otro'];
+const motivosCierre=['patente_no_coincide','registro_duplicado','datos_incorrectos','se_retiro','problema_mecanico','indicacion_de_planta','otro'];
+function elegirMotivo(opciones,titulo){{const lista=opciones.map((m,i)=>`${{i+1}}. ${{m.replaceAll('_',' ')}}`).join('\n');const n=Number(prompt(titulo+'\n'+lista));return opciones[n-1]||null}}
+async function llamar(viaje,pos){{let motivo=null;if(pos>0){{motivo=elegirMotivo(motivosSalto,'Elegí por qué se saltea el orden');if(!motivo)return}}await accion(viaje,'llamar',motivo)}}
+async function cerrar(viaje,accionCierre){{const motivo=elegirMotivo(motivosCierre,accionCierre==='rechazar'?'Elegí por qué se rechaza':'Elegí por qué se saca de la fila');if(motivo)await accion(viaje,accionCierre,motivo)}}
 async function accion(viaje,a,motivo=null){{await enviar('/api/guardia/viajes/'+viaje+'/'+a,{{id_cliente:id(),momento_cliente:ahora(),motivo}})}}
 siguiente.onclick=()=>datos.espera[0]&&accion(datos.espera[0].id,'llamar');
 async function db(){{return new Promise((ok,no)=>{{const q=indexedDB.open('fila-offline',1);q.onupgradeneeded=()=>q.result.createObjectStore('acciones',{{keyPath:'id'}});q.onsuccess=()=>ok(q.result);q.onerror=no}})}}
@@ -114,4 +118,4 @@ if(!r.ok)return;const d=await r.json();lista.innerHTML=d.llamados.map(x=>`<div c
 
 
 MANIFEST = '{"name":"Fila Juviar","short_name":"Fila","start_url":"/guardia/chimbas","display":"standalone","background_color":"#f4f0e7","theme_color":"#12633d","icons":[]}'
-SERVICE_WORKER = """const C='fila-v1';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['/guardia/chimbas','/fila-manifest.json']))));self.addEventListener('fetch',e=>{if(e.request.method==='GET')e.respondWith(fetch(e.request).then(r=>{let x=r.clone();caches.open(C).then(c=>c.put(e.request,x));return r}).catch(()=>caches.match(e.request)))})"""
+SERVICE_WORKER = """const C='fila-v2';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['/guardia/chimbas','/guardia/lavalle','/guardia/media-agua','/fila-manifest.json']))));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(xs=>Promise.all(xs.filter(x=>x!==C).map(x=>caches.delete(x))))));self.addEventListener('fetch',e=>{if(e.request.method==='GET')e.respondWith(fetch(e.request).then(r=>{let x=r.clone();caches.open(C).then(c=>c.put(e.request,x));return r}).catch(()=>caches.match(e.request)))})"""

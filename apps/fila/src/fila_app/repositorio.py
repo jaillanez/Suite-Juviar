@@ -4,6 +4,7 @@ import secrets
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 import psycopg
 from modulos.fila.cupo import Reserva
@@ -14,6 +15,17 @@ from modulos.fila.orden import EnEspera, elegir_llamado, grupo, ordenar, posicio
 from modulos.fila.patente import normalizar
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
+
+SAN_JUAN = ZoneInfo("America/Argentina/San_Juan")
+MOTIVOS_CIERRE = {
+    "patente_no_coincide",
+    "registro_duplicado",
+    "datos_incorrectos",
+    "se_retiro",
+    "problema_mecanico",
+    "indicacion_de_planta",
+    "otro",
+}
 
 
 def _ahora() -> datetime:
@@ -27,6 +39,10 @@ def _validar_momento(momento: datetime) -> datetime:
     if momento > ahora + timedelta(minutes=2) or momento < ahora - timedelta(hours=12):
         raise ValueError("la hora de la tablet está fuera del rango permitido")
     return momento
+
+
+def _fecha_operativa(momento: datetime) -> date:
+    return momento.astimezone(SAN_JUAN).date()
 
 
 class RepositorioFila:
@@ -195,7 +211,7 @@ class RepositorioFila:
             ).fetchone()
             if not viaje or viaje["estado"] != "pendiente":
                 raise ValueError("el camión ya no está pendiente")
-            fecha = momento_cliente.date()
+            fecha = _fecha_operativa(momento_cliente)
             turno = cn.execute(
                 """SELECT id FROM fila.turno WHERE sede=%s AND fecha=%s
                      AND clientecuit=%s AND estado='activo' AND camiones_usados < camiones
@@ -207,6 +223,10 @@ class RepositorioFila:
                     "UPDATE fila.turno SET camiones_usados=camiones_usados+1 WHERE id=%s",
                     (turno["id"],),
                 )
+            cn.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                (f"{viaje['sede']}:{fecha.isoformat()}",),
+            )
             numero = cn.execute(
                 """SELECT COALESCE(max(numero_dia),0)+1 n FROM fila.viaje
                    WHERE sede=%s AND fecha_operativa=%s""",
@@ -239,6 +259,7 @@ class RepositorioFila:
 
     def alta_directa(self, datos: dict[str, Any], actor: str) -> dict[str, Any]:
         momento = _validar_momento(datos["momento_cliente"])
+        fecha = _fecha_operativa(momento)
         patente = normalizar(datos["patente"])
         with self.conexion() as cn:
             existente = cn.execute(
@@ -248,21 +269,45 @@ class RepositorioFila:
             ).fetchone()
             if existente:
                 return dict(existente)
+            pendiente = cn.execute(
+                """SELECT id FROM fila.viaje
+                   WHERE sede=%s AND patente=%s AND estado='pendiente' FOR UPDATE""",
+                (datos["sede"], patente),
+            ).fetchone()
+            if pendiente:
+                cn.execute(
+                    """UPDATE fila.viaje SET estado='cancelado',cerrado_en=now(),
+                              motivo_cierre='reemplazado_por_guardia' WHERE id=%s""",
+                    (pendiente["id"],),
+                )
+                cn.execute(
+                    """INSERT INTO fila.evento(viaje_id,tipo,actor,motivo,detalle)
+                       VALUES (%s,'cancelado',%s,'reemplazado_por_guardia',%s)""",
+                    (
+                        pendiente["id"],
+                        actor,
+                        Jsonb({"alta_directa_id_cliente": str(datos["id_cliente"])}),
+                    ),
+                )
             turno = cn.execute(
                 """SELECT id FROM fila.turno WHERE sede=%s AND fecha=%s
                      AND clientecuit=%s AND estado='activo' AND camiones_usados<camiones
                    ORDER BY creado_en FOR UPDATE LIMIT 1""",
-                (datos["sede"], momento.date(), datos["clientecuit"]),
+                (datos["sede"], fecha, datos["clientecuit"]),
             ).fetchone()
             if turno:
                 cn.execute(
                     "UPDATE fila.turno SET camiones_usados=camiones_usados+1 WHERE id=%s",
                     (turno["id"],),
                 )
+            cn.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))",
+                (f"{datos['sede']}:{fecha.isoformat()}",),
+            )
             numero = cn.execute(
                 """SELECT COALESCE(max(numero_dia),0)+1 n FROM fila.viaje
                    WHERE sede=%s AND fecha_operativa=%s""",
-                (datos["sede"], momento.date()),
+                (datos["sede"], fecha),
             ).fetchone()["n"]
             viaje = cn.execute(
                 """INSERT INTO fila.viaje
@@ -282,7 +327,7 @@ class RepositorioFila:
                     datos.get("clientecodigo"),
                     datos["declara_organica"],
                     turno["id"] if turno else None,
-                    momento.date(),
+                    fecha,
                     numero,
                     momento,
                     actor,
@@ -312,7 +357,13 @@ class RepositorioFila:
         motivo: str | None = None,
     ) -> dict[str, Any]:
         momento_cliente = _validar_momento(momento_cliente)
-        destinos = {"llamar": "llamado", "paso": "en_bascula", "no_vino": "en_espera"}
+        destinos = {
+            "llamar": "llamado",
+            "paso": "en_bascula",
+            "no_vino": "en_espera",
+            "rechazar": "cancelado",
+            "cancelar": "cancelado",
+        }
         destino = destinos[accion]
         with self.conexion() as cn:
             if cn.execute("SELECT 1 FROM fila.evento WHERE id_cliente=%s", (id_cliente,)).fetchone():
@@ -322,6 +373,12 @@ class RepositorioFila:
             ).fetchone()
             if not viaje:
                 raise ValueError("viaje inexistente")
+            if accion == "rechazar" and viaje["estado"] != "pendiente":
+                raise ValueError("sólo se puede rechazar un registro pendiente")
+            if accion == "cancelar" and viaje["estado"] not in {"en_espera", "llamado"}:
+                raise ValueError("sólo se puede cancelar un camión de la fila")
+            if accion in {"rechazar", "cancelar"} and motivo not in MOTIVOS_CIERRE:
+                raise ValueError("el cierre exige un motivo válido")
             validar_estado(viaje["estado"], destino)
             detalle: dict[str, Any] = {}
             if accion == "llamar":
@@ -345,12 +402,16 @@ class RepositorioFila:
                 "llamar": "llamado_en=%s,llamado_por=%s",
                 "paso": "en_bascula_en=%s",
                 "no_vino": "llamado_en=NULL,llamado_por=NULL",
+                "rechazar": "cerrado_en=%s,motivo_cierre=%s",
+                "cancelar": "cerrado_en=%s,motivo_cierre=%s",
             }
             parametros: tuple[Any, ...]
             if accion == "llamar":
                 parametros = (destino, momento_cliente, actor, viaje_id)
             elif accion == "paso":
                 parametros = (destino, momento_cliente, viaje_id)
+            elif accion in {"rechazar", "cancelar"}:
+                parametros = (destino, momento_cliente, motivo, viaje_id)
             else:
                 parametros = (destino, viaje_id)
             actualizado = cn.execute(
@@ -367,6 +428,9 @@ class RepositorioFila:
 
     def reservar_turno(self, datos: dict[str, Any]) -> dict[str, Any]:
         fecha = date.fromisoformat(datos["fecha"])
+        hoy = datetime.now(SAN_JUAN).date()
+        if fecha < hoy or fecha > hoy + timedelta(days=60):
+            raise ValueError("el turno debe ser desde hoy y hasta 60 días adelante")
         reserva = Reserva(datos["camiones"], datos["kg_por_camion"])
         with self.conexion() as cn:
             capacidad = cn.execute(
@@ -425,7 +489,10 @@ class RepositorioFila:
                 candidatos = cn.execute(
                     """SELECT id_suite,fecha FROM consulta.descarga_publica
                        WHERE clientecuit=%s AND sede=%s AND estado='descargado'
-                         AND fecha >= %s AND fecha <= %s + interval '3 hours'
+                         AND fecha AT TIME ZONE 'America/Argentina/San_Juan'
+                             >= %s - interval '30 minutes'
+                         AND fecha AT TIME ZONE 'America/Argentina/San_Juan'
+                             <= %s + interval '3 hours'
                          AND id_suite IS NOT NULL ORDER BY fecha,id_suite""",
                     (
                         viaje["clientecuit"],
