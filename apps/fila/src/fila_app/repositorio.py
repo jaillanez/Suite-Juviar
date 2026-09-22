@@ -16,12 +16,15 @@ from modulos.fila.patente import normalizar
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-SAN_JUAN = ZoneInfo("America/Argentina/San_Juan")
+ZONA_OPERATIVA = ZoneInfo("America/Argentina/San_Juan")
+DIAS_MAXIMOS_TURNO = 60
 MOTIVOS_CIERRE = {
     "patente_no_coincide",
+    "no_esta_en_porton",
     "registro_duplicado",
     "datos_incorrectos",
     "se_retiro",
+    "rechazado_por_planta",
     "problema_mecanico",
     "indicacion_de_planta",
     "otro",
@@ -41,8 +44,8 @@ def _validar_momento(momento: datetime) -> datetime:
     return momento
 
 
-def _fecha_operativa(momento: datetime) -> date:
-    return momento.astimezone(SAN_JUAN).date()
+def _dia_operativo(momento: datetime) -> date:
+    return momento.astimezone(ZONA_OPERATIVA).date()
 
 
 class RepositorioFila:
@@ -211,7 +214,7 @@ class RepositorioFila:
             ).fetchone()
             if not viaje or viaje["estado"] != "pendiente":
                 raise ValueError("el camión ya no está pendiente")
-            fecha = _fecha_operativa(momento_cliente)
+            fecha = _dia_operativo(momento_cliente)
             turno = cn.execute(
                 """SELECT id FROM fila.turno WHERE sede=%s AND fecha=%s
                      AND clientecuit=%s AND estado='activo' AND camiones_usados < camiones
@@ -259,7 +262,7 @@ class RepositorioFila:
 
     def alta_directa(self, datos: dict[str, Any], actor: str) -> dict[str, Any]:
         momento = _validar_momento(datos["momento_cliente"])
-        fecha = _fecha_operativa(momento)
+        fecha = _dia_operativo(momento)
         patente = normalizar(datos["patente"])
         with self.conexion() as cn:
             existente = cn.execute(
@@ -365,6 +368,8 @@ class RepositorioFila:
             "cancelar": "cancelado",
         }
         destino = destinos[accion]
+        if accion in {"rechazar", "cancelar"} and motivo not in MOTIVOS_CIERRE:
+            raise ValueError("sacar un camión de la fila exige un motivo válido")
         with self.conexion() as cn:
             if cn.execute("SELECT 1 FROM fila.evento WHERE id_cliente=%s", (id_cliente,)).fetchone():
                 return dict(cn.execute("SELECT * FROM fila.viaje WHERE id=%s", (viaje_id,)).fetchone())
@@ -377,8 +382,6 @@ class RepositorioFila:
                 raise ValueError("sólo se puede rechazar un registro pendiente")
             if accion == "cancelar" and viaje["estado"] not in {"en_espera", "llamado"}:
                 raise ValueError("sólo se puede cancelar un camión de la fila")
-            if accion in {"rechazar", "cancelar"} and motivo not in MOTIVOS_CIERRE:
-                raise ValueError("el cierre exige un motivo válido")
             validar_estado(viaje["estado"], destino)
             detalle: dict[str, Any] = {}
             if accion == "llamar":
@@ -428,9 +431,11 @@ class RepositorioFila:
 
     def reservar_turno(self, datos: dict[str, Any]) -> dict[str, Any]:
         fecha = date.fromisoformat(datos["fecha"])
-        hoy = datetime.now(SAN_JUAN).date()
-        if fecha < hoy or fecha > hoy + timedelta(days=60):
-            raise ValueError("el turno debe ser desde hoy y hasta 60 días adelante")
+        hoy = datetime.now(ZONA_OPERATIVA).date()
+        if fecha < hoy:
+            raise ValueError("no se reservan turnos para días pasados")
+        if fecha > hoy + timedelta(days=DIAS_MAXIMOS_TURNO):
+            raise ValueError(f"los turnos se piden con hasta {DIAS_MAXIMOS_TURNO} días de anticipación")
         reserva = Reserva(datos["camiones"], datos["kg_por_camion"])
         with self.conexion() as cn:
             capacidad = cn.execute(
