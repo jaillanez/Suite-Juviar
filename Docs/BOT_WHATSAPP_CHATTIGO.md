@@ -62,3 +62,30 @@ PYTHONPATH=apps/consulta/src python -m consulta_publica.bot.configurar_webhook \
 Para volver atrás, Juviar-ENAV debe registrar nuevamente la URL anterior en
 Chattigo. Durante la primera semana revisar diariamente mensajes en estado
 `error`; ese período forma parte del criterio de cierre.
+
+## Simulador interno
+
+Mientras faltan las credenciales de Chattigo, el worker usa
+`BOT_TRANSPORTE=simulado`. El simulador escucha exclusivamente en loopback del
+VPS y no está publicado por Caddy. Para usarlo:
+
+```bash
+ssh -N -L 8099:127.0.0.1:8099 root@173.212.195.122
+```
+
+Después abrir `http://127.0.0.1:8099`. La fecha simulada actual es
+`2026-03-10`, elegida por contener 100 descargas reales. El único productor
+distinto disponible quedó vinculado al teléfono ficticio `5490000000001`.
+
+Antes de activar Chattigo es obligatorio eliminar los vínculos ficticios:
+
+```bash
+set -a
+. /etc/suite/terceros.env
+set +a
+PYTHONPATH=/opt/suite-juviar:/opt/suite-juviar/apps/api/src \
+  /opt/suite-juviar/.venv/bin/python -m apps.simulador.cargar_vinculos_prueba --borrar
+```
+
+Luego cambiar a `BOT_TRANSPORTE=chattigo`, quitar `BOT_FECHA_SIMULADA`, detener
+`bot-simulador.service` y recién entonces registrar el webhook en Chattigo.

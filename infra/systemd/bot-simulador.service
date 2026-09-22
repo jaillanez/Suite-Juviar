@@ -1,0 +1,22 @@
+[Unit]
+Description=Suite Juviar - simulador interno del bot
+After=network-online.target consulta-publica.service bot-whatsapp.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=suite
+Group=suite
+WorkingDirectory=/opt/suite-juviar
+Environment=PYTHONPATH=/opt/suite-juviar:/opt/suite-juviar/apps/consulta/src
+EnvironmentFile=/etc/suite/bot.env
+ExecStart=/opt/suite-juviar/.venv/bin/uvicorn apps.simulador.main:app --host 127.0.0.1 --port 8099 --no-access-log
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

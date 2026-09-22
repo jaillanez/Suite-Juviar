@@ -6,12 +6,12 @@ import logging
 import os
 import signal
 import time
-from datetime import datetime
 
 from consulta_publica.lectura.repositorio_descargas import RepositorioDescargasPg
 
-from .chattigo import ClienteChattigo, ConfigChattigo, ErrorChattigo
-from .conversacion import ZONA, intencion, responder
+from . import transporte
+from .chattigo import ErrorChattigo
+from .conversacion import intencion, responder
 from .repositorio import RepositorioBot
 
 log = logging.getLogger("bot.worker")
@@ -31,9 +31,9 @@ def _parar(*_: object) -> None:
     _seguir = False
 
 
-def procesar_una_vez(bot: RepositorioBot, consultas, chattigo, maximo_hora: int = 20) -> int:
+def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 20) -> int:
     pendientes = bot.tomar()
-    hoy = datetime.now(ZONA).date()
+    hoy = transporte.fecha_hoy()
     for pendiente in pendientes:
         if bot.respuestas_ultima_hora(pendiente.telefono) >= maximo_hora:
             bot.cerrar(pendiente.id, "ignorado", error="tope de respuestas por hora")
@@ -41,8 +41,8 @@ def procesar_una_vez(bot: RepositorioBot, consultas, chattigo, maximo_hora: int 
         inscriptos = bot.inscriptos(pendiente.telefono)
         texto = responder(pendiente.texto, inscriptos, consultas, hoy)
         try:
-            wamid = chattigo.enviar_texto(pendiente.telefono, texto)
-        except ErrorChattigo as exc:
+            wamid = salida.enviar_texto(pendiente.telefono, texto)
+        except (ErrorChattigo, transporte.ErrorTransporte) as exc:
             bot.reintentar(pendiente.id, str(exc), MAX_INTENTOS)
             log.warning("envío falló (intento %s): %s", pendiente.intentos + 1, exc)
             continue
@@ -61,11 +61,13 @@ def main() -> None:
     dsn = os.environ["BOT_DSN"]
     bot = RepositorioBot(dsn)
     consultas = RepositorioDescargasPg(dsn)
-    chattigo = ClienteChattigo(ConfigChattigo.desde_entorno())
+    salida = transporte.desde_entorno()
+    transporte.fecha_hoy()
+    log.info("transporte: %s", transporte.modo())
     maximo_hora = _max_respuestas_hora()
     while _seguir:
         try:
-            if procesar_una_vez(bot, consultas, chattigo, maximo_hora) == 0:
+            if procesar_una_vez(bot, consultas, salida, maximo_hora) == 0:
                 time.sleep(1.5)
         except Exception:
             log.exception("ciclo falló; se reintenta en 10 s")

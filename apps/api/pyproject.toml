@@ -195,6 +195,12 @@ source_modules = [
 ]
 forbidden_modules = ["pyodbc", "pymssql"]
 
+[[tool.importlinter.contracts]]
+name = "El simulador no accede al dominio de la Suite"
+type = "forbidden"
+source_modules = ["apps.simulador"]
+forbidden_modules = ["suite_juviar.modulos", "suite_juviar.plataforma"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
