@@ -58,6 +58,54 @@ button {
 button:hover {
   background: #eef3ef;
 }
+.alta-contacto,
+.resolver-pendiente {
+  display: grid;
+  gap: 16px;
+}
+.alta-contacto fieldset,
+.resolver-pendiente {
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 16px;
+}
+.alta-contacto fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.alta-contacto input[type="checkbox"] {
+  min-height: auto;
+  width: 18px;
+  height: 18px;
+}
+.pendientes-contactos {
+  margin-top: 24px;
+}
+.resultado-productor {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  min-height: 64px;
+  text-align: left;
+}
+.resultado-productor small,
+.contacto-fila small {
+  color: var(--muted);
+}
+.clave-temporal {
+  display: grid;
+  gap: 6px;
+  margin: 16px 0;
+  background: #eef5f0;
+  box-shadow: none;
+}
+.clave-temporal code {
+  width: max-content;
+  font-size: 1.15rem;
+  font-weight: 750;
+  user-select: all;
+}
 .primario {
   background: var(--verde);
   border-color: var(--verde);

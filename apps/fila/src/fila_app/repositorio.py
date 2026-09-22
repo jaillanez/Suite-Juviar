@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import secrets
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
@@ -15,6 +16,8 @@ from modulos.fila.orden import EnEspera, elegir_llamado, grupo, ordenar, posicio
 from modulos.fila.patente import normalizar
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
+
+from .guardias import MAX_FALLOS, Sesion, hash_token, hashear, nuevo_token, vencimiento, verificar
 
 ZONA_OPERATIVA = ZoneInfo("America/Argentina/San_Juan")
 DIAS_MAXIMOS_TURNO = 60
@@ -54,6 +57,110 @@ class RepositorioFila:
 
     def conexion(self):
         return psycopg.connect(self.dsn, row_factory=dict_row)
+
+    def ingresar_guardia(self, usuario: str, clave: str, ip: str) -> dict[str, Any]:
+        ahora = _ahora()
+        with self.conexion() as cn:
+            fallos = cn.execute(
+                """SELECT count(*) n FROM fila.intento_ingreso
+                   WHERE usuario=%s AND NOT exito AND momento > now()-interval '1 hour'""",
+                (usuario,),
+            ).fetchone()["n"]
+            guardia = cn.execute(
+                """SELECT usuario,nombre,sede,clave_hash,activo,debe_cambiar_clave
+                   FROM fila.guardia WHERE usuario=%s FOR UPDATE""",
+                (usuario,),
+            ).fetchone()
+            valido = bool(
+                fallos < MAX_FALLOS
+                and guardia
+                and guardia["activo"]
+                and verificar(clave, guardia["clave_hash"])
+            )
+            cn.execute(
+                "INSERT INTO fila.intento_ingreso(usuario,exito,ip) VALUES (%s,%s,%s)",
+                (usuario, valido, ip if ip != "desconocida" else None),
+            )
+            if not valido:
+                raise PermissionError(
+                    "usuario bloqueado por una hora" if fallos >= MAX_FALLOS else "usuario o clave inválidos"
+                )
+            token = nuevo_token()
+            vence = vencimiento(ahora)
+            cn.execute(
+                """INSERT INTO fila.sesion_guardia(token_hash,usuario,sede,vence)
+                   VALUES (%s,%s,%s,%s)""",
+                (hash_token(token), usuario, guardia["sede"], vence),
+            )
+            cn.execute(
+                "UPDATE fila.guardia SET ultimo_ingreso=now() WHERE usuario=%s", (usuario,)
+            )
+        return {
+            "token": token,
+            "usuario": usuario,
+            "nombre": guardia["nombre"],
+            "sede": guardia["sede"],
+            "vence": vence,
+            "debe_cambiar_clave": guardia["debe_cambiar_clave"],
+        }
+
+    def sesion_guardia(self, token: str) -> Sesion | None:
+        if not token:
+            return None
+        with self.conexion() as cn:
+            fila = cn.execute(
+                """SELECT s.usuario,s.sede,s.vence
+                   FROM fila.sesion_guardia s JOIN fila.guardia g USING(usuario)
+                   WHERE s.token_hash=%s AND s.cerrada_en IS NULL
+                     AND s.vence>now() AND g.activo""",
+                (hash_token(token),),
+            ).fetchone()
+        return Sesion(**dict(fila)) if fila else None
+
+    def cambiar_clave(self, usuario: str, actual: str, nueva: str) -> None:
+        with self.conexion() as cn:
+            fila = cn.execute(
+                "SELECT clave_hash FROM fila.guardia WHERE usuario=%s AND activo FOR UPDATE",
+                (usuario,),
+            ).fetchone()
+            if not fila or not verificar(actual, fila["clave_hash"]):
+                raise PermissionError("la clave actual no coincide")
+            cn.execute(
+                """UPDATE fila.guardia SET clave_hash=%s,debe_cambiar_clave=false
+                   WHERE usuario=%s""",
+                (hashear(nueva), usuario),
+            )
+
+    def sede_viaje(self, viaje_id: int) -> str | None:
+        with self.conexion() as cn:
+            fila = cn.execute("SELECT sede FROM fila.viaje WHERE id=%s", (viaje_id,)).fetchone()
+        return fila["sede"] if fila else None
+
+    def buscar_productores(self, consulta: str) -> list[dict[str, Any]]:
+        from .busqueda import terminos
+
+        palabras = terminos(consulta)
+        codigo = consulta.strip().upper()
+        if not palabras and not re.fullmatch(r"[A-Z]\d{5}", codigo):
+            return []
+        with self.conexion() as cn:
+            filas = cn.execute(
+                """SELECT clientecuit,razonsocial,codigos
+                   FROM fila.productor
+                   WHERE (%s::text[] <> '{}' AND string_to_array(busqueda,' ') @> %s)
+                      OR (%s ~ '^[A-Z][0-9]{5}$' AND %s=ANY(codigos))
+                   ORDER BY ultima_entrega DESC NULLS LAST LIMIT 20""",
+                (palabras, palabras, codigo, codigo),
+            ).fetchall()
+        return [dict(f) for f in filas]
+
+    def copia_productores(self) -> list[dict[str, Any]]:
+        with self.conexion() as cn:
+            filas = cn.execute(
+                """SELECT clientecuit,razonsocial,codigos,busqueda
+                   FROM fila.productor ORDER BY ultima_entrega DESC NULLS LAST"""
+            ).fetchall()
+        return [dict(f) for f in filas]
 
     def expirar(self) -> int:
         with self.conexion() as cn:
@@ -201,6 +308,7 @@ class RepositorioFila:
         clientecuit: str,
         clientecodigo: str | None,
         declara_organica: bool,
+        productor_revision_manual: bool,
         actor: str,
         id_cliente: UUID,
         momento_cliente: datetime,
@@ -238,7 +346,8 @@ class RepositorioFila:
             actualizado = cn.execute(
                 """UPDATE fila.viaje SET estado='en_espera',clientecuit=%s,
                           clientecodigo=%s,declara_organica=%s,turno_id=%s,
-                          confirmado_en=%s,confirmado_por=%s,fecha_operativa=%s,numero_dia=%s
+                          confirmado_en=%s,confirmado_por=%s,fecha_operativa=%s,numero_dia=%s,
+                          productor_revision_manual=%s
                    WHERE id=%s RETURNING *""",
                 (
                     clientecuit,
@@ -249,6 +358,7 @@ class RepositorioFila:
                     actor,
                     fecha,
                     numero,
+                    productor_revision_manual,
                     viaje_id,
                 ),
             ).fetchone()
@@ -316,9 +426,9 @@ class RepositorioFila:
                 """INSERT INTO fila.viaje
                    (id_cliente,ticket,productor_texto,sede,patente,chofer_tel,clientecuit,
                     clientecodigo,declara_organica,turno_id,origen,estado,fecha_operativa,
-                    numero_dia,confirmado_en,confirmado_por)
+                    numero_dia,confirmado_en,confirmado_por,productor_revision_manual)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'guardia','en_espera',
-                           %s,%s,%s,%s) RETURNING *""",
+                           %s,%s,%s,%s,%s) RETURNING *""",
                 (
                     datos["id_cliente"],
                     secrets.token_urlsafe(32),
@@ -334,6 +444,7 @@ class RepositorioFila:
                     numero,
                     momento,
                     actor,
+                    datos.get("productor_revision_manual", False),
                 ),
             ).fetchone()
             cn.execute(

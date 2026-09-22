@@ -14,8 +14,12 @@ def main() -> None:
     publicador = PublicadorContactos(
         os.environ["RECEPCION_DSN_SUITE"], os.environ["RECEPCION_DSN_DMZ"]
     )
+    proxima_copia_productores = 0.0
     while True:
         publicador.publicar()
+        if time.monotonic() >= proxima_copia_productores:
+            publicador.publicar_productores()
+            proxima_copia_productores = time.monotonic() + 24 * 60 * 60
         time.sleep(300)
 
 

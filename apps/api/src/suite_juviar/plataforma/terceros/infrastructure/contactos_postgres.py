@@ -4,6 +4,9 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from ..busqueda import normalizar as normalizar_busqueda
+from ..busqueda import terminos
+from ..telefono import normalizar as normalizar_telefono
 from .publicar_contactos import PublicadorContactos, encolar
 
 
@@ -69,6 +72,115 @@ class ContactosPostgreSQL:
                     (clientecuit,),
                 ).fetchall()
             ]
+
+    def alta(
+        self, clientecuit: str, telefono: str, tareas: list[str], actor: str, motivo: str
+    ) -> None:
+        telefono = normalizar_telefono(telefono)
+        with self.conectar() as cn:
+            existente = cn.execute(
+                """SELECT activo,tareas FROM terceros.contacto_whatsapp
+                   WHERE clientecuit=%s AND telefono=%s FOR UPDATE""",
+                (clientecuit, telefono),
+            ).fetchone()
+            if existente and existente["activo"]:
+                raise ValueError("el contacto ya existe y está activo")
+            cn.execute(
+                """INSERT INTO terceros.contacto_whatsapp
+                   (telefono,clientecuit,tareas,origen,alta_por,activo)
+                   VALUES (%s,%s,%s,'alta_manual',%s,true)
+                   ON CONFLICT (telefono,clientecuit) DO UPDATE SET
+                     tareas=EXCLUDED.tareas,activo=true,origen='alta_manual',
+                     alta_por=EXCLUDED.alta_por,alta_en=now()""",
+                (telefono, clientecuit, tareas, actor),
+            )
+            tipo = "alta_reactivada" if existente else "alta"
+            cn.execute(
+                """INSERT INTO terceros.contacto_evento
+                   (clientecuit,telefono,tipo,actor,antes,despues,detalle)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s)""",
+                (
+                    clientecuit,
+                    telefono,
+                    tipo,
+                    actor,
+                    existente["tareas"] if existente else None,
+                    tareas,
+                    Jsonb({"motivo": motivo}),
+                ),
+            )
+            encolar(cn, clientecuit, telefono)
+        self._publicar_ahora()
+
+    def pendientes(self) -> list[dict]:
+        with self.conectar() as cn:
+            filas = cn.execute(
+                """SELECT p.*,
+                          (SELECT count(*) FROM recepcion.descarga d
+                           WHERE d.clienterazonsocial ILIKE '%%'||p.nombre_excel||'%%') entregas
+                   FROM terceros.contacto_pendiente p
+                   WHERE p.estado='pendiente'
+                   ORDER BY entregas DESC,p.id"""
+            ).fetchall()
+        return [dict(f) for f in filas]
+
+    def buscar_productores(self, consulta: str) -> list[dict]:
+        palabras = terminos(consulta)
+        if not palabras:
+            return []
+        patron = "%" + "%".join(palabras) + "%"
+        codigo = normalizar_busqueda(consulta)
+        with self.conectar() as cn:
+            filas = cn.execute(
+                """SELECT clientecuit,max(clienterazonsocial) razonsocial,
+                          array_agg(DISTINCT clientecodigo) codigos,max(fecha)::date ultima_entrega
+                   FROM recepcion.descarga
+                   WHERE clientecuit IS NOT NULL AND estado<>'ausente_en_origen'
+                     AND (upper(translate(clienterazonsocial,'ÁÉÍÓÚÜÑ','AEIOUUN')) LIKE %s
+                          OR clientecodigo=%s)
+                   GROUP BY clientecuit ORDER BY ultima_entrega DESC NULLS LAST LIMIT 20""",
+                (patron, codigo),
+            ).fetchall()
+        return [dict(f) for f in filas]
+
+    def resolver_pendiente(
+        self,
+        pendiente_id: int,
+        clientecuit: str,
+        tareas: set[str],
+        actor: str,
+        motivo: str,
+    ) -> None:
+        from ..domain.permisos import validar_tareas
+
+        with self.conectar() as cn:
+            pendiente = cn.execute(
+                """SELECT * FROM terceros.contacto_pendiente
+                   WHERE id=%s AND estado='pendiente' FOR UPDATE""",
+                (pendiente_id,),
+            ).fetchone()
+            if not pendiente:
+                raise ValueError("pendiente inexistente o ya resuelto")
+            telefono = normalizar_telefono(pendiente["telefono"] or pendiente["telefono_crudo"])
+        self.alta(clientecuit, telefono, sorted(validar_tareas(tareas)), actor, motivo)
+        with self.conectar() as cn:
+            cn.execute(
+                """UPDATE terceros.contacto_pendiente SET estado='resuelto',
+                          resuelto_por=%s,resuelto_en=now(),clientecuit=%s,telefono=%s,nota=%s
+                   WHERE id=%s AND estado='pendiente'""",
+                (actor, clientecuit, telefono, motivo, pendiente_id),
+            )
+
+    def descartar_pendiente(self, pendiente_id: int, actor: str, nota: str) -> None:
+        with self.conectar() as cn:
+            fila = cn.execute(
+                """UPDATE terceros.contacto_pendiente SET estado='descartado',
+                          resuelto_por=%s,resuelto_en=now(),nota=%s
+                   WHERE id=%s AND estado='pendiente' RETURNING id""",
+                (actor, nota, pendiente_id),
+            ).fetchone()
+            if not fila:
+                raise ValueError("pendiente inexistente o ya resuelto")
 
     def guardar_tareas(self, clientecuit: str, telefono: str, tareas: list[str], actor: str) -> None:
         with self.conectar() as cn:

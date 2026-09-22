@@ -20,6 +20,7 @@ class Confirmacion(BaseModel):
     clientecuit: str = Field(min_length=5, max_length=40)
     clientecodigo: str | None = Field(default=None, max_length=60)
     declara_organica: bool = False
+    productor_revision_manual: bool = False
     momento_cliente: datetime
 
 
@@ -46,3 +47,13 @@ class PedidoTurno(BaseModel):
     declara_organica: bool = False
     pedido_por: str = Field(min_length=3, max_length=100)
     canal: Literal["whatsapp", "web", "bodega"] = "web"
+
+
+class IngresoGuardia(BaseModel):
+    usuario: str = Field(pattern=r"^[a-z0-9._-]{3,30}$")
+    clave: str = Field(min_length=1, max_length=200)
+
+
+class CambioClave(BaseModel):
+    actual: str = Field(min_length=1, max_length=200)
+    nueva: str = Field(min_length=6, max_length=200)

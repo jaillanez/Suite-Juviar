@@ -5,15 +5,21 @@ from __future__ import annotations
 import argparse
 import csv
 import os
-import re
 import sys
 from pathlib import Path
 
 import psycopg
+from psycopg.types.json import Jsonb
+
+from suite_juviar.plataforma.terceros.telefono import TelefonoInvalido
+from suite_juviar.plataforma.terceros.telefono import normalizar as normalizar_estricto
 
 
 def normalizar(telefono: str) -> str:
-    return re.sub(r"\D", "", telefono or "")
+    """Compatibilidad del importador: una celda vacía sigue siendo vacía."""
+    if not telefono:
+        return ""
+    return normalizar_estricto(telefono)
 
 
 def importar(ruta: Path, responsable: str, conexion: psycopg.Connection) -> tuple[int, int, list[str]]:
@@ -25,13 +31,27 @@ def importar(ruta: Path, responsable: str, conexion: psycopg.Connection) -> tupl
         if not lector.fieldnames or not {"telefono", "clientecuit"}.issubset(lector.fieldnames):
             raise ValueError("El CSV debe tener encabezados telefono,clientecuit")
         for registro in lector:
-            telefono = normalizar(registro.get("telefono", ""))
+            telefono_crudo = registro.get("telefono", "")
             clientecuit = (registro.get("clientecuit") or "").strip()
-            if not 8 <= len(telefono) <= 20 or not clientecuit or len(clientecuit) > 40:
+            try:
+                telefono = normalizar_estricto(telefono_crudo)
+            except TelefonoInvalido:
+                invalidos += 1
+                conexion.execute(
+                    """INSERT INTO terceros.contacto_pendiente
+                       (telefono_crudo,nombre_excel,sucursal,motivo,candidatos)
+                       VALUES (%s,%s,%s,'telefono_invalido',%s)""",
+                    (
+                        telefono_crudo,
+                        registro.get("nombre") or registro.get("razonsocial") or "Sin nombre",
+                        registro.get("suc") or registro.get("sucursal"),
+                        Jsonb([]),
+                    ),
+                )
+                continue
+            if not clientecuit or len(clientecuit) > 40:
                 invalidos += 1
                 continue
-            if not telefono.startswith("549"):
-                dudosos.append(telefono)
             filas.append((telefono, clientecuit, responsable))
     with conexion.transaction(), conexion.cursor() as cursor:
         cursor.executemany(

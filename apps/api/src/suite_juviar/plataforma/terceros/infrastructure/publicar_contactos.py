@@ -7,6 +7,8 @@ import logging
 import psycopg
 from psycopg.rows import dict_row
 
+from ..busqueda import normalizar
+
 log = logging.getLogger(__name__)
 
 
@@ -71,4 +73,76 @@ class PublicadorContactos:
                         (str(exc)[:1000], fila["telefono"], fila["clientecuit"]),
                     )
                     log.warning("contacto pendiente de publicar: %s", exc)
+        return publicados
+
+    def publicar_productores(self) -> int:
+        """Reconstruye diariamente la copia mínima; los upserts son idempotentes."""
+        with psycopg.connect(self.dsn_suite, row_factory=dict_row) as suite:
+            productores = suite.execute(
+                """SELECT clientecuit,max(clienterazonsocial) razonsocial,
+                          array_agg(DISTINCT clientecodigo) codigos,
+                          max(fecha)::date ultima_entrega
+                   FROM recepcion.descarga
+                   WHERE clientecuit IS NOT NULL AND estado<>'ausente_en_origen'
+                     AND clienterazonsocial IS NOT NULL
+                   GROUP BY clientecuit"""
+            ).fetchall()
+            for p in productores:
+                suite.execute(
+                    """INSERT INTO terceros.productor_publicacion
+                       (clientecuit,razonsocial,busqueda,codigos,ultima_entrega,publicado_en)
+                       VALUES (%s,%s,%s,%s,%s,NULL)
+                       ON CONFLICT(clientecuit) DO UPDATE SET
+                         razonsocial=EXCLUDED.razonsocial,busqueda=EXCLUDED.busqueda,
+                         codigos=EXCLUDED.codigos,ultima_entrega=EXCLUDED.ultima_entrega,
+                         version=terceros.productor_publicacion.version+1,
+                         pendiente_desde=now(),publicado_en=NULL,ultimo_error=NULL""",
+                    (
+                        p["clientecuit"],
+                        p["razonsocial"],
+                        normalizar(p["razonsocial"]),
+                        p["codigos"],
+                        p["ultima_entrega"],
+                    ),
+                )
+        publicados = 0
+        with psycopg.connect(self.dsn_suite, row_factory=dict_row) as suite:
+            filas = suite.execute(
+                """SELECT * FROM terceros.productor_publicacion
+                   WHERE publicado_en IS NULL ORDER BY pendiente_desde
+                   FOR UPDATE SKIP LOCKED"""
+            ).fetchall()
+            for fila in filas:
+                try:
+                    with psycopg.connect(self.dsn_dmz) as dmz:
+                        dmz.execute(
+                            """INSERT INTO fila.productor
+                               (clientecuit,razonsocial,busqueda,codigos,ultima_entrega)
+                               VALUES (%s,%s,%s,%s,%s)
+                               ON CONFLICT(clientecuit) DO UPDATE SET
+                                 razonsocial=EXCLUDED.razonsocial,busqueda=EXCLUDED.busqueda,
+                                 codigos=EXCLUDED.codigos,ultima_entrega=EXCLUDED.ultima_entrega,
+                                 actualizado_en=now()""",
+                            (
+                                fila["clientecuit"],
+                                fila["razonsocial"],
+                                fila["busqueda"],
+                                fila["codigos"],
+                                fila["ultima_entrega"],
+                            ),
+                        )
+                    suite.execute(
+                        """UPDATE terceros.productor_publicacion
+                           SET publicado_en=now(),intentos=intentos+1,ultimo_error=NULL
+                           WHERE clientecuit=%s AND version=%s""",
+                        (fila["clientecuit"], fila["version"]),
+                    )
+                    publicados += 1
+                except psycopg.Error as exc:
+                    suite.execute(
+                        """UPDATE terceros.productor_publicacion
+                           SET intentos=intentos+1,ultimo_error=%s WHERE clientecuit=%s""",
+                        (str(exc)[:1000], fila["clientecuit"]),
+                    )
+                    log.warning("productor pendiente de publicar: %s", exc)
         return publicados

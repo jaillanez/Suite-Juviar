@@ -15,6 +15,10 @@ class Contactos(Protocol):
     def guardar_tareas(self, clientecuit: str, telefono: str, tareas: list[str], actor: str) -> None: ...
     def baja(self, clientecuit: str, telefono: str, actor: str, motivo: str) -> None: ...
     def reemplazar(self, clientecuit: str, anterior: str, nuevo: str, actor: str, motivo: str) -> None: ...
+    def alta(self, clientecuit: str, telefono: str, tareas: list[str], actor: str, motivo: str) -> None: ...
+    def pendientes(self) -> list[dict]: ...
+    def descartar_pendiente(self, pendiente_id: int, actor: str, nota: str) -> None: ...
+    def buscar_productores(self, consulta: str) -> list[dict]: ...
 
 
 class GestionarContactos:
@@ -37,6 +41,25 @@ class GestionarContactos:
         }
         validar_cambio(actuales, telefono, nuevas)
         self.repo.guardar_tareas(clientecuit, telefono, sorted(nuevas), actor)
+
+    def alta(
+        self, clientecuit: str, telefono: str, tareas: set[str], actor: str, motivo: str
+    ) -> None:
+        from suite_juviar.plataforma.terceros.telefono import normalizar
+
+        nuevas = validar_tareas(tareas)
+        self.repo.alta(
+            clientecuit, normalizar(telefono), sorted(nuevas), actor, motivo.strip()
+        )
+
+    def pendientes(self) -> list[dict]:
+        return self.repo.pendientes()
+
+    def descartar_pendiente(self, pendiente_id: int, actor: str, nota: str) -> None:
+        self.repo.descartar_pendiente(pendiente_id, actor, nota.strip())
+
+    def buscar_productores(self, consulta: str) -> list[dict]:
+        return self.repo.buscar_productores(consulta)
 
     def dar_baja(self, clientecuit: str, telefono: str, actor: str, motivo: str) -> None:
         actuales = {

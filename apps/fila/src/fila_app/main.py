@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hmac
 import os
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import Annotated
 
@@ -11,7 +12,16 @@ from fastapi.responses import HTMLResponse, Response
 from modulos.fila.cupo import SinCupo
 from modulos.fila.patente import PatenteInvalida
 
-from .modelos import Accion, AltaGuardia, AltaPublica, Confirmacion, PedidoTurno
+from .guardias import Sesion
+from .modelos import (
+    Accion,
+    AltaGuardia,
+    AltaPublica,
+    CambioClave,
+    Confirmacion,
+    IngresoGuardia,
+    PedidoTurno,
+)
 from .repositorio import RepositorioFila, RepositorioPublico
 from .web import MANIFEST, SERVICE_WORKER, guardia, pagina, pantalla, porton, ticket
 
@@ -49,10 +59,17 @@ def _token_valido(recibido: str | None, variable: str) -> bool:
     )
 
 
-def autenticar_guardia(x_guardia_token: str | None = Header(default=None)) -> str:
-    if not _token_valido(x_guardia_token, "FILA_GUARDIA_TOKEN"):
+def autenticar_guardia(x_guardia_token: str | None = Header(default=None)) -> Sesion:
+    if _token_valido(x_guardia_token, "FILA_GUARDIA_TOKEN"):
+        return Sesion("tablet-transicion", "*", datetime.now(UTC) + timedelta(hours=12))
+    if not x_guardia_token:
         raise HTTPException(403, "credencial de guardia inválida")
-    return "guardia:tablet"
+    if not os.environ.get("FILA_DSN_GUARDIA", "").strip():
+        raise HTTPException(403, "credencial de guardia inválida")
+    sesion = repo_guardia().sesion_guardia(x_guardia_token or "")
+    if not sesion:
+        raise HTTPException(403, "credencial de guardia inválida")
+    return sesion
 
 
 app = FastAPI(
@@ -64,7 +81,7 @@ app = FastAPI(
 GuardiaRepoDep = Annotated[RepositorioFila, Depends(repo_guardia)]
 PublicoRepoDep = Annotated[RepositorioPublico, Depends(repo_publico)]
 TurnosRepoDep = Annotated[RepositorioFila, Depends(repo_turnos)]
-Guardia = Annotated[str, Depends(autenticar_guardia)]
+Guardia = Annotated[Sesion, Depends(autenticar_guardia)]
 
 
 @app.get("/health")
@@ -154,21 +171,61 @@ def estado_ticket(token: str, repositorio: PublicoRepoDep):
 @app.get("/api/guardia/{sede}")
 def tablero_guardia(
     sede: str,
-    _: Guardia,
+    sesion: Guardia,
     repositorio: GuardiaRepoDep,
 ):
+    if not sesion.puede_operar(sede):
+        raise HTTPException(403, "la sesión no corresponde a esta sede")
     return repositorio.tablero(sede)
+
+
+@app.post("/api/guardia/ingreso")
+def ingreso_guardia(datos: IngresoGuardia, request: Request, repositorio: GuardiaRepoDep):
+    try:
+        return repositorio.ingresar_guardia(
+            datos.usuario, datos.clave, request.client.host if request.client else "desconocida"
+        )
+    except PermissionError as exc:
+        raise HTTPException(403, str(exc)) from exc
+
+
+@app.post("/api/guardia/cambiar-clave", status_code=204)
+def cambiar_clave(datos: CambioClave, sesion: Guardia, repositorio: GuardiaRepoDep):
+    if sesion.sede == "*":
+        raise HTTPException(409, "la clave compartida no se puede cambiar aquí")
+    try:
+        repositorio.cambiar_clave(sesion.usuario, datos.actual, datos.nueva)
+    except PermissionError as exc:
+        raise HTTPException(403, str(exc)) from exc
+
+
+@app.get("/api/guardia/{sede}/productores")
+def productores(sede: str, q: str, sesion: Guardia, repositorio: GuardiaRepoDep):
+    if not sesion.puede_operar(sede):
+        raise HTTPException(403, "la sesión no corresponde a esta sede")
+    return repositorio.buscar_productores(q)
+
+
+@app.get("/api/guardia/{sede}/productores-copia")
+def copia_productores(sede: str, sesion: Guardia, repositorio: GuardiaRepoDep):
+    if not sesion.puede_operar(sede):
+        raise HTTPException(403, "la sesión no corresponde a esta sede")
+    return repositorio.copia_productores()
 
 
 @app.post("/api/guardia/viajes/{viaje_id}/confirmar")
 def confirmar(
     viaje_id: int,
     datos: Confirmacion,
-    actor: Guardia,
+    sesion: Guardia,
     repositorio: GuardiaRepoDep,
 ):
+    if sesion.sede != "*":
+        sede = repositorio.sede_viaje(viaje_id)
+        if not sede or not sesion.puede_operar(sede):
+            raise HTTPException(403, "la sesión no corresponde a esta sede")
     try:
-        return repositorio.confirmar(viaje_id, actor=actor, **datos.model_dump())
+        return repositorio.confirmar(viaje_id, actor=sesion.actor, **datos.model_dump())
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
 
@@ -176,11 +233,13 @@ def confirmar(
 @app.post("/api/guardia/viajes/directo")
 def alta_directa(
     datos: AltaGuardia,
-    actor: Guardia,
+    sesion: Guardia,
     repositorio: GuardiaRepoDep,
 ):
     try:
-        return repositorio.alta_directa(datos.model_dump(), actor)
+        if not sesion.puede_operar(datos.sede):
+            raise HTTPException(403, "la sesión no corresponde a esta sede")
+        return repositorio.alta_directa(datos.model_dump(), sesion.actor)
     except (ValueError, psycopg.errors.UniqueViolation) as exc:
         raise HTTPException(409, str(exc)) from exc
 
@@ -190,14 +249,18 @@ def accionar(
     viaje_id: int,
     accion: str,
     datos: Accion,
-    actor: Guardia,
+    sesion: Guardia,
     repositorio: GuardiaRepoDep,
 ):
     if accion not in {"llamar", "paso", "no_vino", "rechazar", "cancelar"}:
         raise HTTPException(404)
+    if sesion.sede != "*":
+        sede = repositorio.sede_viaje(viaje_id)
+        if not sede or not sesion.puede_operar(sede):
+            raise HTTPException(403, "la sesión no corresponde a esta sede")
     try:
         return repositorio.accionar(
-            viaje_id, accion, actor=actor, **datos.model_dump()
+            viaje_id, accion, actor=sesion.actor, **datos.model_dump()
         )
     except (ValueError, LookupError) as exc:
         raise HTTPException(409, str(exc)) from exc

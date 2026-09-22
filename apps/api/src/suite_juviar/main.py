@@ -16,6 +16,8 @@ from suite_juviar.plataforma.identidad.api.dependencias import (
 )
 from suite_juviar.plataforma.terceros.api.contactos import configurar as configurar_contactos
 from suite_juviar.plataforma.terceros.api.contactos import router as contactos_router
+from suite_juviar.plataforma.terceros.api.guardias import configurar as configurar_guardias
+from suite_juviar.plataforma.terceros.api.guardias import router as guardias_router
 from suite_juviar.plataforma.terceros.application.contactos import GestionarContactos
 from suite_juviar.plataforma.terceros.infrastructure.contactos_postgres import (
     ContactosPostgreSQL,
@@ -36,7 +38,11 @@ if dsn_contactos:
             ContactosPostgreSQL(dsn_contactos, os.getenv("RECEPCION_DSN_DMZ", "").strip())
         )
     )
+dsn_dmz = os.getenv("RECEPCION_DSN_DMZ", "").strip()
+if dsn_dmz:
+    configurar_guardias(dsn_dmz)
 app.include_router(contactos_router, prefix="/api/v1")
+app.include_router(guardias_router, prefix="/api/v1")
 rrhh_epp = construir_rrhh_epp()
 app.mount("/api/v1/rrhh-epp", crear_rrhh_epp_app(rrhh_epp))
 for nombre, subaplicacion in construir_subaplicaciones(rrhh_epp).items():
