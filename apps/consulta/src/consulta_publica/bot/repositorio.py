@@ -16,13 +16,9 @@ class RepositorioWebhook:
 
     def encolar(self, mensaje: MensajeEntrante) -> bool:
         with psycopg.connect(self._dsn) as conexion:
-            resultado = conexion.execute(
+            fila = conexion.execute(
                 """
-                INSERT INTO consulta.bot_entrada
-                    (wamid, telefono, tipo, texto, enviado_en)
-                VALUES (%s, %s, %s, %s, %s)
-                ON CONFLICT (wamid) DO NOTHING
-                RETURNING id
+                SELECT consulta.encolar_bot(%s, %s, %s, %s, %s) AS insertado
                 """,
                 (
                     mensaje.wamid,
@@ -32,7 +28,7 @@ class RepositorioWebhook:
                     mensaje.enviado_en,
                 ),
             ).fetchone()
-        return resultado is not None
+        return bool(fila[0])
 
 
 @dataclass(frozen=True)

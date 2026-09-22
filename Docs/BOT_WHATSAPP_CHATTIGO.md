@@ -19,7 +19,7 @@ registrarlo, el número deja de entregar los mensajes al bot anterior.
 
 - URL base, usuario, clave y DID de Chattigo.
 - CSV `telefono,nroinscripto` de Juviar-ENAV.
-- Dominio HTTPS que publicará `POST /webhook/chattigo/{secreto}`.
+- Dominio HTTPS: `juviar-bot.duckdns.org`, apuntado al VPS mediante DuckDNS.
 - Si Chattigo las provee, IP de salida para filtrarlas además en nginx.
 
 ## Importación de teléfonos
@@ -42,8 +42,8 @@ deben revisarse antes del cambio de canal.
 ## Puesta en marcha segura
 
 1. Completar las variables `CHATTIGO_*` de `/etc/suite/bot.env`.
-2. Publicar la app Consulta por HTTPS cargando `/etc/suite/consulta.env` y
-   `/etc/suite/bot.env`.
+2. La app Consulta se ejecuta como `consulta-publica.service`; Caddy publica
+   exclusivamente `/webhook/chattigo/*` en `https://juviar-bot.duckdns.org`.
 3. Simular el webhook con un teléfono de prueba registrado. Confirmar respuesta
    real en menos de 10 segundos.
 4. Confirmar 404 sin secreto y con secreto incorrecto.
@@ -56,7 +56,7 @@ set -a
 . /etc/suite/bot.env
 set +a
 PYTHONPATH=apps/consulta/src python -m consulta_publica.bot.configurar_webhook \
-  https://DOMINIO/webhook/chattigo
+  https://juviar-bot.duckdns.org/webhook/chattigo
 ```
 
 Para volver atrás, Juviar-ENAV debe registrar nuevamente la URL anterior en

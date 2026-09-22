@@ -1,0 +1,23 @@
+[Unit]
+Description=Suite Juviar - API de Consulta y webhook Chattigo
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=suite
+Group=suite
+WorkingDirectory=/opt/suite-juviar
+Environment=PYTHONPATH=/opt/suite-juviar/apps/consulta/src
+EnvironmentFile=/etc/suite/consulta.env
+EnvironmentFile=/etc/suite/bot.env
+ExecStart=/opt/suite-juviar/.venv/bin/uvicorn consulta_publica.main:app --host 172.18.0.1 --port 8021 --proxy-headers --forwarded-allow-ips=172.18.0.0/16 --no-access-log
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

@@ -20,3 +20,9 @@ def test_migraciones_y_servicio_no_contienen_secretos():
     assert "CHATTIGO_CLAVE=\n" in ejemplo
     assert "EnvironmentFile=/etc/suite/bot.env" in servicio
     assert "enable --now" not in servicio
+
+
+def test_api_publica_no_registra_el_secreto_del_webhook():
+    raiz = Path(__file__).parents[4]
+    servicio = (raiz / "infra/systemd/consulta-publica.service").read_text()
+    assert "--no-access-log" in servicio
