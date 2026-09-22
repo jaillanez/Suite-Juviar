@@ -31,7 +31,11 @@ app.include_router(identidad_router, prefix="/api/v1")
 app.include_router(recepcion_router, prefix="/api/v1")
 dsn_contactos = os.getenv("SJ_CONTACTOS_DSN", os.getenv("RECEPCION_DSN_SUITE", "")).strip()
 if dsn_contactos:
-    configurar_contactos(GestionarContactos(ContactosPostgreSQL(dsn_contactos)))
+    configurar_contactos(
+        GestionarContactos(
+            ContactosPostgreSQL(dsn_contactos, os.getenv("RECEPCION_DSN_DMZ", "").strip())
+        )
+    )
 app.include_router(contactos_router, prefix="/api/v1")
 rrhh_epp = construir_rrhh_epp()
 app.mount("/api/v1/rrhh-epp", crear_rrhh_epp_app(rrhh_epp))

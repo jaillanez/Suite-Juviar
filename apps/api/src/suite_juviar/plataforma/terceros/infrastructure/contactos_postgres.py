@@ -4,10 +4,20 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
+from .publicar_contactos import PublicadorContactos, encolar
+
 
 class ContactosPostgreSQL:
-    def __init__(self, dsn: str) -> None:
+    def __init__(self, dsn: str, dsn_dmz: str = "") -> None:
         self.dsn = dsn
+        self.publicador = PublicadorContactos(dsn, dsn_dmz) if dsn_dmz else None
+
+    def _publicar_ahora(self) -> None:
+        if self.publicador:
+            try:
+                self.publicador.publicar()
+            except psycopg.Error:
+                pass
 
     def conectar(self):
         return psycopg.connect(self.dsn, row_factory=dict_row)
@@ -78,6 +88,8 @@ class ContactosPostgreSQL:
                    VALUES (%s,%s,'permisos_cambiados',%s,%s,%s)""",
                 (clientecuit, telefono, actor, antes["tareas"], tareas),
             )
+            encolar(cn, clientecuit, telefono)
+        self._publicar_ahora()
 
     def baja(self, clientecuit: str, telefono: str, actor: str, motivo: str) -> None:
         with self.conectar() as cn:
@@ -97,6 +109,8 @@ class ContactosPostgreSQL:
                    VALUES (%s,%s,'baja',%s,%s,%s)""",
                 (clientecuit, telefono, actor, antes["tareas"], Jsonb({"motivo": motivo})),
             )
+            encolar(cn, clientecuit, telefono)
+        self._publicar_ahora()
 
     def reemplazar(self, clientecuit: str, anterior: str, nuevo: str, actor: str, motivo: str) -> None:
         tareas_admin = ["ver_informes", "pedir_turnos", "administrar_contactos"]
@@ -125,3 +139,6 @@ class ContactosPostgreSQL:
                    VALUES (%s,%s,'reemplazo_administrador',%s,%s,%s,%s)""",
                 (clientecuit, nuevo, actor, viejo["tareas"], tareas_admin, detalle),
             )
+            encolar(cn, clientecuit, anterior)
+            encolar(cn, clientecuit, nuevo)
+        self._publicar_ahora()
