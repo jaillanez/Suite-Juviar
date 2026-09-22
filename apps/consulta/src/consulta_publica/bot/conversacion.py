@@ -21,9 +21,9 @@ NO_REGISTRADO = (
 
 
 class Consultas(Protocol):
-    def ultima(self, nroinscripto: str): ...
-    def del_dia(self, nroinscripto: str, dia: date) -> list: ...
-    def en_descarga(self, nroinscripto: str) -> list: ...
+    def ultima(self, clientecuit: str): ...
+    def del_dia(self, clientecuit: str, dia: date) -> list: ...
+    def en_descarga(self, clientecuit: str) -> list: ...
     def datos_al(self) -> dict[str, datetime]: ...
 
 
@@ -60,19 +60,19 @@ def _datos_al(consultas: Consultas) -> str:
 
 
 def responder(
-    texto: str | None, inscriptos: list[str], consultas: Consultas, hoy: date
+    texto: str | None, productores: list[str], consultas: Consultas, hoy: date
 ) -> str:
-    if not inscriptos:
+    if not productores:
         return NO_REGISTRADO
     que = intencion(texto)
     if que == "menu":
         return MENU + _datos_al(consultas)
 
     bloques: list[str] = []
-    for inscripto in inscriptos:
-        encabezado = f"Inscripto {inscripto}" if len(inscriptos) > 1 else ""
+    for indice, clientecuit in enumerate(productores, start=1):
+        encabezado = f"Productor {indice}" if len(productores) > 1 else ""
         if que == "hoy":
-            filas = consultas.del_dia(inscripto, hoy)
+            filas = consultas.del_dia(clientecuit, hoy)
             cuerpo = (
                 f"Hoy: {len(filas)} descarga(s), "
                 f"{_kg(sum(fila.neto or 0 for fila in filas))} netos."
@@ -80,7 +80,7 @@ def responder(
                 else "Hoy no hay descargas terminadas."
             )
         elif que == "ultima":
-            fila = consultas.ultima(inscripto)
+            fila = consultas.ultima(clientecuit)
             cuerpo = (
                 f"Última descarga: {_hora(fila.fecha)}, {_kg(fila.neto)}, "
                 f"{fila.variedad or 's/variedad'}"
@@ -90,7 +90,7 @@ def responder(
                 else "No hay descargas registradas."
             )
         else:
-            filas = consultas.en_descarga(inscripto)
+            filas = consultas.en_descarga(clientecuit)
             cuerpo = (
                 f"{len(filas)} camión(es) en báscula ahora."
                 if filas

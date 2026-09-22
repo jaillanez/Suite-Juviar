@@ -19,6 +19,7 @@ dependencies = [
     "oracledb>=3.4",
     "reportlab>=4.4,<5",
     "pypdf>=6,<7",
+    "openpyxl>=3.1,<4",
 ]
 
 [project.optional-dependencies]

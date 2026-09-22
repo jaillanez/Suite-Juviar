@@ -97,9 +97,10 @@ def test_menu_y_respuestas_incluyen_sincronizacion():
     assert "1 camión(es)" in responder("3", ["J80"], Consultas(), HOY)
 
 
-def test_dos_inscriptos_no_se_mezclan():
+def test_dos_productores_no_exponen_cuit_ni_se_mezclan():
     respuesta = responder("3", ["J80", "J81"], Consultas(), HOY)
-    assert "Inscripto J80" in respuesta and "Inscripto J81" in respuesta
+    assert "Productor 1" in respuesta and "Productor 2" in respuesta
+    assert "J80" not in respuesta and "J81" not in respuesta
 
 
 class Cola:
@@ -207,7 +208,7 @@ class Bot:
     def tomar(self):
         salida, self.pendientes = self.pendientes, []
         return salida
-    def inscriptos(self, _): return list(self.inscriptos_valor)
+    def productores(self, _): return list(self.inscriptos_valor)
     def respuestas_ultima_hora(self, _): return self.respondidas
     def cerrar(self, *args, **kwargs): self.cerrados.append((args, kwargs))
     def reintentar(self, *args): self.reintentos.append(args)

@@ -12,13 +12,13 @@ PREFIJO = "549000000"
 
 def publicar(suite: psycopg.Connection, dsn_dmz: str) -> int:
     vinculos = suite.execute(
-        "SELECT telefono, nroinscripto, activo FROM terceros.contacto_whatsapp"
+        "SELECT telefono, clientecuit, activo FROM terceros.contacto_whatsapp"
     ).fetchall()
     with psycopg.connect(dsn_dmz) as dmz, dmz.transaction(), dmz.cursor() as cursor:
         cursor.execute("DELETE FROM consulta.telefono_productor")
         cursor.executemany(
             """INSERT INTO consulta.telefono_productor
-                   (telefono, nroinscripto, activo) VALUES (%s, %s, %s)""",
+                   (telefono, clientecuit, activo) VALUES (%s, %s, %s)""",
             vinculos,
         )
     return len(vinculos)
@@ -40,9 +40,9 @@ def main(argumentos: list[str]) -> int:
             productores = [
                 fila[0]
                 for fila in conexion.execute(
-                    """SELECT nroinscripto FROM recepcion.descarga
-                       WHERE nroinscripto IS NOT NULL AND estado = 'descargado'
-                       GROUP BY nroinscripto ORDER BY count(*) DESC LIMIT %s""",
+                    """SELECT clientecuit FROM recepcion.descarga
+                       WHERE clientecuit IS NOT NULL AND estado = 'descargado'
+                       GROUP BY clientecuit ORDER BY count(*) DESC LIMIT %s""",
                     (cantidad,),
                 ).fetchall()
             ]
@@ -50,9 +50,9 @@ def main(argumentos: list[str]) -> int:
                 telefono = f"{PREFIJO}{indice:04d}"
                 conexion.execute(
                     """INSERT INTO terceros.contacto_whatsapp
-                           (telefono, nroinscripto, origen, alta_por)
+                           (telefono, clientecuit, origen, alta_por)
                        VALUES (%s, %s, 'prueba', 'simulador')
-                       ON CONFLICT (telefono, nroinscripto)
+                       ON CONFLICT (telefono, clientecuit)
                        DO UPDATE SET activo = true""",
                     (telefono, inscripto),
                 )

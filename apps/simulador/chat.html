@@ -24,7 +24,7 @@
     const $=s=>document.querySelector(s); let ultimo=0;
     const telefono=()=>($('#otro').value.replace(/\D/g,'')||$('#tel').value);
     function burbuja(texto,clase){const d=document.createElement('div');d.className='m '+clase;d.textContent=texto;$('#chat').appendChild(d);$('#chat').scrollTop=1e9}
-    async function cargar(){const r=await fetch('/telefonos'),lista=await r.json();$('#tel').innerHTML=lista.map(x=>`<option value="${x.telefono}">${x.telefono} · ${x.inscriptos}</option>`).join('')||'<option value="">(sin vínculos)</option>'}
+    async function cargar(){const r=await fetch('/telefonos'),lista=await r.json();$('#tel').innerHTML=lista.map(x=>`<option value="${x.telefono}">${x.telefono} · ${x.productores} productor(es)</option>`).join('')||'<option value="">(sin vínculos)</option>'}
     async function sondear(){const t=telefono();if(!t)return;try{const r=await fetch(`/respuestas?telefono=${t}&desde_id=${ultimo}`);for(const m of await r.json()){ultimo=m.id;burbuja(m.texto,'bot')}}catch{}}
     function reiniciar(){ultimo=0;$('#chat').innerHTML='';const t=telefono();if(t)fetch(`/respuestas?telefono=${t}&desde_id=0`).then(r=>r.json()).then(l=>{if(l.length)ultimo=l.at(-1).id})}
     $('#tel').onchange=reiniciar;$('#otro').onchange=reiniciar;

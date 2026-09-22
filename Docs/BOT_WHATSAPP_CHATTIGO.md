@@ -7,7 +7,7 @@ consultar descargas y enviar la respuesta.
 
 ## Estado del despliegue
 
-En el VPS de Suite-Turnos/Juviar están aplicadas las migraciones 011 y 012. Los
+En el VPS de Suite-Turnos/Juviar están aplicadas las migraciones del bot. Los
 roles `consulta_webhook` y `consulta_bot` tienen contraseñas aleatorias guardadas
 en `/etc/suite/bot.env`. La unidad `bot-whatsapp.service` está instalada,
 **deshabilitada e inactiva** hasta completar los datos externos.
@@ -18,13 +18,18 @@ registrarlo, el número deja de entregar los mensajes al bot anterior.
 ## Datos externos pendientes
 
 - URL base, usuario, clave y DID de Chattigo.
-- CSV `telefono,nroinscripto` de Juviar-ENAV.
+- Confirmación y revisión manual de los contactos que no pudieron vincularse
+  de forma exacta y única con un `CLIENTECUIT`.
 - Dominio HTTPS: `juviar-bot.duckdns.org`, apuntado al VPS mediante DuckDNS.
 - Si Chattigo las provee, IP de salida para filtrarlas además en nginx.
 
 ## Importación de teléfonos
 
-Después de recibir y revisar el CSV:
+La identidad del productor es `CLIENTECUIT`. `NROINSCRIPTO` identifica a la
+bodega y no debe usarse para autorizar consultas individuales. El CSV de carga
+tiene exclusivamente los encabezados `telefono,clientecuit`.
+
+Después de revisar el CSV privado:
 
 ```bash
 set -a
@@ -38,6 +43,11 @@ PYTHONPATH=apps/api/src python -m \
 
 La salida separa inválidos y teléfonos que no comienzan con `549`; esos casos
 deben revisarse antes del cambio de canal.
+
+El archivo fuente y el CSV de importación permanecen fuera de Git, con permisos
+`600`. Una vez confirmada la importación, la publicación en DMZ y la prueba de
+consulta, se eliminan. La lista de revisión se conserva privada sólo mientras
+sea necesaria para resolver excepciones.
 
 ## Puesta en marcha segura
 
@@ -73,9 +83,8 @@ VPS y no está publicado por Caddy. Para usarlo:
 ssh -N -L 8099:127.0.0.1:8099 root@173.212.195.122
 ```
 
-Después abrir `http://127.0.0.1:8099`. La fecha simulada actual es
-`2026-03-10`, elegida por contener 100 descargas reales. El único productor
-distinto disponible quedó vinculado al teléfono ficticio `5490000000001`.
+Después abrir `http://127.0.0.1:8099`. El simulador sólo puede usar vínculos
+`telefono → CLIENTECUIT`; no se permiten vínculos por `NROINSCRIPTO`.
 
 Antes de activar Chattigo es obligatorio eliminar los vínculos ficticios:
 

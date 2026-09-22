@@ -65,14 +65,14 @@ class RepositorioBot:
             ).fetchall()
         return [Pendiente(**fila) for fila in filas]
 
-    def inscriptos(self, telefono: str) -> list[str]:
+    def productores(self, telefono: str) -> list[str]:
         with self._conexion() as conexion:
             filas = conexion.execute(
-                """SELECT nroinscripto FROM consulta.telefono_productor
-                   WHERE telefono = %s AND activo ORDER BY nroinscripto""",
+                """SELECT clientecuit FROM consulta.telefono_productor
+                   WHERE telefono = %s AND activo ORDER BY clientecuit""",
                 (telefono,),
             ).fetchall()
-        return [fila["nroinscripto"] for fila in filas]
+        return [fila["clientecuit"] for fila in filas]
 
     def respuestas_ultima_hora(self, telefono: str) -> int:
         with self._conexion() as conexion:
@@ -113,11 +113,11 @@ class RepositorioBot:
                 (error[:1000], maximo, maximo, id_),
             )
 
-    def registrar_consulta(self, nroinscripto: str, recurso: str, filas: int) -> None:
+    def registrar_consulta(self, clientecuit: str, recurso: str, filas: int) -> None:
         with self._conexion() as conexion:
             conexion.execute(
                 """INSERT INTO consulta.bitacora_consulta
-                       (cliente, nroinscripto, recurso, filas)
+                       (cliente, clientecuit, recurso, filas)
                    VALUES ('bot-whatsapp', %s, %s, %s)""",
-                (nroinscripto, recurso, filas),
+                (clientecuit, recurso, filas),
             )

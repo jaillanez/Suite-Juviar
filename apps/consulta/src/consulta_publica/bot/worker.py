@@ -38,8 +38,8 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
         if bot.respuestas_ultima_hora(pendiente.telefono) >= maximo_hora:
             bot.cerrar(pendiente.id, "ignorado", error="tope de respuestas por hora")
             continue
-        inscriptos = bot.inscriptos(pendiente.telefono)
-        texto = responder(pendiente.texto, inscriptos, consultas, hoy)
+        productores = bot.productores(pendiente.telefono)
+        texto = responder(pendiente.texto, productores, consultas, hoy)
         try:
             wamid = salida.enviar_texto(pendiente.telefono, texto)
         except (ErrorChattigo, transporte.ErrorTransporte) as exc:
@@ -47,8 +47,10 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
             log.warning("envío falló (intento %s): %s", pendiente.intentos + 1, exc)
             continue
         bot.cerrar(pendiente.id, "respondido", respuesta=texto, wamid_salida=wamid)
-        for inscripto in inscriptos:
-            bot.registrar_consulta(inscripto, f"whatsapp:{intencion(pendiente.texto)}", 0)
+        for clientecuit in productores:
+            bot.registrar_consulta(
+                clientecuit, f"whatsapp:{intencion(pendiente.texto)}", 0
+            )
     return len(pendientes)
 
 

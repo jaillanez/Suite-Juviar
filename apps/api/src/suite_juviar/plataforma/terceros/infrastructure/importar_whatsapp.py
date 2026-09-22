@@ -22,23 +22,23 @@ def importar(ruta: Path, responsable: str, conexion: psycopg.Connection) -> tupl
     invalidos = 0
     with ruta.open(newline="", encoding="utf-8-sig") as archivo:
         lector = csv.DictReader(archivo)
-        if not lector.fieldnames or not {"telefono", "nroinscripto"}.issubset(lector.fieldnames):
-            raise ValueError("El CSV debe tener encabezados telefono,nroinscripto")
+        if not lector.fieldnames or not {"telefono", "clientecuit"}.issubset(lector.fieldnames):
+            raise ValueError("El CSV debe tener encabezados telefono,clientecuit")
         for registro in lector:
             telefono = normalizar(registro.get("telefono", ""))
-            inscripto = (registro.get("nroinscripto") or "").strip()
-            if not 8 <= len(telefono) <= 20 or not inscripto or len(inscripto) > 40:
+            clientecuit = (registro.get("clientecuit") or "").strip()
+            if not 8 <= len(telefono) <= 20 or not clientecuit or len(clientecuit) > 40:
                 invalidos += 1
                 continue
             if not telefono.startswith("549"):
                 dudosos.append(telefono)
-            filas.append((telefono, inscripto, responsable))
+            filas.append((telefono, clientecuit, responsable))
     with conexion.transaction(), conexion.cursor() as cursor:
         cursor.executemany(
             """INSERT INTO terceros.contacto_whatsapp
-                   (telefono, nroinscripto, origen, alta_por)
+                   (telefono, clientecuit, origen, alta_por)
                VALUES (%s, %s, 'importacion_inicial', %s)
-               ON CONFLICT (telefono, nroinscripto) DO UPDATE SET activo = true""",
+               ON CONFLICT (telefono, clientecuit) DO UPDATE SET activo = true""",
             filas,
         )
     return len(filas), invalidos, dudosos
@@ -46,13 +46,13 @@ def importar(ruta: Path, responsable: str, conexion: psycopg.Connection) -> tupl
 
 def publicar(suite: psycopg.Connection, dsn_dmz: str) -> int:
     vinculos = suite.execute(
-        "SELECT telefono, nroinscripto, activo FROM terceros.contacto_whatsapp"
+        "SELECT telefono, clientecuit, activo FROM terceros.contacto_whatsapp"
     ).fetchall()
     with psycopg.connect(dsn_dmz) as dmz, dmz.transaction(), dmz.cursor() as cursor:
         cursor.execute("DELETE FROM consulta.telefono_productor")
         cursor.executemany(
             """INSERT INTO consulta.telefono_productor
-                   (telefono, nroinscripto, activo) VALUES (%s, %s, %s)""",
+                   (telefono, clientecuit, activo) VALUES (%s, %s, %s)""",
             vinculos,
         )
     return len(vinculos)

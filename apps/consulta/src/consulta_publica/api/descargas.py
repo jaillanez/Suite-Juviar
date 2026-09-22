@@ -48,20 +48,20 @@ class Descarga:
 
 
 class Repositorio(Protocol):
-    def ultima(self, nroinscripto: str) -> Descarga | None: ...
+    def ultima(self, clientecuit: str) -> Descarga | None: ...
 
-    def del_dia(self, nroinscripto: str, dia: date) -> list[Descarga]: ...
+    def del_dia(self, clientecuit: str, dia: date) -> list[Descarga]: ...
 
-    def en_descarga(self, nroinscripto: str) -> list[Descarga]: ...
+    def en_descarga(self, clientecuit: str) -> list[Descarga]: ...
 
     def rango(
-        self, nroinscripto: str, desde: date, hasta: date, limite: int
+        self, clientecuit: str, desde: date, hasta: date, limite: int
     ) -> list[Descarga]: ...
 
     def datos_al(self) -> dict[str, datetime]: ...
 
     def registrar(
-        self, cliente: str, nroinscripto: str, recurso: str, filas: int, ip: str | None
+        self, cliente: str, clientecuit: str, recurso: str, filas: int, ip: str | None
     ) -> None: ...
 
 
@@ -70,7 +70,7 @@ def obtener_repositorio() -> Repositorio:
 
 
 router = APIRouter(prefix="/v1", tags=["bot"])
-Inscripto = Path(..., pattern=PATRON_INSCRIPTO)
+CuitCliente = Path(..., pattern=PATRON_INSCRIPTO)
 
 
 def _dto(descarga: Descarga) -> dict:
@@ -90,33 +90,33 @@ def _datos_al(repo: Repositorio) -> dict:
     return {sede: momento.isoformat() for sede, momento in repo.datos_al().items()}
 
 
-@router.get("/productores/{nroinscripto}/ultima")
+@router.get("/productores/{clientecuit}/ultima")
 def ultima(
     request: Request,
-    nroinscripto: str = Inscripto,
+    clientecuit: str = CuitCliente,
     cliente: str = Depends(exigir_clave),
     repo: Repositorio = Depends(obtener_repositorio),  # noqa: B008
 ) -> dict:
-    descarga = repo.ultima(nroinscripto)
-    repo.registrar(cliente, nroinscripto, "ultima", 1 if descarga else 0, _ip(request))
+    descarga = repo.ultima(clientecuit)
+    repo.registrar(cliente, clientecuit, "ultima", 1 if descarga else 0, _ip(request))
     return {
         "descarga": _dto(descarga) if descarga else None,
         "datos_al": _datos_al(repo),
     }
 
 
-@router.get("/productores/{nroinscripto}/resumen")
+@router.get("/productores/{clientecuit}/resumen")
 def resumen(
     request: Request,
-    nroinscripto: str = Inscripto,
+    clientecuit: str = CuitCliente,
     fecha: date = Query(default_factory=date.today),  # noqa: B008
     cliente: str = Depends(exigir_clave),
     repo: Repositorio = Depends(obtener_repositorio),  # noqa: B008
 ) -> dict:
-    del_dia = repo.del_dia(nroinscripto, fecha)
-    en_curso = repo.en_descarga(nroinscripto)
+    del_dia = repo.del_dia(clientecuit, fecha)
+    en_curso = repo.en_descarga(clientecuit)
     repo.registrar(
-        cliente, nroinscripto, "resumen", len(del_dia) + len(en_curso), _ip(request)
+        cliente, clientecuit, "resumen", len(del_dia) + len(en_curso), _ip(request)
     )
     return {
         "fecha": fecha.isoformat(),
@@ -127,10 +127,10 @@ def resumen(
     }
 
 
-@router.get("/productores/{nroinscripto}/descargas")
+@router.get("/productores/{clientecuit}/descargas")
 def descargas(
     request: Request,
-    nroinscripto: str = Inscripto,
+    clientecuit: str = CuitCliente,
     desde: date = Query(...),  # noqa: B008
     hasta: date = Query(...),  # noqa: B008
     limite: int = Query(default=50, ge=1, le=100),
@@ -139,8 +139,8 @@ def descargas(
 ) -> dict:
     if hasta < desde:
         raise HTTPException(status_code=422, detail="hasta es anterior a desde")
-    filas = repo.rango(nroinscripto, desde, hasta, limite)
-    repo.registrar(cliente, nroinscripto, "descargas", len(filas), _ip(request))
+    filas = repo.rango(clientecuit, desde, hasta, limite)
+    repo.registrar(cliente, clientecuit, "descargas", len(filas), _ip(request))
     return {"descargas": [_dto(fila) for fila in filas], "datos_al": _datos_al(repo)}
 
 

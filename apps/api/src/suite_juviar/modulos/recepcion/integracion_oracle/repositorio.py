@@ -148,7 +148,8 @@ class RepositorioSuite:
     @staticmethod
     def pendientes_de_publicar(conexion: psycopg.Connection, limite: int = 5000) -> list[dict]:
         return conexion.execute(
-            """SELECT id, sede, ciu, id_origen, fecha, nroinscripto, neto, descvariedad,
+            """SELECT id, sede, ciu, id_origen, fecha, nroinscripto, clientecuit,
+                      neto, descvariedad,
                       azucar, estado, actualizado_en
                FROM recepcion.descarga WHERE pendiente_publicar
                ORDER BY id LIMIT %s""",
@@ -165,7 +166,7 @@ class RepositorioSuite:
 
 
 class RepositorioDmz:
-    """Copia sin CUIT, chofer ni cliente, destinada exclusivamente al bot."""
+    """Copia mínima, sin chofer ni nombre de cliente, destinada al bot."""
 
     def __init__(self, dsn: str) -> None:
         self._dsn = dsn
@@ -180,14 +181,16 @@ class RepositorioDmz:
         ):
             cursor.executemany(
                 """INSERT INTO consulta.descarga_publica
-                           (sede, ciu, id_origen, fecha, nroinscripto, neto, variedad, azucar,
-                            estado, actualizado_en)
+                           (sede, ciu, id_origen, fecha, nroinscripto, clientecuit, neto,
+                            variedad, azucar, estado, actualizado_en)
                        VALUES
-                           (%(sede)s, %(ciu)s, %(id_origen)s, %(fecha)s, %(nroinscripto)s, %(neto)s,
-                            %(descvariedad)s, %(azucar)s, %(estado)s, %(actualizado_en)s)
+                           (%(sede)s, %(ciu)s, %(id_origen)s, %(fecha)s, %(nroinscripto)s,
+                            %(clientecuit)s, %(neto)s, %(descvariedad)s, %(azucar)s,
+                            %(estado)s, %(actualizado_en)s)
                        ON CONFLICT (sede, ciu, id_origen) DO UPDATE SET
                            fecha = EXCLUDED.fecha,
                            nroinscripto = EXCLUDED.nroinscripto,
+                           clientecuit = EXCLUDED.clientecuit,
                            neto = EXCLUDED.neto,
                            variedad = EXCLUDED.variedad,
                            azucar = EXCLUDED.azucar,

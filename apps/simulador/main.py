@@ -110,7 +110,7 @@ def crear_app(cliente_http: httpx.Client | None = None) -> FastAPI:
     def telefonos() -> list[dict]:
         with psycopg.connect(os.environ["SIM_DSN"], row_factory=dict_row) as conexion:
             return conexion.execute(
-                """SELECT telefono, string_agg(nroinscripto, ', ') AS inscriptos
+                """SELECT telefono, count(*) AS productores
                    FROM consulta.telefono_productor WHERE activo
                    GROUP BY telefono ORDER BY telefono LIMIT 200"""
             ).fetchall()
