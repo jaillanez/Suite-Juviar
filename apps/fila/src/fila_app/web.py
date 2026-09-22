@@ -45,7 +45,8 @@ def porton(sede: str) -> str:
 const $=s=>document.querySelector(s);let espera;
 $('#patente').addEventListener('blur',async()=>{{const p=$('#patente').value;if(p.length<5)return;
  const r=await fetch('/api/publico/vehiculos/'+encodeURIComponent(p));if(r.ok){{const d=await r.json();
- $('#conocido').textContent='Ya conocemos este camión: '+d.chofer+'. Confirmá el productor.';}}}});
+ $('#conocido').textContent=d.productor+'. Confirmá el productor antes de continuar.';}}
+ else if(r.status===429){{$('#conocido').textContent='No podemos consultar más patentes ahora. Completá los datos.';}}}});
 $('#alta').addEventListener('submit',async e=>{{e.preventDefault();$('#error').textContent='';
  const body={{sede:'{sede}',patente:$('#patente').value,productor:$('#productor').value,
  telefono:$('#telefono').value||null,id_cliente:crypto.randomUUID()}};

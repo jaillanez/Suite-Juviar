@@ -9,8 +9,8 @@ class Falso:
     def __init__(self):
         self.altas = []
 
-    def autocompletar(self, patente):
-        return {"chofer": "PEREZ J.", "productor": "Productor conocido"}
+    def autocompletar(self, patente, ip):
+        return {"productor": "Patente reconocida"}
 
     def alta_publica(self, **datos):
         self.altas.append(datos)
@@ -51,6 +51,18 @@ def test_pagina_publica_no_expone_lista_de_productores(monkeypatch):
     texto = c.get("/r/chimbas").text
     assert "Productor" in texto
     assert "clientecuit" not in texto and "RODRIGUEZ" not in texto
+
+
+def test_esquema_openapi_no_esta_publicado(monkeypatch):
+    c, _ = cliente(monkeypatch)
+    assert c.get("/openapi.json").status_code == 404
+
+
+def test_autocompletar_no_expone_datos_del_chofer_y_recibe_ip(monkeypatch):
+    c, _ = cliente(monkeypatch)
+    respuesta = c.get("/api/publico/vehiculos/AB123CD")
+    assert respuesta.json() == {"productor": "Patente reconocida"}
+    assert "chofer" not in respuesta.text and "telefono" not in respuesta.text
 
 
 def test_alta_publica_queda_pendiente(monkeypatch):
@@ -116,7 +128,8 @@ def test_guardia_puede_dar_alta_sin_celular(monkeypatch):
 
 def test_pantalla_exige_token_y_no_tiene_productores(monkeypatch):
     c, _ = cliente(monkeypatch)
-    assert c.get("/api/pantalla/chimbas?token=mal").status_code == 403
+    assert c.get("/api/pantalla/chimbas").status_code == 404
+    assert c.get("/api/pantalla/chimbas?token=mal").status_code == 404
     respuesta = c.get("/api/pantalla/chimbas?token=pantalla-segura")
     assert respuesta.json() == {"llamados": []}
 

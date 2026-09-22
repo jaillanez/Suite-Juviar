@@ -46,7 +46,12 @@ def autenticar_guardia(x_guardia_token: str | None = Header(default=None)) -> st
     return "guardia:tablet"
 
 
-app = FastAPI(title="Fila de camiones Juviar", docs_url=None, redoc_url=None)
+app = FastAPI(
+    title="Fila de camiones Juviar",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
 GuardiaRepoDep = Annotated[RepositorioFila, Depends(repo_guardia)]
 PublicoRepoDep = Annotated[RepositorioPublico, Depends(repo_publico)]
 TurnosRepoDep = Annotated[RepositorioFila, Depends(repo_turnos)]
@@ -99,11 +104,14 @@ def service_worker() -> Response:
 
 
 @app.get("/api/publico/vehiculos/{patente}")
-def vehiculo(patente: str, repositorio: PublicoRepoDep):
+def vehiculo(patente: str, request: Request, repositorio: PublicoRepoDep):
+    ip = request.client.host if request.client else "desconocida"
     try:
-        dato = repositorio.autocompletar(patente)
+        dato = repositorio.autocompletar(patente, ip)
     except PatenteInvalida as exc:
         raise HTTPException(422, str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(429, str(exc)) from exc
     if not dato:
         raise HTTPException(404, "camión no conocido")
     return dato
@@ -189,11 +197,11 @@ def accionar(
 @app.get("/api/pantalla/{sede}")
 def datos_pantalla(
     sede: str,
-    token: str,
     repositorio: GuardiaRepoDep,
+    token: str | None = None,
 ):
     if token != os.environ.get("FILA_PANTALLA_TOKEN", ""):
-        raise HTTPException(403)
+        raise HTTPException(404)
     tablero = repositorio.tablero(sede)
     return {"llamados": tablero["llamados"]}
 

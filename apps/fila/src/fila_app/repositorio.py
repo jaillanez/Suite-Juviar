@@ -496,11 +496,17 @@ class RepositorioPublico:
                 raise
         return dict(fila)
 
-    def autocompletar(self, patente: str) -> dict[str, str] | None:
+    def autocompletar(self, patente: str, ip: str) -> dict[str, str] | None:
         with self.conexion() as cn:
-            fila = cn.execute(
-                "SELECT * FROM fila.autocompletar_patente(%s)", (normalizar(patente),)
-            ).fetchone()
+            try:
+                fila = cn.execute(
+                    "SELECT * FROM fila.autocompletar_patente(%s,%s)",
+                    (normalizar(patente), ip),
+                ).fetchone()
+            except psycopg.errors.RaiseException as exc:
+                if "limite_consultas_patente" in str(exc):
+                    raise PermissionError("límite de consultas alcanzado; completá los datos") from exc
+                raise
         return dict(fila) if fila else None
 
     def ticket(self, ticket: str) -> dict[str, Any] | None:
