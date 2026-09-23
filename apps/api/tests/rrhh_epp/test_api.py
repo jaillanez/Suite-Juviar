@@ -91,14 +91,17 @@ def test_la_bitacora_toma_la_identidad_declarada_no_el_cuerpo(cliente):
     assert cliente.get("/bitacora?n=1").json()[0]["usuario"] == "1210"
 
 
-def test_identidad_declarada_rechaza_un_cliente_de_red(monkeypatch):
+def test_identidad_declarada_rechaza_un_cliente_de_red(monkeypatch, tmp_path):
     from fastapi.testclient import TestClient
 
     from suite_juviar.modulos.rrhh_epp.api.mvp import crear_app
     from suite_juviar.modulos.rrhh_epp.mvp import construir
 
     monkeypatch.setenv("SJ_HABILITAR_IDENTIDAD_DECLARADA", "SI")
-    contenedor = construir(entorno="desarrollo", fuente_legajos="yaml", ruta_base=":memory:")
+    contenedor = construir(
+        entorno="desarrollo", fuente_legajos="yaml",
+        ruta_base=str(tmp_path / "red.sqlite3"),
+    )
     cliente_red = TestClient(
         crear_app(contenedor),
         base_url="http://192.168.1.20",
@@ -110,14 +113,17 @@ def test_identidad_declarada_rechaza_un_cliente_de_red(monkeypatch):
     assert "sólo se admite desde loopback" in r.json()["detail"]
 
 
-def test_identidad_declarada_rechaza_origen_remoto_detras_de_proxy(monkeypatch):
+def test_identidad_declarada_rechaza_origen_remoto_detras_de_proxy(monkeypatch, tmp_path):
     from fastapi.testclient import TestClient
 
     from suite_juviar.modulos.rrhh_epp.api.mvp import crear_app
     from suite_juviar.modulos.rrhh_epp.mvp import construir
 
     monkeypatch.setenv("SJ_HABILITAR_IDENTIDAD_DECLARADA", "SI")
-    contenedor = construir(entorno="desarrollo", fuente_legajos="yaml", ruta_base=":memory:")
+    contenedor = construir(
+        entorno="desarrollo", fuente_legajos="yaml",
+        ruta_base=str(tmp_path / "proxy.sqlite3"),
+    )
     cliente_proxy = TestClient(
         crear_app(contenedor),
         base_url="http://127.0.0.1:8000",
@@ -134,14 +140,17 @@ def test_identidad_declarada_rechaza_origen_remoto_detras_de_proxy(monkeypatch):
     assert r.status_code == 403
 
 
-def test_identidad_declarada_admite_loopback_cuando_fue_habilitada(monkeypatch):
+def test_identidad_declarada_admite_loopback_cuando_fue_habilitada(monkeypatch, tmp_path):
     from fastapi.testclient import TestClient
 
     from suite_juviar.modulos.rrhh_epp.api.mvp import crear_app
     from suite_juviar.modulos.rrhh_epp.mvp import construir
 
     monkeypatch.setenv("SJ_HABILITAR_IDENTIDAD_DECLARADA", "SI")
-    contenedor = construir(entorno="desarrollo", fuente_legajos="yaml", ruta_base=":memory:")
+    contenedor = construir(
+        entorno="desarrollo", fuente_legajos="yaml",
+        ruta_base=str(tmp_path / "loopback.sqlite3"),
+    )
     cliente_local = TestClient(
         crear_app(contenedor),
         base_url="http://127.0.0.1:8000",

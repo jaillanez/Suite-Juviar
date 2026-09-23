@@ -18,14 +18,14 @@ from ..domain.puertos import ExportadorNovedades, FuenteFichadas
 
 class ConciliarTurnos:
     def __init__(self, fuente: FuenteFichadas, exportador: ExportadorNovedades,
-                 hoy=lambda: datetime.now(UTC)):
+                 hoy=lambda: datetime.now(UTC), estado=None):
         self.fuente = fuente
         self.exportador = exportador
         self._ahora = hoy
-        self.cronogramas: list[Cronograma] = []
-        self.cambios: list[CambioCronograma] = []
-        self.imputaciones: dict[str, Imputacion] = {}
-        self.bandeja: list[SalidaBandeja] = []
+        self.cronogramas = estado.cronogramas if estado else []
+        self.cambios = estado.cambios if estado else []
+        self.imputaciones = estado.imputaciones if estado else {}
+        self.bandeja = estado.bandeja if estado else []
 
     @property
     def simulada(self) -> bool:
@@ -124,6 +124,7 @@ class ConciliarTurnos:
             imputacion.aprobada_por = actor_rrhh
             imputacion.resuelta_en = ahora
             imputacion.motivo_final = motivo_cambio.strip() if accion == "CAMBIAR" and motivo_cambio else imputacion.motivo_propuesto
+            self.imputaciones[str(imputacion.id)] = imputacion
         if accion == "RECHAZAR":
             return None
         archivo = self.exportador.exportar(seleccion)

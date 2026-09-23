@@ -6,9 +6,13 @@ RUTA_LEGAJOS = RAIZ / "data" / "nexus_simulado.yaml"
 
 
 @pytest.fixture
-def contenedor():
-    """Contenedor de prueba, con la base en memoria: no ensucia el disco."""
-    return construir(entorno="prueba", fuente_legajos="yaml", ruta_base=":memory:")
+def contenedor(tmp_path):
+    """Contenedor de prueba respaldado por un archivo SQLite aislado."""
+    return construir(
+        entorno="prueba",
+        fuente_legajos="yaml",
+        ruta_base=str(tmp_path / "rrhh_epp.sqlite3"),
+    )
 
 
 @pytest.fixture

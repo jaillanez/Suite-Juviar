@@ -22,7 +22,11 @@ def firma_muestra() -> str:
 
 
 def generar(destino: Path) -> None:
-    contenedor = construir(entorno="prueba", fuente_legajos="yaml", ruta_base=":memory:")
+    contenedor = construir(
+        entorno="prueba",
+        fuente_legajos="yaml",
+        ruta_base=str(Path("datos") / "constancia_muestra.sqlite3"),
+    )
     entrega = contenedor.registrar_entrega.ejecutar(
         numero_legajo="1077",
         items=[{"codigo": "69", "item_codigo": "SIM-69-02", "cantidad": 1}],

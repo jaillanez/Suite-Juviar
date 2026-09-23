@@ -24,8 +24,7 @@ from ..domain.modelos import (
     PerfilBusqueda,
 )
 from ..infrastructure.extraccion_pdf import CamposPorReglasProvisorias, TextoPDF
-from ..infrastructure.extracciones_memoria import ExtraccionesEnMemoria
-from ..infrastructure.memoria import OriginalesEnMemoria
+from ..infrastructure.sqlite import ExtraccionesSQLite, OriginalesSQLite, busquedas_sqlite
 
 
 class BusquedaEntrada(BaseModel):
@@ -45,17 +44,17 @@ class ConfirmacionEntrada(BaseModel):
     valor: str = Field(min_length=1)
 
 
-def crear_app(perfiles, entorno: str = "prueba") -> FastAPI:
+def crear_app(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> FastAPI:
     exigir_identidad_configurada(entorno)
     app = FastAPI(
         title="Selección de personal",
         dependencies=[Depends(exigir_permiso("seleccion.gestionar"))],
     )
-    originales = OriginalesEnMemoria()
-    extracciones = ExtraccionesEnMemoria()
+    originales = OriginalesSQLite(ruta_base)
+    extracciones = ExtraccionesSQLite(ruta_base)
     extraer = ExtraerDatosCV(originales, extracciones, TextoPDF(), CamposPorReglasProvisorias())
     evaluar = EvaluarBusqueda(perfiles)
-    busquedas: dict[str, Busqueda] = {}
+    busquedas = busquedas_sqlite(ruta_base)
 
     @app.get("/estado")
     def estado():

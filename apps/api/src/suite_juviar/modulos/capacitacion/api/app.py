@@ -25,7 +25,7 @@ from ..application.servicios import (
     planilla_imprimible,
 )
 from ..domain.modelos import Dictado, Participante, Tema
-from ..infrastructure.memoria import CapacitacionEnMemoria
+from ..infrastructure.sqlite import CapacitacionSQLite
 
 
 class TemaEntrada(BaseModel):
@@ -61,13 +61,13 @@ class ImportacionEntrada(BaseModel):
     contenido_base64: str
 
 
-def crear_app(configuracion, entorno: str = "prueba") -> FastAPI:
+def crear_app(configuracion, entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> FastAPI:
     exigir_identidad_configurada(entorno)
     app = FastAPI(
         title="Capacitaciones",
         dependencies=[Depends(exigir_permiso("capacitacion.gestionar"))],
     )
-    repo = CapacitacionEnMemoria()
+    repo = CapacitacionSQLite(ruta_base)
     reportes = ReportesCapacitacion(repo, configuracion)
     anular = AnularAsistencia(repo)
     registrar = RegistrarAsistencia(repo, MotorFirmaSimulado())

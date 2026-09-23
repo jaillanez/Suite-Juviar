@@ -115,8 +115,9 @@ class BaseLocal:
 
     def __init__(self, ruta: str | Path = "datos/entregas_prueba.sqlite3") -> None:
         ruta = str(ruta)
-        if ruta != ":memory:":
-            Path(ruta).parent.mkdir(parents=True, exist_ok=True)
+        if ruta.strip() == ":memory:":
+            raise ValueError("La persistencia en memoria está prohibida; indique un archivo SQLite.")
+        Path(ruta).parent.mkdir(parents=True, exist_ok=True)
         self.cn = _conectar(ruta)
         self.cn.executescript(ESQUEMA)
         columnas = {

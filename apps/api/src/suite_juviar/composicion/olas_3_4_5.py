@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import UTC, date, datetime, time
 from pathlib import Path
-from uuid import uuid4
 
 from suite_juviar.modulos.capacitacion.api.app import crear_app as crear_capacitacion
 from suite_juviar.modulos.capacitacion.infrastructure.configuracion_yaml import (
@@ -20,54 +18,54 @@ from suite_juviar.modulos.epp_analitica.infrastructure.simulados import (
 from suite_juviar.modulos.legajo.api.app import crear_app as crear_legajo
 from suite_juviar.modulos.legajo.application.servicios import GestionarLegajo
 from suite_juviar.modulos.legajo.infrastructure.simulados import (
-    AdjuntosCifradosMemoria,
     FuenteLegajosDesdePuerto,
 )
+from suite_juviar.modulos.legajo.infrastructure.sqlite import AdjuntosCifradosSQLite
 from suite_juviar.modulos.salud.api.app import crear_app as crear_salud
 from suite_juviar.modulos.salud.application.servicios import GestionarSalud
 from suite_juviar.modulos.salud.infrastructure.simulados import (
-    AdjuntosSaludCifradosMemoria,
     CatalogoDiagnosticoSimulado,
     FuenteLaboralSimulada,
-    SaludMemoria,
+)
+from suite_juviar.modulos.salud.infrastructure.sqlite import (
+    AdjuntosSaludCifradosSQLite,
+    SaludSQLite,
 )
 from suite_juviar.modulos.seleccion.api.app import crear_app as crear_seleccion
 from suite_juviar.modulos.seleccion.infrastructure.perfiles_yaml import CriteriosPerfilYAML
 from suite_juviar.modulos.turnos.api.app import crear_app as crear_turnos
 from suite_juviar.modulos.turnos.application.servicios import ConciliarTurnos
-from suite_juviar.modulos.turnos.domain.entidades import Cronograma, Fichada
-from suite_juviar.modulos.turnos.infrastructure.simulados import (
-    ExportadorArchivoSimulado,
-    FuenteFichadasSimulada,
+from suite_juviar.modulos.turnos.infrastructure.sqlite import (
+    EstadoTurnosSQLite,
+    ExportadorArchivoLocal,
+    FuenteFichadasSQLite,
 )
 
 
 def construir_subaplicaciones(rrhh):
     entorno = (os.getenv("SJ_ENTORNO") or os.getenv("ENTORNO") or "desarrollo").lower()
     clave_adjuntos = os.getenv("SJ_LEGAJO_CLAVE_PRUEBA", "0" * 32).encode()
+    ruta_modulos = os.getenv("SJ_MODULOS_SQLITE_PATH") or str(
+        Path(__file__).parents[3] / "datos" / "modulos.sqlite3"
+    )
     analitica = AnalizarEPP(
         FuenteEntregasDesdePuerto(rrhh.entregas),
         PreciosSimulados(),
         int(os.getenv("SJ_EPP_MUESTRA_MINIMA") or "5"),
     )
     legajo = GestionarLegajo(
-        FuenteLegajosDesdePuerto(rrhh.legajos), AdjuntosCifradosMemoria(clave_adjuntos)
+        FuenteLegajosDesdePuerto(rrhh.legajos),
+        AdjuntosCifradosSQLite(clave_adjuntos, ruta_modulos),
     )
     salud = GestionarSalud(
-        CatalogoDiagnosticoSimulado(), SaludMemoria(),
-        AdjuntosSaludCifradosMemoria(clave_adjuntos), FuenteLaboralSimulada(),
+        CatalogoDiagnosticoSimulado(), SaludSQLite(ruta_modulos),
+        AdjuntosSaludCifradosSQLite(clave_adjuntos, ruta_modulos), FuenteLaboralSimulada(),
     )
     turnos = ConciliarTurnos(
-        FuenteFichadasSimulada([
-            Fichada("1042", datetime(2026, 9, 15, 8, tzinfo=UTC), "ENTRADA"),
-            Fichada("1042", datetime(2026, 9, 15, 15, tzinfo=UTC), "SALIDA"),
-        ]),
-        ExportadorArchivoSimulado(Path("var/turnos/bandeja")),
+        FuenteFichadasSQLite(ruta_modulos),
+        ExportadorArchivoLocal(Path("var/turnos/bandeja")),
+        estado=EstadoTurnosSQLite(ruta_modulos),
     )
-    turnos.cronogramas.append(Cronograma(
-        uuid4(), "1042", "Bodega", date(2026, 9, 1), time(8), time(16),
-        "supervisor-muestra", datetime(2026, 8, 25, 12, tzinfo=UTC),
-    ))
     raiz_modulos = Path(__file__).parents[1] / "modulos"
     perfiles_seleccion = CriteriosPerfilYAML(
         raiz_modulos / "seleccion" / "data" / "criterios_perfil.yaml"
@@ -80,6 +78,6 @@ def construir_subaplicaciones(rrhh):
         "legajo": crear_legajo(legajo, entorno),
         "salud": crear_salud(salud, entorno),
         "turnos": crear_turnos(turnos, entorno),
-        "seleccion": crear_seleccion(perfiles_seleccion, entorno),
-        "capacitaciones": crear_capacitacion(configuracion_capacitacion, entorno),
+        "seleccion": crear_seleccion(perfiles_seleccion, entorno, ruta_modulos),
+        "capacitaciones": crear_capacitacion(configuracion_capacitacion, entorno, ruta_modulos),
     }

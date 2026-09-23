@@ -136,32 +136,44 @@ def test_nada_se_guarda_cuando_la_entrega_se_rechaza(contenedor):
 
 # --- guardas de configuración ----------------------------------------------
 
-def test_produccion_con_fuente_simulada_no_arranca(monkeypatch):
+def test_produccion_con_fuente_simulada_no_arranca(monkeypatch, tmp_path):
     """La fuente de prueba no puede llegar a producción por descuido."""
     with pytest.raises(ErrorDeConfiguracion) as rechazo:
-        construir(entorno="produccion", fuente_legajos="yaml", ruta_base=":memory:")
+        construir(
+            entorno="produccion", fuente_legajos="yaml",
+            ruta_base=str(tmp_path / "produccion-simulada.sqlite3"),
+        )
     assert "distinta de Nexus" in str(rechazo.value)
     assert "ítems SIM-*" in str(rechazo.value)
 
 
-def test_produccion_con_nexus_sin_cadena_de_conexion_no_arranca(monkeypatch):
+def test_produccion_con_nexus_sin_cadena_de_conexion_no_arranca(monkeypatch, tmp_path):
     monkeypatch.delenv("NEXUS_CONEXION", raising=False)
     with pytest.raises(ErrorDeConfiguracion):
-        construir(entorno="produccion", fuente_legajos="nexus", ruta_base=":memory:")
+        construir(
+            entorno="produccion", fuente_legajos="nexus",
+            ruta_base=str(tmp_path / "produccion-nexus.sqlite3"),
+        )
 
 
-def test_fuente_desconocida_no_arranca():
+def test_fuente_desconocida_no_arranca(tmp_path):
     with pytest.raises(ErrorDeConfiguracion):
-        construir(entorno="prueba", fuente_legajos="mongodb", ruta_base=":memory:")
+        construir(
+            entorno="prueba", fuente_legajos="mongodb",
+            ruta_base=str(tmp_path / "fuente-desconocida.sqlite3"),
+        )
 
 
-def test_identidad_declarada_debe_habilitarse_expresamente(monkeypatch):
+def test_identidad_declarada_debe_habilitarse_expresamente(monkeypatch, tmp_path):
     monkeypatch.delenv("SJ_HABILITAR_IDENTIDAD_DECLARADA", raising=False)
     with pytest.raises(ErrorDeConfiguracion, match="SJ_HABILITAR_IDENTIDAD_DECLARADA"):
-        construir(entorno="desarrollo", fuente_legajos="yaml", ruta_base=":memory:")
+        construir(
+            entorno="desarrollo", fuente_legajos="yaml",
+            ruta_base=str(tmp_path / "identidad.sqlite3"),
+        )
 
 
-def test_control_negativo_de_la_guarda(monkeypatch):
+def test_control_negativo_de_la_guarda(monkeypatch, tmp_path):
     """Si la guarda estuviera mal escrita, esto pasaría igual y no mediría nada.
 
     Confirma que la combinación permitida SÍ construye: así sabemos que las
@@ -169,13 +181,19 @@ def test_control_negativo_de_la_guarda(monkeypatch):
     siempre.
     """
     monkeypatch.setenv("SJ_HABILITAR_IDENTIDAD_DECLARADA", "SI")
-    c = construir(entorno="desarrollo", fuente_legajos="yaml", ruta_base=":memory:")
+    c = construir(
+        entorno="desarrollo", fuente_legajos="yaml",
+        ruta_base=str(tmp_path / "control.sqlite3"),
+    )
     assert c.modo_simulado is True
 
 
-def test_fuera_de_prueba_no_registra_items_simulados(monkeypatch):
+def test_fuera_de_prueba_no_registra_items_simulados(monkeypatch, tmp_path):
     monkeypatch.setenv("SJ_HABILITAR_IDENTIDAD_DECLARADA", "SI")
-    c = construir(entorno="desarrollo", fuente_legajos="yaml", ruta_base=":memory:")
+    c = construir(
+        entorno="desarrollo", fuente_legajos="yaml",
+        ruta_base=str(tmp_path / "items.sqlite3"),
+    )
     with pytest.raises(ItemSimuladoNoPermitido, match=r"SIM-68-01.*entorno de prueba"):
         entregar(c)
     assert c.entregas.listar_por_legajo("1042") == []

@@ -176,7 +176,7 @@ def test_perfiles_ajenos_no_pueden_ver_ni_configurar_stock(cliente):
     assert respuesta.status_code == 403
 
 
-def test_aviso_expone_el_canal_email_configurado():
+def test_aviso_expone_el_canal_email_configurado(tmp_path):
     from fastapi.testclient import TestClient
 
     from suite_juviar.modulos.rrhh_epp.api.mvp import crear_app
@@ -185,7 +185,7 @@ def test_aviso_expone_el_canal_email_configurado():
     contenedor = construir(
         entorno="prueba",
         fuente_legajos="yaml",
-        ruta_base=":memory:",
+        ruta_base=str(tmp_path / "avisos.sqlite3"),
         email_compras="compras@example.test",
     )
     contenedor.stock.configurar("SIM-68-01", disponible=21, minimo=20)
