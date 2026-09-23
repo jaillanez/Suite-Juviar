@@ -181,7 +181,7 @@ def construir(
             raise ErrorDeConfiguracion(
                 "SQLite quedó limitado a pruebas automatizadas. Use PostgreSQL en desarrollo local."
             )
-        ruta_sqlite = ruta_base or ":memory:"
+        ruta_sqlite = ruta_base or os.getenv("SJ_RRHH_EPP_SQLITE_PATH") or ":memory:"
         base_sqlite = BaseLocal(ruta_sqlite)
         entregas = EntregasSQLite(base_sqlite)
         bitacora = BitacoraSQLite(base_sqlite)

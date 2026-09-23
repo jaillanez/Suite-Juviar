@@ -30,9 +30,11 @@ if ! command -v pnpm >/dev/null 2>&1; then
 fi
 
 echo "Iniciando backend de prueba en http://127.0.0.1:$API_PORT ..."
+mkdir -p "$RAIZ/apps/api/datos"
 (
   cd "$RAIZ/apps/api"
   export SJ_ENTORNO=prueba
+  export SJ_RRHH_EPP_SQLITE_PATH="$RAIZ/apps/api/datos/rrhh_epp_demo.sqlite3"
   export SJ_HMAC_DATOS_PERSONALES=00000000000000000000000000000000
   export SJ_CLAVE_CIFRADO_DATOS_PERSONALES=00000000000000000000000000000000
   exec "$RAIZ/.venv/bin/uvicorn" suite_juviar.main:app --host 127.0.0.1 --port "$API_PORT"
