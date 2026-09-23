@@ -6,7 +6,6 @@ import {
   type ConfirmacionEntrega,
   type EntregaOffline,
   motivoBloqueo,
-  POLITICA_COLA,
   registrarConCola,
   sincronizarCola,
 } from "../offline";
@@ -80,6 +79,12 @@ async function pedir<T>(ruta: string, legajo: string, opciones?: RequestInit): P
   return cuerpo as T;
 }
 
+function descripcionItem(item: Elemento["items"][number]) {
+  return [item.marca, item.modelo, item.talle, item.color]
+    .filter((valor) => valor && valor !== "SIN_DATO")
+    .join(" · ");
+}
+
 function Acceso({ alIngresar }: { alIngresar: (contexto: ContextoMovil) => void }) {
   const [legajo, setLegajo] = useState("");
   const [error, setError] = useState("");
@@ -100,12 +105,9 @@ function Acceso({ alIngresar }: { alIngresar: (contexto: ContextoMovil) => void 
 
   return (
     <main className="acceso">
-      <p className="kicker">SUITE JUVIAR · IDENTIDAD DECLARADA · SOLO LOCAL</p>
-      <h1>Una aplicación. Tu perfil.</h1>
-      <p className="description">
-        Prueba sin autenticación: cualquiera con acceso local puede declarar otro legajo. El
-        backend asigna el perfil desde Parametría.
-      </p>
+      <p className="kicker">SUITE JUVIAR</p>
+      <h1>Ingresar</h1>
+      <p className="description">Ingresá tu legajo para abrir las herramientas de tu puesto.</p>
       <form className="panel acceso-form" onSubmit={ingresar}>
         <label htmlFor="legajo">Legajo del usuario</label>
         <input
@@ -388,23 +390,33 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
   const seleccionCompleta = ficha?.epp_requerido
     .filter((elemento) => seleccion[elemento.codigo])
     .every((elemento) => Boolean(itemsElegidos[elemento.codigo])) ?? false;
+  const programadasPorSector = Object.entries(
+    programadas.reduce<Record<string, PlanProgramado[]>>((grupos, plan) => {
+      (grupos[plan.sector] ??= []).push(plan);
+      return grupos;
+    }, {}),
+  );
 
   return (
     <section className="flujo">
-      <div className="aviso">Entorno de prueba · constancias sin validez legal</div>
       <div
         className={`cola-estado ${bloqueoCola ? "cola-bloqueada" : ""}`}
         role="status"
         aria-live="polite"
       >
         <strong>
-          {colaPreparada ? pendientes : "—"} entrega(s) pendiente(s) de sincronizar
+          {!colaPreparada
+            ? "Revisando entregas…"
+            : pendientes === 0
+              ? "Todo sincronizado"
+              : `${pendientes} entrega(s) pendiente(s)`}
         </strong>
-        <span>
-          {sincronizando
-            ? "Intentando sincronizar…"
-            : `Política ${POLITICA_COLA.estado}: límite ${POLITICA_COLA.maximoPendientes} o 24 horas.`}
-        </span>
+        {sincronizando && <span>Sincronizando…</span>}
+        {pendientes > 0 && !sincronizando && (
+          <button type="button" className="sincronizar" onClick={() => void sincronizar()}>
+            Sincronizar ahora
+          </button>
+        )}
         {bloqueoCola && <span>{bloqueoCola} Nuevas entregas bloqueadas.</span>}
       </div>
       <div className="panel selector-circuito">
@@ -436,17 +448,33 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
           <label htmlFor="fecha-programada">Fecha fija de entrega</label>
           <input id="fecha-programada" type="date" value={fechaProgramada} onChange={(e) => setFechaProgramada(e.target.value)} />
           <button className="principal" disabled={!fechaProgramada || cargando}>Armar lista por sector</button>
-          {programadas.map((plan) => (
-            <button
-              className="resultado"
-              type="button"
-              key={plan.legajo}
-              onClick={() => elegir(plan.legajo, plan.elementos.map((e) => e.codigo))}
-            >
-              <strong>{plan.nombre_completo}</strong>
-              <span>{plan.sector} · {plan.puesto} · {plan.elementos.length} elemento(s)</span>
-              <small>{plan.fuente_legajo} · {plan.estado_matriz}</small>
-            </button>
+          {programadasPorSector.length > 0 && (
+            <p className="programa-resumen">
+              {programadas.length} trabajador(es) en {programadasPorSector.length} sector(es)
+            </p>
+          )}
+          {programadasPorSector.map(([sector, planes]) => (
+            <section className="programa-sector" key={sector} aria-labelledby={`sector-${sector}`}>
+              <div className="programa-sector-cabecera">
+                <h2 id={`sector-${sector}`}>{sector}</h2>
+                <span>{planes.length} trabajador(es)</span>
+              </div>
+              {planes.map((plan) => (
+                <div className="programa-persona" key={plan.legajo}>
+                  <div>
+                    <strong>{plan.nombre_completo}</strong>
+                    <span>{plan.puesto} · {plan.elementos.length} elemento(s)</span>
+                  </div>
+                  <button
+                    className="principal"
+                    type="button"
+                    onClick={() => elegir(plan.legajo, plan.elementos.map((e) => e.codigo))}
+                  >
+                    Preparar entrega
+                  </button>
+                </div>
+              ))}
+            </section>
           ))}
         </form>
       )}
@@ -531,7 +559,7 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
                         <option value="">Elegir código, marca y modelo</option>
                         {elemento.items.map((item) => (
                           <option key={item.codigo_interno} value={item.codigo_interno}>
-                            {item.codigo_interno} · {item.marca} · {item.modelo} · {item.talle} · {item.color} · {item.estado}
+                            {descripcionItem(item)}
                           </option>
                         ))}
                       </select>
@@ -593,7 +621,7 @@ export default function MobileHome() {
     <main>
       <header className="cabecera-app">
         <div>
-          <p className="kicker">SUITE JUVIAR · {sesion.empresa}</p>
+          <p className="kicker">SUITE JUVIAR</p>
           <h1>{perfil.titulo}</h1>
           <p>{sesion.nombre_completo} · legajo {sesion.legajo}</p>
         </div>

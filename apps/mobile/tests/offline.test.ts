@@ -30,10 +30,12 @@ class Memoria implements AlmacenCola {
   }
 }
 
-test("la pantalla conserva la franja roja de entorno sin validez legal", () => {
+test("la demo no expone estados técnicos en la lista programada", () => {
   const pagina = readFileSync(new URL("../src/app/page.tsx", import.meta.url), "utf8");
-  assert.match(pagina, /className="aviso"/);
-  assert.match(pagina, /Entorno de prueba · constancias sin validez legal/);
+  assert.doesNotMatch(pagina, /Entorno de prueba · constancias sin validez legal/);
+  assert.doesNotMatch(pagina, /plan\.fuente_legajo/);
+  assert.doesNotMatch(pagina, /plan\.estado_matriz/);
+  assert.match(pagina, /Preparar entrega/);
 });
 
 test("la entrega ofrece un reclamo opcional de catálogo ligado al ítem", () => {
