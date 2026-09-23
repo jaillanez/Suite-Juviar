@@ -603,6 +603,33 @@ th button {
 .form-grid button {
   align-self: end;
 }
+.filtros-planilla {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(170px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  margin: 22px 0 28px;
+}
+.filtros-planilla label { min-width: 0; }
+.sector-planilla { margin-top: 30px; break-inside: avoid; }
+.sector-planilla > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: end;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--verde);
+}
+.sector-planilla h3 { margin: 0; font-size: 1.35rem; }
+.sector-planilla header p { margin: 3px 0 0; color: var(--muted); }
+.sector-planilla header > strong { color: var(--verde); white-space: nowrap; }
+.tabla-planilla { overflow-x: auto; }
+.tabla-planilla table { width: 100%; border-collapse: collapse; }
+.tabla-planilla th,
+.tabla-planilla td { padding: 12px 10px; border-bottom: 1px solid var(--borde); text-align: left; vertical-align: top; }
+.tabla-planilla th { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+.tabla-planilla ul { margin: 0; padding-left: 18px; }
+.firma-planilla { min-width: 160px; }
 .preliminar {
   border-left: 4px solid #d28a20;
   background: #fff8e8;
@@ -698,6 +725,30 @@ th button {
   .form-grid {
     grid-template-columns: 1fr;
   }
+}
+@media (max-width: 980px) {
+  .filtros-planilla { grid-template-columns: 1fr 1fr; }
+  .filtros-planilla .primario { width: 100%; }
+}
+
+@media print {
+  aside,
+  .barra,
+  footer,
+  .metricas,
+  .pestanas,
+  .filtros-planilla,
+  .planilla-epp > .titulo-fila button,
+  .aviso-exito { display: none !important; }
+  body,
+  .principal-contenedor,
+  main { background: white !important; margin: 0 !important; padding: 0 !important; }
+  .planilla-epp { border: 0; box-shadow: none; padding: 0; }
+  .sector-planilla { page-break-inside: avoid; }
+  .tabla-planilla { overflow: visible; }
+  .tabla-planilla th,
+  .tabla-planilla td { color: #111; border-color: #999; }
+  .firma-planilla { height: 64px; border-bottom: 1px solid #333 !important; }
 }
 @media (prefers-reduced-motion: reduce) {
   *,

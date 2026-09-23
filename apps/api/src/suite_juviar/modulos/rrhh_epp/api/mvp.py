@@ -330,10 +330,9 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             ],
         }
 
-    @app.get("/entregas-programadas", dependencies=[Depends(exigir_permiso("epp.entrega.operar"))])
+    @app.get("/entregas-programadas", dependencies=[Depends(exigir_permiso("epp.entrega.leer"))])
     def entregas_programadas(
         fecha: date,
-        _usuario: OperadorDeposito,
         temporada: str,
         sector: str | None = None,
     ) -> list[dict[str, object]]:

@@ -333,6 +333,26 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
     }
   }
 
+  async function abrirConstancia() {
+    if (!constancia) return;
+    setError("");
+    const pestaña = window.open("about:blank", "_blank");
+    try {
+      const respuesta = await fetch(constancia, { headers: { "X-Legajo-Usuario": sesion.legajo } });
+      if (!respuesta.ok) {
+        const cuerpo = await respuesta.json().catch(() => null);
+        throw new Error(cuerpo?.detail ?? cuerpo?.error ?? "No fue posible abrir la constancia");
+      }
+      const url = URL.createObjectURL(await respuesta.blob());
+      if (pestaña) pestaña.location.href = url;
+      else window.location.href = url;
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (e) {
+      pestaña?.close();
+      setError(e instanceof Error ? e.message : "No fue posible abrir la constancia");
+    }
+  }
+
   async function registrar() {
     if (!ficha) return;
     if (bloqueoCola) {
@@ -509,9 +529,9 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
       {error && <p className="error" role="alert">{error}</p>}
       {mensaje && <p className="exito" role="status">{mensaje}</p>}
       {constancia && (
-        <a className="constancia" href={constancia} target="_blank" rel="noreferrer">
+        <button className="constancia" type="button" onClick={() => void abrirConstancia()}>
           Abrir constancia confirmada
-        </a>
+        </button>
       )}
 
       {ficha && (
