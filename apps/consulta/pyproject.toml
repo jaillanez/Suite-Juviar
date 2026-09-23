@@ -9,6 +9,8 @@ dependencies = [
     "asyncpg>=0.30",
     "psycopg[binary]>=3.2",
     "httpx>=0.28",
+    "matplotlib>=3.10",
+    "reportlab>=4.4",
 ]
 
 # Deliberadamente NO depende de suite-juviar-api. Si algún día lo importa,

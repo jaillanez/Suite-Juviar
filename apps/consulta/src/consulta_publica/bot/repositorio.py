@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 import psycopg
 from psycopg.rows import dict_row
 
+from .archivos import Archivo
+from .dialogo import MINUTOS_SESION, Cuenta, Estado
 from .meta import MensajeEntrante
 
 
@@ -76,6 +79,81 @@ class RepositorioBot:
             ).fetchall()
         return [fila["clientecuit"] for fila in filas]
 
+    def cuentas(self, telefono: str) -> list[Cuenta]:
+        with self._conexion() as conexion:
+            filas = conexion.execute(
+                """SELECT p.clientecuit,p.razonsocial,p.codigos
+                   FROM consulta.telefono_productor t
+                   JOIN fila.productor p USING(clientecuit)
+                   WHERE t.telefono=%s AND t.activo
+                   ORDER BY p.razonsocial""",
+                (telefono,),
+            ).fetchall()
+        return [
+            Cuenta(f["clientecuit"], (f["codigos"] or [f["clientecuit"]])[0], f["razonsocial"])
+            for f in filas
+        ]
+
+    def permisos(self, telefono: str) -> set[str]:
+        with self._conexion() as conexion:
+            filas = conexion.execute(
+                """SELECT unnest(tareas) tarea FROM consulta.telefono_productor
+                   WHERE telefono=%s AND activo""",
+                (telefono,),
+            ).fetchall()
+        return {f["tarea"] for f in filas}
+
+    def estado(self, telefono: str, ahora: datetime | None = None) -> Estado:
+        return self.estado_y_caducidad(telefono, ahora)[0]
+
+    def estado_y_caducidad(
+        self, telefono: str, ahora: datetime | None = None
+    ) -> tuple[Estado, bool]:
+        ahora = ahora or datetime.now(UTC)
+        with self._conexion() as conexion:
+            fila = conexion.execute(
+                "SELECT paso,clientecuit,pedido,actualizado FROM consulta.bot_sesion WHERE telefono=%s",
+                (telefono,),
+            ).fetchone()
+        if not fila:
+            return Estado(), False
+        if fila["actualizado"] < ahora - timedelta(minutes=MINUTOS_SESION):
+            return Estado(), True
+        return Estado(fila["paso"], fila["clientecuit"], fila["pedido"]), False
+
+    def guardar_estado(self, telefono: str, estado: Estado) -> None:
+        with self._conexion() as conexion:
+            conexion.execute(
+                """INSERT INTO consulta.bot_sesion(telefono,paso,clientecuit,pedido)
+                   VALUES (%s,%s,%s,%s)
+                   ON CONFLICT(telefono) DO UPDATE SET paso=EXCLUDED.paso,
+                     clientecuit=EXCLUDED.clientecuit,pedido=EXCLUDED.pedido,actualizado=now()""",
+                (telefono, estado.paso, estado.cuenta, estado.pedido),
+            )
+
+    def guardar_archivo(self, archivo: Archivo, telefono: str) -> None:
+        with self._conexion() as conexion:
+            conexion.execute(
+                """INSERT INTO consulta.bot_archivo
+                   (token,extension,nombre,contenido,telefono,vence)
+                   VALUES (%s,%s,%s,%s,%s,%s)""",
+                (
+                    archivo.token,
+                    archivo.extension,
+                    archivo.nombre,
+                    archivo.contenido,
+                    telefono,
+                    archivo.vence,
+                ),
+            )
+
+    def limpiar_archivos(self) -> int:
+        with self._conexion() as conexion:
+            resultado = conexion.execute(
+                "DELETE FROM consulta.bot_archivo WHERE vence<now()"
+            )
+        return resultado.rowcount
+
     def respuestas_ultima_hora(self, telefono: str) -> int:
         with self._conexion() as conexion:
             fila = conexion.execute(
@@ -123,3 +201,14 @@ class RepositorioBot:
                    VALUES ('bot-whatsapp', %s, %s, %s)""",
                 (clientecuit, recurso, filas),
             )
+
+
+class RepositorioArchivos:
+    def __init__(self, dsn: str) -> None:
+        self._dsn = dsn
+
+    def leer(self, token: str) -> dict | None:
+        with psycopg.connect(self._dsn, row_factory=dict_row) as conexion:
+            return conexion.execute(
+                "SELECT * FROM consulta.leer_archivo(%s)", (token,)
+            ).fetchone()

@@ -8,6 +8,8 @@ from dataclasses import dataclass
 
 import httpx
 
+from .chattigo_media import cuerpo_documento, cuerpo_imagen
+
 VIGENCIA_SEGUNDOS = 7 * 3600 + 30 * 60
 
 
@@ -103,6 +105,24 @@ class ClienteChattigo:
         except ValueError as exc:
             raise ErrorChattigo("envío devolvió una respuesta inválida") from exc
         return mensajes[0].get("id", "")
+
+    def _enviar_mensaje(self, cuerpo: dict) -> str:
+        respuesta = self._enviar(
+            "POST", f"/{self._config.version}/{self._config.did}/messages", cuerpo
+        )
+        try:
+            mensajes = (respuesta.json() or {}).get("messages") or [{}]
+        except ValueError as exc:
+            raise ErrorChattigo("envío devolvió una respuesta inválida") from exc
+        return mensajes[0].get("id", "")
+
+    def enviar_imagen(self, telefono: str, url: str, epigrafe: str | None = None) -> str:
+        return self._enviar_mensaje(cuerpo_imagen(telefono, url, epigrafe))
+
+    def enviar_documento(
+        self, telefono: str, url: str, nombre: str, epigrafe: str | None = None
+    ) -> str:
+        return self._enviar_mensaje(cuerpo_documento(telefono, url, nombre, epigrafe))
 
     def configurar_webhook(self, url_webhook: str) -> dict:
         if not url_webhook.startswith("https://"):

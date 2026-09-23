@@ -15,6 +15,10 @@ from .conversacion import ZONA
 
 class Transporte(Protocol):
     def enviar_texto(self, telefono: str, texto: str) -> str: ...
+    def enviar_imagen(self, telefono: str, url: str, epigrafe: str | None = None) -> str: ...
+    def enviar_documento(
+        self, telefono: str, url: str, nombre: str, epigrafe: str | None = None
+    ) -> str: ...
 
 
 class ErrorTransporte(RuntimeError):
@@ -37,6 +41,16 @@ class TransporteSimulado:
         except psycopg.Error as exc:
             raise ErrorTransporte(f"salida simulada: {exc.__class__.__name__}") from exc
         return wamid
+
+    def enviar_imagen(self, telefono: str, url: str, epigrafe: str | None = None) -> str:
+        return self.enviar_texto(telefono, f"[IMAGEN] {epigrafe or ''}\n{url}".strip())
+
+    def enviar_documento(
+        self, telefono: str, url: str, nombre: str, epigrafe: str | None = None
+    ) -> str:
+        return self.enviar_texto(
+            telefono, f"[DOCUMENTO] {nombre}\n{epigrafe or ''}\n{url}".strip()
+        )
 
 
 def modo() -> str:

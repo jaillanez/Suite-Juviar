@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta
 
 import psycopg
 from consulta_publica.api.descargas import Descarga
+from consulta_publica.bot.estadisticas import Entrega
 from psycopg.rows import dict_row
 
 _CAMPOS = "sede, ciu, id_origen, fecha, neto, variedad, azucar, estado"
@@ -75,6 +76,27 @@ class RepositorioDescargasPg:
                     ORDER BY fecha DESC LIMIT %s""",
                 (clientecuit, desde, hasta + timedelta(days=1), limite),
             )
+        ]
+
+    def entregas(self, clientecuit: str, desde: date, hasta: date) -> list[Entrega]:
+        filas = self._consultar(
+            """SELECT sede,ciu,fecha,variedad,neto,azucar
+               FROM consulta.descarga_publica
+               WHERE clientecuit=%s AND estado='descargado'
+                 AND fecha >= %s AND fecha < %s
+               ORDER BY fecha,ciu""",
+            (clientecuit, desde, hasta + timedelta(days=1)),
+        )
+        return [
+            Entrega(
+                fecha=f["fecha"].date() if isinstance(f["fecha"], datetime) else f["fecha"],
+                ciu=f["ciu"],
+                variedad=f["variedad"] or "Sin variedad",
+                neto=f["neto"] or 0,
+                azucar=f["azucar"],
+                sede=f["sede"] or "",
+            )
+            for f in filas
         ]
 
     def datos_al(self) -> dict[str, datetime]:
