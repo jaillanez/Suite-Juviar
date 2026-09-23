@@ -14,8 +14,8 @@ from pathlib import Path
 from typing import Annotated
 from urllib.parse import urlsplit
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request, status
+from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -151,14 +151,16 @@ class LimpiezaPruebaEntrada(BaseModel):
     confirmacion: str
 
 
-def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
+def tabla_de_errores() -> list[tuple[type[BaseException], int]]:
+    return [
+        (LegajoInexistente, status.HTTP_404_NOT_FOUND),
+        (ErrorDeEntrega, status.HTTP_400_BAD_REQUEST),
+    ]
+
+
+def crear_router(contenedor: Contenedor | None = None) -> APIRouter:
     c = contenedor or construir()
-    app = FastAPI(
-        title="Suite Juviar — Entrega de EPP",
-        version="0.2.0-mvp",
-        dependencies=[Depends(exigir_permiso("suite.acceder"))],
-    )
-    app.state.c = c
+    app = APIRouter(dependencies=[Depends(exigir_permiso("suite.acceder"))])
 
     def usuario_actual(
         request: Request,
@@ -207,11 +209,6 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
 
     UsuarioActual = Annotated[ActorOperativo, Depends(usuario_actual)]
     OperadorDeposito = Annotated[ActorOperativo, Depends(operador_deposito)]
-
-    @app.exception_handler(ErrorDeEntrega)
-    async def _rechazo(_request: Request, exc: ErrorDeEntrega) -> JSONResponse:
-        codigo = 404 if isinstance(exc, LegajoInexistente) else 400
-        return JSONResponse(status_code=codigo, content={"error": str(exc)})
 
     @app.get("/sesion", dependencies=[Depends(exigir_permiso("suite.acceder"))])
     def sesion(usuario: UsuarioActual) -> dict[str, str]:
@@ -742,4 +739,14 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
             },
         )
 
+    return app
+
+
+def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
+    """Envoltorio aislado para pruebas del módulo."""
+    from suite_juviar.plataforma.errores import registrar_manejadores
+
+    app = FastAPI(title="Suite Juviar — Entrega de EPP", version="0.2.0-mvp")
+    app.include_router(crear_router(contenedor))
+    registrar_manejadores(app, tabla_de_errores())
     return app

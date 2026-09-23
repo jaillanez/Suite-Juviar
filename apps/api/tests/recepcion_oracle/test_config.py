@@ -29,5 +29,5 @@ def test_worker_si_exige_destinos(monkeypatch) -> None:
     monkeypatch.delenv("RECEPCION_DSN_SUITE", raising=False)
     monkeypatch.delenv("RECEPCION_DSN_DMZ", raising=False)
 
-    with pytest.raises(RuntimeError, match="RECEPCION_DSN_SUITE"):
+    with pytest.raises(RuntimeError, match="SJ_DATABASE_URL"):
         Config.desde_entorno()

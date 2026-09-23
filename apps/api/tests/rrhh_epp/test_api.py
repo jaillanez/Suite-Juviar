@@ -175,7 +175,7 @@ def test_ficha_trae_cabecera_y_epp_del_puesto(cliente):
 def test_legajo_inexistente_da_404(cliente):
     r = cliente.get("/legajos/999999")
     assert r.status_code == 404
-    assert "no existe" in r.json()["error"]
+    assert "no existe" in r.json()["detail"]
 
 
 def test_legajo_inactivo_da_400(cliente):

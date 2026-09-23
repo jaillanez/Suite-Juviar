@@ -4,7 +4,7 @@ from dataclasses import asdict
 from datetime import date, time
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -48,10 +48,14 @@ class ResolucionLoteEntrada(BaseModel):
 SectorSimulado = Annotated[str, Header(alias="X-Sector-Simulado")]
 
 
-def crear_app(servicio: ConciliarTurnos, entorno: str = "prueba") -> FastAPI:
+def tabla_de_errores() -> list[tuple[type[BaseException], int]]:
+    return [(FuenteSimuladaEnProduccion, 503)]
+
+
+def crear_router(servicio: ConciliarTurnos, entorno: str = "prueba") -> APIRouter:
     if entorno.lower() == "produccion" and servicio.simulada:
         raise FuenteSimuladaEnProduccion("Turnos no arranca en producción con fichadas simuladas.")
-    app = FastAPI(title="Conciliación de turnos")
+    app = APIRouter()
     leer = exigir_permiso("turnos.cronograma.leer")
     editar = exigir_permiso("turnos.cronograma.editar")
     aprobar = exigir_permiso("turnos.imputacion.aprobar")
@@ -160,4 +164,10 @@ def crear_app(servicio: ConciliarTurnos, entorno: str = "prueba") -> FastAPI:
     def reporte_tardias(desde: date, hasta: date):
         return servicio.reporte_tardias(desde, hasta)
 
+    return app
+
+
+def crear_app(servicio: ConciliarTurnos, entorno: str = "prueba") -> FastAPI:
+    app = FastAPI(title="Conciliación de turnos")
+    app.include_router(crear_router(servicio, entorno))
     return app

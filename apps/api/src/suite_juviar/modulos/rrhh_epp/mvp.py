@@ -13,6 +13,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from suite_juviar.plataforma.db.dsn import dsn_psycopg
 from suite_juviar.plataforma.parametria.domain.perfiles_acceso import MapaPerfilesAcceso
 from suite_juviar.plataforma.parametria.infrastructure.perfiles_acceso_yaml import (
     PerfilesAccesoYAML,
@@ -198,11 +199,7 @@ def construir(
             bitacora,
         )
     elif tipo_persistencia == "postgresql":
-        dsn = (
-            postgres_dsn
-            or os.getenv("SJ_RRHH_EPP_DATABASE_URL")
-            or "postgresql:///juviar_suite_local"
-        )
+        dsn = postgres_dsn or dsn_psycopg()
         try:
             base_postgres = BasePostgreSQL(dsn)
         except EsquemaPostgreSQLFaltante as exc:

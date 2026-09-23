@@ -4,7 +4,7 @@ from base64 import b64decode, b64encode
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from suite_juviar.plataforma.identidad.api.dependencias import (
@@ -44,12 +44,9 @@ class ConfirmacionEntrada(BaseModel):
     valor: str = Field(min_length=1)
 
 
-def crear_app(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> FastAPI:
+def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> APIRouter:
     exigir_identidad_configurada(entorno)
-    app = FastAPI(
-        title="Selección de personal",
-        dependencies=[Depends(exigir_permiso("seleccion.gestionar"))],
-    )
+    app = APIRouter(dependencies=[Depends(exigir_permiso("seleccion.gestionar"))])
     originales = OriginalesSQLite(ruta_base)
     extracciones = ExtraccionesSQLite(ruta_base)
     extraer = ExtraerDatosCV(originales, extracciones, TextoPDF(), CamposPorReglasProvisorias())
@@ -173,4 +170,10 @@ def crear_app(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modulos
     def auditoria(cv_id: str):
         return extracciones.consultas_original(cv_id)
 
+    return app
+
+
+def crear_app(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> FastAPI:
+    app = FastAPI(title="Selección de personal")
+    app.include_router(crear_router(perfiles, entorno, ruta_base))
     return app

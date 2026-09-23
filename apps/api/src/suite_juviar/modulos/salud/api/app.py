@@ -4,7 +4,7 @@ import base64
 from dataclasses import asdict
 from datetime import date
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -30,10 +30,18 @@ class CertificadoEntrada(BaseModel):
     adjunto_base64: str = Field(min_length=1)
 
 
-def crear_app(servicio: GestionarSalud, entorno: str = "prueba") -> FastAPI:
+def tabla_de_errores() -> list[tuple[type[BaseException], int]]:
+    return [
+        (AccesoSaludDenegado, 403),
+        (ReporteNominadoProhibido, 400),
+        (FuenteSimuladaEnProduccion, 503),
+    ]
+
+
+def crear_router(servicio: GestionarSalud, entorno: str = "prueba") -> APIRouter:
     if entorno.lower() == "produccion" and servicio.catalogo.simulada:
         raise FuenteSimuladaEnProduccion("Salud no arranca en producción con catálogo simulado.")
-    app = FastAPI(title="Salud laboral")
+    app = APIRouter()
     leer = exigir_permiso("salud.diagnostico.leer")
     gestionar = exigir_permiso("salud.certificado.gestionar")
 
@@ -138,4 +146,10 @@ def crear_app(servicio: GestionarSalud, entorno: str = "prueba") -> FastAPI:
             raise HTTPException(409, "El cálculo preliminar no se puede imprimir ni exportar.")
         return resultado
 
+    return app
+
+
+def crear_app(servicio: GestionarSalud, entorno: str = "prueba") -> FastAPI:
+    app = FastAPI(title="Salud laboral")
+    app.include_router(crear_router(servicio, entorno))
     return app

@@ -8,11 +8,17 @@ propio modelo de lectura. El aislamiento se refuerza con permisos por schema.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from functools import lru_cache
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import DeclarativeBase
 
-from suite_juviar.config import settings
+from . import dsn as _dsn
 
 ESQUEMAS = (
     "plataforma",
@@ -32,15 +38,22 @@ class Base(DeclarativeBase):
     pass
 
 
-engine = create_async_engine(
-    settings.database_url,          # rol de aplicación: sin DDL, sin DROP
-    pool_pre_ping=True,
-    echo=False,
-)
+@lru_cache(maxsize=1)
+def obtener_motor() -> AsyncEngine:
+    return create_async_engine(_dsn.url_sqlalchemy(), pool_pre_ping=True, echo=False)
 
-SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+
+@lru_cache(maxsize=1)
+def obtener_fabrica_de_sesiones() -> async_sessionmaker[AsyncSession]:
+    return async_sessionmaker(obtener_motor(), expire_on_commit=False, class_=AsyncSession)
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:
-    async with SessionLocal() as session:
+    async with obtener_fabrica_de_sesiones()() as session:
         yield session
+
+
+def reiniciar_motor() -> None:
+    """Olvida motor y fábrica; reservado para pruebas de configuración."""
+    obtener_fabrica_de_sesiones.cache_clear()
+    obtener_motor.cache_clear()

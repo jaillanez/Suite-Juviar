@@ -11,9 +11,7 @@ class Settings(BaseSettings):
 
     entorno: str = "dev"
 
-    # Rol de aplicación. El rol dueño del esquema (migraciones) es otro y sus
-    # credenciales no viven en el entorno de la app.
-    database_url: str = "postgresql+asyncpg://sj_app@localhost/suite_juviar"
+    # La conexión se resuelve exclusivamente en plataforma/db/dsn.py.
     redis_url: str = "redis://localhost:6379/0"
 
     # Clave del HMAC de datos personales. Fuera de la base, inyectada por el

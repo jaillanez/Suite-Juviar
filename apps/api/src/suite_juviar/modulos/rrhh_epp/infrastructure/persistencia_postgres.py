@@ -44,7 +44,7 @@ class BasePostgreSQL:
         except psycopg.Error as exc:
             raise EsquemaPostgreSQLFaltante(
                 "No se pudo abrir PostgreSQL para RRHH/EPP. Revise "
-                "SJ_RRHH_EPP_DATABASE_URL y la base local."
+                "SJ_DATABASE_URL y la base de la suite."
             ) from exc
 
     def conectar(self, *, filas_dict: bool = False) -> psycopg.Connection:

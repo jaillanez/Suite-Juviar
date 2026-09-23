@@ -4,6 +4,7 @@ import logging
 import os
 import time
 
+from suite_juviar.plataforma.db.dsn import dsn_psycopg
 from suite_juviar.plataforma.terceros.infrastructure.publicar_contactos import (
     PublicadorContactos,
 )
@@ -12,7 +13,7 @@ from suite_juviar.plataforma.terceros.infrastructure.publicar_contactos import (
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
     publicador = PublicadorContactos(
-        os.environ["RECEPCION_DSN_SUITE"], os.environ["RECEPCION_DSN_DMZ"]
+        dsn_psycopg(), os.environ["RECEPCION_DSN_DMZ"]
     )
     proxima_copia_productores = 0.0
     while True:

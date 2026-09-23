@@ -12,10 +12,6 @@ import sqlite3
 from collections.abc import Iterator, MutableMapping
 from pathlib import Path
 from threading import RLock
-from typing import Generic, TypeVar
-
-K = TypeVar("K")
-V = TypeVar("V")
 
 
 class BaseColeccionesSQLite:
@@ -43,7 +39,7 @@ class BaseColeccionesSQLite:
         self.bloqueo = RLock()
 
 
-class MapaSQLite(MutableMapping[K, V], Generic[K, V]):
+class MapaSQLite[K, V](MutableMapping[K, V]):
     def __init__(self, base: BaseColeccionesSQLite, espacio: str) -> None:
         self._base = base
         self._espacio = espacio
@@ -101,7 +97,7 @@ class MapaSQLite(MutableMapping[K, V], Generic[K, V]):
             ).fetchone()[0])
 
 
-class ListaSQLite(Generic[V]):
+class ListaSQLite[V]:
     def __init__(self, base: BaseColeccionesSQLite, espacio: str) -> None:
         self._base = base
         self._espacio = espacio
@@ -128,4 +124,3 @@ class ListaSQLite(Generic[V]):
                 "SELECT COUNT(*) FROM lista_persistente WHERE espacio=?",
                 (self._espacio,),
             ).fetchone()[0])
-

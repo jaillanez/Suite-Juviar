@@ -11,6 +11,7 @@ from pathlib import Path
 import psycopg
 from psycopg.types.json import Jsonb
 
+from suite_juviar.plataforma.db.dsn import dsn_psycopg
 from suite_juviar.plataforma.terceros.telefono import TelefonoInvalido
 from suite_juviar.plataforma.terceros.telefono import normalizar as normalizar_estricto
 
@@ -84,7 +85,7 @@ def main(argumentos: list[str] | None = None) -> int:
     parser.add_argument("--por")
     parser.add_argument("--solo-publicar", action="store_true")
     opciones = parser.parse_args(argumentos)
-    with psycopg.connect(os.environ["RECEPCION_DSN_SUITE"]) as suite:
+    with psycopg.connect(dsn_psycopg()) as suite:
         if not opciones.solo_publicar:
             if not opciones.csv or not opciones.por:
                 parser.error("hace falta el CSV y --por")

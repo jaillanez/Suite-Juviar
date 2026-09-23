@@ -5,7 +5,7 @@ from dataclasses import asdict
 from datetime import UTC, date, datetime
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
@@ -61,12 +61,9 @@ class ImportacionEntrada(BaseModel):
     contenido_base64: str
 
 
-def crear_app(configuracion, entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> FastAPI:
+def crear_router(configuracion, entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> APIRouter:
     exigir_identidad_configurada(entorno)
-    app = FastAPI(
-        title="Capacitaciones",
-        dependencies=[Depends(exigir_permiso("capacitacion.gestionar"))],
-    )
+    app = APIRouter(dependencies=[Depends(exigir_permiso("capacitacion.gestionar"))])
     repo = CapacitacionSQLite(ruta_base)
     reportes = ReportesCapacitacion(repo, configuracion)
     anular = AnularAsistencia(repo)
@@ -176,4 +173,10 @@ def crear_app(configuracion, entorno: str = "prueba", ruta_base: str = "datos/mo
         except LookupError as exc:
             raise HTTPException(404, str(exc)) from exc
 
+    return app
+
+
+def crear_app(configuracion, entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> FastAPI:
+    app = FastAPI(title="Capacitaciones")
+    app.include_router(crear_router(configuracion, entorno, ruta_base))
     return app

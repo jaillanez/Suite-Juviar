@@ -3,24 +3,34 @@ from __future__ import annotations
 from dataclasses import asdict
 from datetime import date
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.responses import Response
 
 from suite_juviar.plataforma.identidad.api.dependencias import exigir_permiso
 
 from ..application.servicios import AnalizarEPP
-from ..domain.modelos import MARCA_SIMULADA, ExportacionNoPermitida, FuenteSimuladaEnProduccion
+from ..domain.modelos import (
+    MARCA_SIMULADA,
+    ComparacionInvalida,
+    ExportacionNoPermitida,
+    FuenteSimuladaEnProduccion,
+)
 
 
-def crear_app(servicio: AnalizarEPP, entorno: str = "prueba") -> FastAPI:
+def tabla_de_errores() -> list[tuple[type[BaseException], int]]:
+    return [
+        (ComparacionInvalida, 400),
+        (ExportacionNoPermitida, 409),
+        (FuenteSimuladaEnProduccion, 503),
+    ]
+
+
+def crear_router(servicio: AnalizarEPP, entorno: str = "prueba") -> APIRouter:
     if entorno.lower() == "produccion" and servicio.datos_simulados:
         raise FuenteSimuladaEnProduccion(
             "Analítica EPP no arranca en producción con fuentes simuladas."
         )
-    app = FastAPI(
-        title="Analítica EPP para Compras",
-        dependencies=[Depends(exigir_permiso("epp.analitica.leer"))],
-    )
+    app = APIRouter(dependencies=[Depends(exigir_permiso("epp.analitica.leer"))])
 
     @app.get("/")
     @app.get("/tablero")
@@ -60,4 +70,10 @@ def crear_app(servicio: AnalizarEPP, entorno: str = "prueba") -> FastAPI:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         return Response(contenido, media_type="text/csv")
 
+    return app
+
+
+def crear_app(servicio: AnalizarEPP, entorno: str = "prueba") -> FastAPI:
+    app = FastAPI(title="Analítica EPP para Compras")
+    app.include_router(crear_router(servicio, entorno))
     return app

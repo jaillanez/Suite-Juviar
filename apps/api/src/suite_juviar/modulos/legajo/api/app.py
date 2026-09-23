@@ -3,7 +3,7 @@ from __future__ import annotations
 from base64 import b64decode, b64encode
 from dataclasses import asdict
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
@@ -11,6 +11,10 @@ from suite_juviar.plataforma.identidad.api.dependencias import SesionActual, exi
 
 from ..application.servicios import GestionarLegajo
 from ..domain.modelos import MARCA_SIMULADA, FuenteSimuladaEnProduccion
+
+
+def tabla_de_errores() -> list[tuple[type[BaseException], int]]:
+    return [(FuenteSimuladaEnProduccion, 503)]
 
 
 class AdjuntoEntrada(BaseModel):
@@ -23,10 +27,10 @@ class BajaAdjuntoEntrada(BaseModel):
     motivo: str = Field(min_length=1)
 
 
-def crear_app(servicio: GestionarLegajo, entorno: str = "prueba") -> FastAPI:
+def crear_router(servicio: GestionarLegajo, entorno: str = "prueba") -> APIRouter:
     if entorno.lower() == "produccion" and servicio.legajos.simulada:
         raise FuenteSimuladaEnProduccion("Legajo no arranca en producción con Nexus simulado.")
-    app = FastAPI(title="Legajo digital")
+    app = APIRouter()
 
     @app.get("/personas", dependencies=[Depends(exigir_permiso("legajo.leer"))])
     def buscar(apellido: str | None = None, legajo: str | None = None,
@@ -97,4 +101,10 @@ def crear_app(servicio: GestionarLegajo, entorno: str = "prueba") -> FastAPI:
         except (LookupError, ValueError) as exc:
             raise HTTPException(400, str(exc)) from exc
 
+    return app
+
+
+def crear_app(servicio: GestionarLegajo, entorno: str = "prueba") -> FastAPI:
+    app = FastAPI(title="Legajo digital")
+    app.include_router(crear_router(servicio, entorno))
     return app
