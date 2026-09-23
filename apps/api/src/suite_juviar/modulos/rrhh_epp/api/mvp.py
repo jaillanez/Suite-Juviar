@@ -456,6 +456,18 @@ def crear_app(contenedor: Contenedor | None = None) -> FastAPI:
     def estado_matriz():
         return {"estado": c.catalogo.estado_matriz, "validacion": c.catalogo.validacion_matriz, "historial": c.catalogo.historial_matriz}
 
+    @app.get("/matriz/puestos", dependencies=[Depends(exigir_permiso("epp.catalogo.leer"))])
+    def puestos_matriz():
+        puestos = {
+            persona.puesto_codigo: persona.puesto
+            for persona in c.legajos.listar_activos()
+            if persona.puesto_codigo and persona.puesto
+        }
+        return [
+            {"codigo": codigo, "nombre": nombre}
+            for codigo, nombre in sorted(puestos.items(), key=lambda item: item[1])
+        ]
+
     @app.get("/matriz/puestos/{puesto}", dependencies=[Depends(exigir_permiso("epp.catalogo.leer"))])
     def matriz_puesto(puesto: str):
         return c.catalogo.matriz_puesto(puesto)

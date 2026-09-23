@@ -71,6 +71,17 @@ def test_la_matriz_esta_marcada_como_no_validada(contenedor):
     assert contenedor.catalogo.estado_matriz == "PROPUESTA_SIN_VALIDAR"
 
 
+def test_api_lista_puestos_reales_para_no_memorizarlos(cliente):
+    respuesta = cliente.get(
+        "/matriz/puestos",
+        headers={"X-Perfil-Simulado": "HYS", "X-Actor-Simulado": "hys-prueba"},
+    )
+    assert respuesta.status_code == 200
+    puestos = {fila["codigo"]: fila["nombre"] for fila in respuesta.json()}
+    assert puestos["OP-BOD"] == "Operario de Bodega"
+    assert puestos["OP-AUT"] == "Operador de Autoelevador"
+
+
 def test_a_igual_nivel_gana_la_cantidad_mayor(tmp_path):
     matriz = tmp_path / "matriz.yaml"
     matriz.write_text(
