@@ -92,10 +92,10 @@ export function ContactosGestion() {
   }
 
   async function crearGuardia(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault(); const f = new FormData(e.currentTarget);
+    e.preventDefault(); const formulario = e.currentTarget; const f = new FormData(formulario);
     try {
       setClaveTemporal(await api("guardias", { method: "POST", body: JSON.stringify({ usuario: f.get("usuario"), nombre: f.get("nombre"), sede: f.get("sede") }) }));
-      e.currentTarget.reset(); await cargarGuardias();
+      formulario.reset(); await cargarGuardias();
     } catch (x) { setError(x instanceof Error ? x.message : "No se pudo crear el guardia."); }
   }
 
