@@ -224,7 +224,7 @@ class GeneradorConstanciaPDFSimulada:
                 imagen.drawHeight = 24 * mm
                 imagen.drawWidth = 70 * mm
                 return imagen
-            except binascii.Error, OSError, UnidentifiedImageError, ValueError:
+            except (binascii.Error, OSError, UnidentifiedImageError, ValueError):
                 return Paragraph(
                     "Firma del trabajador: evidencia simulada inválida",
                     getSampleStyleSheet()["BodyText"],

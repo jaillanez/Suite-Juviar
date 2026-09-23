@@ -4,6 +4,13 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, date, datetime
+from zoneinfo import ZoneInfo
+
+# La constancia es un documento que el trabajador firma con una fecha escrita.
+# Esa fecha es la del lugar donde se entrega, no la del reloj del servidor: con
+# el servidor en UTC, toda entrega posterior a las 21:00 de San Juan quedaba
+# fechada al día siguiente.
+ZONA_OPERATIVA = ZoneInfo("America/Argentina/San_Juan")
 
 from ..domain.modelos_mvp import (
     MOTIVOS_RECLAMO_CALIDAD,
@@ -221,7 +228,7 @@ class RegistrarEntrega:
             id=id_entrega,
             legajo=persona,
             lineas=tuple(lineas),
-            fecha_entrega=fecha or momento_entrega.date(),
+            fecha_entrega=fecha or momento_entrega.astimezone(ZONA_OPERATIVA).date(),
             firma_trabajador=firma,
             usuario_deposito=usuario_deposito,
             circuito=circuito,
