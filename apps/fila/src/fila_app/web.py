@@ -106,7 +106,7 @@ altaDirecta.onclick=async()=>{{const patente=prompt('Patente');if(!patente)retur
  await enviar('/api/guardia/viajes/directo',{{id_cliente:id(),sede,patente,productor:p.razonsocial,telefono:null,clientecuit:p.clientecuit,clientecodigo:p.codigos?.[0]||null,declara_organica:confirm('¿Carga orgánica?'),momento_cliente:ahora(),productor_revision_manual:!!p.manual}})}};
 const motivosSalto=['no_responde','documentacion_incompleta','problema_mecanico','indicacion_de_planta','otro'];
 const motivosCierre=['patente_no_coincide','no_esta_en_porton','registro_duplicado','datos_incorrectos','se_retiro','rechazado_por_planta','problema_mecanico','indicacion_de_planta','otro'];
-function elegirMotivo(opciones,titulo){{const lista=opciones.map((m,i)=>`${{i+1}}. ${{m.replaceAll('_',' ')}}`).join('\n');const n=Number(prompt(titulo+'\n'+lista));return opciones[n-1]||null}}
+function elegirMotivo(opciones,titulo){{const lista=opciones.map((m,i)=>`${{i+1}}. ${{m.replaceAll('_',' ')}}`).join('\\n');const n=Number(prompt(titulo+'\\n'+lista));return opciones[n-1]||null}}
 async function llamar(viaje,pos){{let motivo=null;if(pos>0){{motivo=elegirMotivo(motivosSalto,'Elegí por qué se saltea el orden');if(!motivo)return}}await accion(viaje,'llamar',motivo)}}
 async function cerrar(viaje,accionCierre){{const motivo=elegirMotivo(motivosCierre,accionCierre==='rechazar'?'Elegí por qué se rechaza':'Elegí por qué se saca de la fila');if(motivo)await accion(viaje,accionCierre,motivo)}}
 async function accion(viaje,a,motivo=null){{await enviar('/api/guardia/viajes/'+viaje+'/'+a,{{id_cliente:id(),momento_cliente:ahora(),motivo}})}}
