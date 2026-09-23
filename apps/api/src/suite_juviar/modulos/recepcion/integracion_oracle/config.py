@@ -5,8 +5,6 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-from suite_juviar.plataforma.db.dsn import dsn_psycopg
-
 
 @dataclass(frozen=True)
 class Sede:
@@ -50,9 +48,10 @@ class Config:
             )
             for codigo in activas
         )
-        dsn_suite = dsn_psycopg(obligatorio=requerir_destinos)
+        dsn_suite = os.environ.get("RECEPCION_DSN_SUITE", "").strip()
         dsn_dmz = os.environ.get("RECEPCION_DSN_DMZ", "").strip()
         if requerir_destinos:
+            dsn_suite = requerida("RECEPCION_DSN_SUITE")
             dsn_dmz = requerida("RECEPCION_DSN_DMZ")
         return cls(
             sedes=sedes,
