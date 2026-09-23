@@ -85,3 +85,11 @@ def test_api_programada_muestra_fuente_y_estado_no_validado(cliente):
     assert respuesta.status_code == 200
     assert respuesta.json()[0]["fuente_legajo"] == "SIMULADA"
     assert respuesta.json()[0]["estado_matriz"] == "PROPUESTA_SIN_VALIDAR"
+
+
+def test_api_expone_sectores_para_el_selector_de_planillas(cliente):
+    respuesta = cliente.get("/matriz/sectores")
+    assert respuesta.status_code == 200
+    sectores = respuesta.json()
+    assert {fila["nombre"] for fila in sectores} >= {"Bodega", "Pañol", "Viña"}
+    assert all(fila["codigo"] for fila in sectores)
