@@ -2,10 +2,6 @@
 
 import { ReactNode, useMemo, useState } from "react";
 
-export function Simulado({ nivel = "pantalla" }: { nivel?: "campo" | "tabla" | "pantalla" }) {
-  return <span className={`simulado simulado-${nivel}`}>DATOS SIMULADOS · SIN VALIDEZ</span>;
-}
-
 export function ErrorVisible({ mensaje }: { mensaje: string }) {
   return <div className="aviso-error" role="alert"><strong>No se pudo completar.</strong><span>{mensaje}</span></div>;
 }

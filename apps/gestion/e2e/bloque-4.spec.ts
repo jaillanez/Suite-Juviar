@@ -44,8 +44,7 @@ test("Salud: certificado completo, artículo 208 preliminar y bitácora", async 
   await expect(page.getByRole("status")).toContainText("registrado y auditado");
   await expect(page.getByRole("region", { name: "Certificados médicos" })).toContainText("Dra. E2E");
   await page.getByRole("button", { name: "Evaluar" }).click();
-  await expect(page.getByText(/Preliminar: antigüedad y cargas de familia simuladas/)).toBeVisible();
-  await expect(page.getByText("No se puede imprimir ni exportar mientras use datos simulados.")).toBeVisible();
+  await expect(page.getByText(/podría aplicar|no aplicaría/)).toBeVisible();
   await page.getByRole("button", { name: "Actualizar reporte" }).click();
   await expect(page.getByText(/Mínimo de agregado: 2/)).toBeVisible();
   await page.getByRole("button", { name: "Consultar bitácora" }).click();

@@ -34,7 +34,7 @@ test("Turnos: semana, cambio tardío, conciliación, lote, bandeja y reporte", a
   page.once("dialog", d => d.accept());
   await page.getByRole("button", { name: "Resolver 2 seleccionadas" }).click();
   await expect(page.getByText(/2 propuestas resueltas en lote/)).toBeVisible();
-  await expect(page.getByRole("region", { name: "Bandeja de salida" })).toContainText("SIMULADA · SIN VALIDEZ");
+  await expect(page.getByRole("region", { name: "Bandeja de salida" })).not.toContainText("SIN VALIDEZ");
   await page.getByRole("button", { name: "Actualizar" }).click();
   await expect(page.getByRole("region", { name: "Reporte de regularizaciones tardías" })).toContainText("Bodega");
 });

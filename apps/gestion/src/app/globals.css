@@ -221,22 +221,6 @@ select {
   color: var(--muted);
   margin: 0;
 }
-.simulado {
-  display: inline-flex;
-  align-items: center;
-  width: max-content;
-  background: var(--rojo);
-  color: #fff;
-  border-radius: 5px;
-  padding: 5px 8px;
-  font-size: 0.69rem;
-  font-weight: 850;
-  letter-spacing: 0.06em;
-}
-.simulado-tabla,
-.simulado-campo {
-  font-size: 0.64rem;
-}
 .aplicacion {
   min-height: 100vh;
   display: grid;
