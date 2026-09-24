@@ -118,6 +118,14 @@ function AccesoDenegado({ perfil, seccion }: { perfil: Perfil; seccion: Seccion 
   return <><Encabezado titulo="Acceso denegado" descripcion="Tu perfil no tiene permiso para ingresar a esta sección." /><ErrorVisible mensaje={`El perfil ${perfiles[perfil].nombre} no puede acceder a ${nombres[seccion]}. ${resultadoApi}`} /></>;
 }
 
+function GrupoMenu({ nombre, secciones, activa }: { nombre: string; secciones: Seccion[]; activa: Seccion }) {
+  const [abierto, setAbierto] = useState(secciones.includes(activa));
+  return <details className="menu-grupo" open={abierto} onToggle={(evento) => setAbierto(evento.currentTarget.open)}>
+    <summary><span>{nombre}</span><i aria-hidden="true" /></summary>
+    <div className="menu-grupo-enlaces">{secciones.map((seccion) => <Link key={seccion} href={seccion === "inicio" ? "/" : `/${seccion}`} className={seccion === activa ? "activo" : ""}><Icono nombre={seccion} />{nombres[seccion]}</Link>)}</div>
+  </details>;
+}
+
 export default function Gestion({ seccionSolicitada }: { seccionSolicitada: Seccion }) {
   const [sesion, setSesion] = useState<{ empresa: Empresa; perfil: Perfil } | null>(null);
   useEffect(() => { const guardada = sessionStorage.getItem("gestion-sesion"); if (guardada) setSesion(JSON.parse(guardada)); }, []);
@@ -126,5 +134,5 @@ export default function Gestion({ seccionSolicitada }: { seccionSolicitada: Secc
   const valida = Object.hasOwn(nombres, seccionSolicitada) ? seccionSolicitada : "inicio";
   const permitido = puedeEntrar(sesion.perfil, valida);
   const permitidas = new Set(perfiles[sesion.perfil].secciones);
-  return <div className="aplicacion"><aside><div className="marca"><span className="isotipo">SJ</span><div><strong>Suite Juviar</strong><small>Gestión interna</small></div></div><nav aria-label="Secciones">{gruposMenu.map((grupo) => { const secciones = grupo.secciones.filter((s) => permitidas.has(s)); if (!secciones.length) return null; return <section className="menu-grupo" key={grupo.nombre}><h2>{grupo.nombre}</h2>{secciones.map((s) => <Link key={s} href={s === "inicio" ? "/" : `/${s}`} className={s === valida ? "activo" : ""}><Icono nombre={s} />{nombres[s]}</Link>)}</section>; })}</nav><Link className="perfil-actual" href="/configuracion"><span>{perfiles[sesion.perfil].nombre}</span><small>Cambiar configuración</small></Link></aside><div className="principal-contenedor"><header className="barra"><div><span className="pulso" /> API interna</div><strong>{sesion.empresa}</strong><button className="salir" onClick={() => { sessionStorage.removeItem("gestion-sesion"); setSesion(null); }}>Salir</button></header><main>{permitido ? <Contenido key={`${sesion.perfil}-${valida}`} seccion={valida} sesion={sesion} guardar={entrar} /> : <AccesoDenegado perfil={sesion.perfil} seccion={valida} />}</main><footer>Suite Juviar Gestión v{VERSION} · commit {COMMIT}</footer></div></div>;
+  return <div className="aplicacion"><aside><div className="marca"><span className="isotipo">SJ</span><div><strong>Suite Juviar</strong><small>Gestión interna</small></div></div><nav aria-label="Secciones">{gruposMenu.map((grupo) => { const secciones = grupo.secciones.filter((s) => permitidas.has(s)); if (!secciones.length) return null; return <GrupoMenu key={`${grupo.nombre}-${valida}`} nombre={grupo.nombre} secciones={secciones} activa={valida} />; })}</nav><Link className="perfil-actual" href="/configuracion"><span>{perfiles[sesion.perfil].nombre}</span><small>Cambiar configuración</small></Link></aside><div className="principal-contenedor"><header className="barra"><div><span className="pulso" /> API interna</div><strong>{sesion.empresa}</strong><button className="salir" onClick={() => { sessionStorage.removeItem("gestion-sesion"); setSesion(null); }}>Salir</button></header><main>{permitido ? <Contenido key={`${sesion.perfil}-${valida}`} seccion={valida} sesion={sesion} guardar={entrar} /> : <AccesoDenegado perfil={sesion.perfil} seccion={valida} />}</main><footer>Suite Juviar Gestión v{VERSION} · commit {COMMIT}</footer></div></div>;
 }

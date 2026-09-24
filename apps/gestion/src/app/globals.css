@@ -275,15 +275,34 @@ aside nav {
   padding: 20px 0;
   overflow-y: auto;
 }
-.menu-grupo { display: grid; gap: 3px; }
-.menu-grupo h2 {
-  margin: 0 12px 4px;
+.menu-grupo { display: grid; }
+.menu-grupo summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 38px;
+  padding: 7px 12px;
   color: #8fb0a1;
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.11em;
   text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 8px;
+  list-style: none;
 }
+.menu-grupo summary::-webkit-details-marker { display: none; }
+.menu-grupo summary:hover { background: rgba(255, 255, 255, 0.07); color: #d8e4de; }
+.menu-grupo summary i {
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translate(-2px, 2px);
+  transition: transform 0.18s ease-out;
+}
+.menu-grupo[open] summary i { transform: rotate(225deg) translate(-1px, 1px); }
+.menu-grupo-enlaces { display: grid; gap: 3px; padding-top: 3px; }
 aside nav a {
   display: flex;
   align-items: center;
