@@ -13,12 +13,14 @@ import { LegajoGestion } from "./legajo-gestion";
 import { SaludGestion } from "./salud-gestion";
 import { TurnosGestion } from "./turnos-gestion";
 import { ContactosGestion } from "./contactos-gestion";
+import { ProduccionGestion } from "./produccion-gestion";
 
 const VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.1.0";
 const COMMIT = process.env.NEXT_PUBLIC_GIT_COMMIT ?? "local";
 function Icono({ nombre }: { nombre: Seccion }) {
   const rutas: Record<Seccion, string> = {
     inicio: "M4 5h16v14H4z M8 9h3v3H8z M14 9h2 M14 13h2 M8 16h8",
+    produccion: "M3 20h18 M5 20V9l5 3V9l5 3V5h4v15 M8 16h2 M14 16h2",
     epp: "M7 20v-5a5 5 0 0110 0v5 M9 9V6a3 3 0 016 0v3 M6 10h12v4H6z",
     analitica: "M5 19V9 M12 19V5 M19 19v-7 M3 19h18",
     seleccion: "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2 M9 11a4 4 0 100-8 4 4 0 000 8z M19 8v6 M22 11h-6",
@@ -78,10 +80,14 @@ function Contactos() {
   return <><Encabezado titulo="Contactos de productores" descripcion="Permisos, reemplazos e historial con trazabilidad completa." /><ContactosGestion /></>;
 }
 
+function Produccion() {
+  return <><Encabezado titulo="Producción" descripcion="Recepción, fila de camiones y consultas de productores desde una sola operación." /><ProduccionGestion /></>;
+}
+
 function Pendiente({ seccion }: { seccion: Seccion }) { return <><Encabezado titulo={nombres[seccion]} descripcion="Módulo incorporado al armazón de Gestión." /><section className="tarjeta"><h2>Integración en curso</h2><p>El dominio existe, pero su API de gestión todavía debe completarse antes de habilitar esta operación. No se simulan reglas en el navegador.</p></section></>; }
 
 function Contenido({ seccion, empresa }: { seccion: Seccion; empresa: Empresa }) {
-  if (seccion === "inicio") return <Inicio empresa={empresa} />; if (seccion === "epp") return <Epp />; if (seccion === "analitica") return <Analitica />; if (seccion === "seleccion") return <Seleccion />; if (seccion === "capacitaciones") return <Capacitaciones />; if (seccion === "legajo") return <Legajo />; if (seccion === "salud") return <Salud />; if (seccion === "turnos") return <Turnos />; if (seccion === "contactos") return <Contactos />; return <Pendiente seccion={seccion} />;
+  if (seccion === "inicio") return <Inicio empresa={empresa} />; if (seccion === "produccion") return <Produccion />; if (seccion === "epp") return <Epp />; if (seccion === "analitica") return <Analitica />; if (seccion === "seleccion") return <Seleccion />; if (seccion === "capacitaciones") return <Capacitaciones />; if (seccion === "legajo") return <Legajo />; if (seccion === "salud") return <Salud />; if (seccion === "turnos") return <Turnos />; if (seccion === "contactos") return <Contactos />; return <Pendiente seccion={seccion} />;
 }
 
 function AccesoDenegado({ perfil, seccion }: { perfil: Perfil; seccion: Seccion }) {

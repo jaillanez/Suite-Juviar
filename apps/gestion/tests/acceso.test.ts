@@ -18,3 +18,10 @@ test("el menú se construye con secciones permitidas", () => {
   assert.deepEqual(perfiles.COMPRAS.secciones, ["inicio", "epp", "analitica"]);
   assert.equal(puedeEntrar("SUPERVISOR", "turnos"), true);
 });
+
+test("Producción queda integrada para campo, báscula y administración de bodega", () => {
+  assert.equal(puedeEntrar("CAMPO", "produccion"), true);
+  assert.equal(puedeEntrar("BASCULA", "produccion"), true);
+  assert.equal(puedeEntrar("BODEGA", "produccion"), true);
+  assert.equal(puedeEntrar("RRHH", "produccion"), false);
+});

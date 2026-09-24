@@ -759,6 +759,27 @@ th button {
     animation: none !important;
   }
 }
+.produccion { display: grid; gap: 24px; }
+.produccion-operacion, .produccion-acceso { display: grid; gap: 22px; }
+.produccion-form { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+.produccion-form .primario { align-self: end; }
+.resultado-operacion {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) auto;
+  gap: 4px 24px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: #e7f2eb;
+  color: #123d2d;
+}
+.resultado-operacion small { grid-column: 1 / -1; color: #436557; }
+.acciones-produccion { display: flex; flex-wrap: wrap; gap: 12px; }
+.acciones-produccion .primario { color: #fff; }
+@media (max-width: 800px) {
+  .produccion-form { grid-template-columns: 1fr; }
+  .acciones-produccion { display: grid; }
+  .acciones-produccion .boton { justify-content: center; }
+}
 /* Contactos de productores: operación lineal, sin ventanas superpuestas. */
 .contacto-busqueda{max-width:760px}.contactos-operacion{display:grid;gap:24px}.contactos-lista{display:grid;gap:12px}
 .contacto-fila{display:grid;grid-template-columns:minmax(170px,.75fr) minmax(320px,1.5fr) auto;gap:24px;align-items:center;background:var(--superficie,#fff);border:1px solid var(--borde,#d8dedb);border-radius:14px;padding:20px}
