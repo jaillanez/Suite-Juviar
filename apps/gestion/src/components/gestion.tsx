@@ -35,7 +35,7 @@ function Icono({ nombre }: { nombre: Seccion }) {
 
 function Ingreso({ entrar }: { entrar: (empresa: Empresa, perfil: Perfil) => void }) {
   const [empresa, setEmpresa] = useState<Empresa>("ENAV");
-  const [perfil, setPerfil] = useState<Perfil>("RRHH");
+  const [perfil, setPerfil] = useState<Perfil>("SUPERADMIN");
   return <main className="ingreso"><section className="ingreso-marca"><span className="isotipo">SJ</span><p>Suite Juviar</p><h1>Gestión interna, en un solo lugar.</h1><p className="bajada">Operaciones de personas, seguridad y producción con trazabilidad.</p></section>
     <form className="tarjeta ingreso-form" onSubmit={(e) => { e.preventDefault(); entrar(empresa, perfil); }}><h2>Ingresar a Gestión</h2><label>Empresa<select value={empresa} onChange={(e) => setEmpresa(e.target.value as Empresa)}><option>ENAV</option><option>JUBIAR</option></select></label><label>Perfil<select value={perfil} onChange={(e) => setPerfil(e.target.value as Perfil)}>{Object.entries(perfiles).map(([id, p]) => <option key={id} value={id}>{p.nombre}</option>)}</select></label><button className="primario">Continuar</button></form></main>;
 }

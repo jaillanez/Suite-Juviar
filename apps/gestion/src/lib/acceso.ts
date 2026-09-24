@@ -1,8 +1,14 @@
 export type Empresa = "ENAV" | "JUBIAR";
-export type Perfil = "RRHH" | "MEDICO" | "HYS" | "COMPRAS" | "SUPERVISOR" | "BODEGA" | "CAMPO" | "BASCULA";
+export type Perfil = "SUPERADMIN" | "RRHH" | "MEDICO" | "HYS" | "COMPRAS" | "SUPERVISOR" | "BODEGA" | "CAMPO" | "BASCULA";
 export type Seccion = "inicio" | "produccion" | "epp" | "analitica" | "seleccion" | "capacitaciones" | "legajo" | "salud" | "turnos" | "contactos";
 
+export const todasLasSecciones: Seccion[] = [
+  "inicio", "produccion", "epp", "analitica", "seleccion",
+  "capacitaciones", "legajo", "salud", "turnos", "contactos",
+];
+
 export const perfiles: Record<Perfil, { nombre: string; secciones: Seccion[] }> = {
+  SUPERADMIN: { nombre: "Superadministrador", secciones: todasLasSecciones },
   RRHH: { nombre: "RRHH general", secciones: ["inicio", "epp", "seleccion", "capacitaciones", "legajo", "turnos"] },
   MEDICO: { nombre: "Servicio médico", secciones: ["inicio", "salud"] },
   HYS: { nombre: "Higiene y Seguridad", secciones: ["inicio", "epp", "analitica", "capacitaciones"] },

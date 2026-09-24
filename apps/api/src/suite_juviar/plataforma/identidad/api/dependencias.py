@@ -34,6 +34,9 @@ PERMISOS_POR_PERFIL: dict[str, frozenset[str]] = {
     "COMPRAS": frozenset({"suite.acceder", "epp.catalogo.leer", "epp.stock.leer", "epp.stock.editar", "epp.aviso.gestionar", "epp.analitica.leer"}),
     "SUPERVISOR": frozenset({"suite.acceder", "capacitacion.leer", "turnos.cronograma.leer", "turnos.cronograma.editar"}),
 }
+PERMISOS_POR_PERFIL["SUPERADMIN"] = frozenset().union(
+    *PERMISOS_POR_PERFIL.values()
+)
 
 PERFIL_LEGAJO_SIMULADO = {"1210": "DEPOSITO", "1501": "CAMPO", "1601": "BASCULA"}
 

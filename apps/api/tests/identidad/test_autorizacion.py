@@ -46,6 +46,21 @@ def test_catalogo_tiene_dueno_y_perfiles_agrupan_permisos():
     assert "seleccion.gestionar" in PERMISOS_POR_PERFIL["RRHH"]
 
 
+def test_superadministrador_reune_todos_los_permisos():
+    permisos_operativos = set().union(*(
+        permisos
+        for perfil, permisos in PERMISOS_POR_PERFIL.items()
+        if perfil != "SUPERADMIN"
+    ))
+    assert PERMISOS_POR_PERFIL["SUPERADMIN"] == permisos_operativos
+    sesion = resolver_sesion(
+        perfil="SUPERADMIN", actor="administrador", empresa="ENAV",
+        legajo_declarado=None,
+    )
+    for permiso in permisos_operativos:
+        assert sesion.puede(permiso)
+
+
 def test_control_negativo_quitar_permiso_produce_403(monkeypatch):
     originales = PERMISOS_POR_PERFIL["HYS"]
     monkeypatch.setitem(

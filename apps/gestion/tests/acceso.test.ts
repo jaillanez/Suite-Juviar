@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { puedeEntrar, perfiles } from "../src/lib/acceso.ts";
+import { puedeEntrar, perfiles, todasLasSecciones } from "../src/lib/acceso.ts";
 
 test("RRHH general no ve ni puede abrir Salud", () => {
   assert.equal(perfiles.RRHH.secciones.includes("salud"), false);
@@ -24,4 +24,11 @@ test("Producción queda integrada para campo, báscula y administración de bode
   assert.equal(puedeEntrar("BASCULA", "produccion"), true);
   assert.equal(puedeEntrar("BODEGA", "produccion"), true);
   assert.equal(puedeEntrar("RRHH", "produccion"), false);
+});
+
+test("Superadministrador ve y puede abrir toda la aplicación", () => {
+  assert.deepEqual(perfiles.SUPERADMIN.secciones, todasLasSecciones);
+  for (const seccion of todasLasSecciones) {
+    assert.equal(puedeEntrar("SUPERADMIN", seccion), true);
+  }
 });
