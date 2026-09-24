@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { puedeEntrar, perfiles, todasLasSecciones } from "../src/lib/acceso.ts";
+import { gruposMenu, puedeEntrar, perfiles, todasLasSecciones } from "../src/lib/acceso.ts";
 
 test("RRHH general no ve ni puede abrir Salud", () => {
   assert.equal(perfiles.RRHH.secciones.includes("salud"), false);
@@ -15,7 +15,7 @@ test("sólo el perfil médico recibe la sección Salud", () => {
 });
 
 test("el menú se construye con secciones permitidas", () => {
-  assert.deepEqual(perfiles.COMPRAS.secciones, ["inicio", "epp", "analitica"]);
+  assert.deepEqual(perfiles.COMPRAS.secciones, ["inicio", "epp", "analitica", "configuracion"]);
   assert.equal(puedeEntrar("SUPERVISOR", "turnos"), true);
 });
 
@@ -31,4 +31,13 @@ test("Superadministrador ve y puede abrir toda la aplicación", () => {
   for (const seccion of todasLasSecciones) {
     assert.equal(puedeEntrar("SUPERADMIN", seccion), true);
   }
+});
+
+test("el menú separa RRHH, Producción, Bot y Configuración", () => {
+  const porNombre = Object.fromEntries(gruposMenu.map((grupo) => [grupo.nombre, grupo.secciones]));
+  assert.deepEqual(porNombre.Producción, ["produccion", "fila"]);
+  assert.deepEqual(porNombre.Bot, ["bot", "contactos"]);
+  assert.deepEqual(porNombre.Configuración, ["configuracion"]);
+  assert.equal(porNombre.RRHH.includes("epp"), true);
+  assert.equal(porNombre.RRHH.includes("salud"), true);
 });

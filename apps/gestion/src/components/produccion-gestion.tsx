@@ -5,13 +5,12 @@ import { api } from "@/lib/api";
 import { ErrorVisible } from "./compartidos";
 
 type Romaneo = { id: string; numero: number; estado: string };
-type Area = "recepcion" | "fila" | "bot";
+export type AreaProduccion = "recepcion" | "fila" | "bot";
 
 const FILA_URL = process.env.NEXT_PUBLIC_FILA_URL ?? "https://juviar-bot.duckdns.org";
 const BOT_URL = process.env.NEXT_PUBLIC_BOT_SIMULADOR_URL ?? "http://127.0.0.1:8099";
 
-export function ProduccionGestion() {
-  const [area, setArea] = useState<Area>("recepcion");
+export function ProduccionGestion({ area = "recepcion" }: { area?: AreaProduccion }) {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [creado, setCreado] = useState<Romaneo | null>(null);
@@ -49,12 +48,6 @@ export function ProduccionGestion() {
   }
 
   return <div className="produccion">
-    <nav className="pestanas" aria-label="Áreas de Producción">
-      <button className={area === "recepcion" ? "activo" : ""} onClick={() => setArea("recepcion")}>Recepción</button>
-      <button className={area === "fila" ? "activo" : ""} onClick={() => setArea("fila")}>Fila de camiones</button>
-      <button className={area === "bot" ? "activo" : ""} onClick={() => setArea("bot")}>Bot de productores</button>
-    </nav>
-
     {area === "recepcion" && <section className="tarjeta produccion-operacion">
       <div className="titulo-fila"><div><h2>Abrir romaneo</h2><p className="ayuda">Registra el ingreso real del camión. El peso queda trazado con su origen y operador.</p></div></div>
       {error && <ErrorVisible mensaje={error} />}

@@ -248,7 +248,7 @@ aside {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 20px 14px;
+  padding: 20px 14px 14px;
   background: #132b22;
   color: #fff;
 }
@@ -271,8 +271,18 @@ aside {
 }
 aside nav {
   display: grid;
-  gap: 4px;
+  gap: 18px;
   padding: 20px 0;
+  overflow-y: auto;
+}
+.menu-grupo { display: grid; gap: 3px; }
+.menu-grupo h2 {
+  margin: 0 12px 4px;
+  color: #8fb0a1;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
 }
 aside nav a {
   display: flex;
@@ -302,28 +312,26 @@ aside svg {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.modo-prueba {
+.perfil-actual {
   margin-top: auto;
   padding: 12px;
   background: #203d32;
   border: 1px solid #355447;
   border-radius: 10px;
   display: grid;
-  gap: 8px;
-}
-.modo-prueba strong {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #ffbbc3;
-}
-.modo-prueba label {
+  gap: 2px;
   color: #fff;
-  font-size: 0.8rem;
+  text-decoration: none;
 }
-.modo-prueba select {
-  width: 100%;
-  font-size: 0.82rem;
+.perfil-actual:hover { background: #294a3d; }
+.perfil-actual span { font-weight: 750; }
+.perfil-actual small { color: #b9cbc3; }
+.configuracion {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(220px, 1fr)) auto;
+  align-items: end;
+  gap: 16px;
+  max-width: 900px;
 }
 .principal-contenedor {
   min-width: 0;
@@ -706,13 +714,11 @@ th button {
   aside nav a {
     min-width: max-content;
   }
-  .modo-prueba {
+  .perfil-actual {
     margin: 0;
   }
-  .modo-prueba select {
-    min-width: 0;
-    max-width: 100%;
-  }
+  .menu-grupo { min-width: max-content; }
+  .configuracion { grid-template-columns: 1fr; }
   .barra {
     padding: 0 14px;
   }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Empresa, nombres, puedeEntrar, Perfil, perfiles, Seccion } from "@/lib/acceso";
+import { Empresa, gruposMenu, nombres, puedeEntrar, Perfil, perfiles, Seccion } from "@/lib/acceso";
 import { api, ErrorApi } from "@/lib/api";
 import { ErrorVisible } from "./compartidos";
 import { EppGestion } from "./epp-gestion";
@@ -21,6 +21,8 @@ function Icono({ nombre }: { nombre: Seccion }) {
   const rutas: Record<Seccion, string> = {
     inicio: "M4 5h16v14H4z M8 9h3v3H8z M14 9h2 M14 13h2 M8 16h8",
     produccion: "M3 20h18 M5 20V9l5 3V9l5 3V5h4v15 M8 16h2 M14 16h2",
+    fila: "M3 16h13V7H3z M16 10h3l2 3v3h-5z M6 19a2 2 0 100-4 2 2 0 000 4z M18 19a2 2 0 100-4 2 2 0 000 4z",
+    bot: "M5 7h14v10H5z M9 11h.01 M15 11h.01 M9 15h6 M12 7V4 M10 4h4",
     epp: "M7 20v-5a5 5 0 0110 0v5 M9 9V6a3 3 0 016 0v3 M6 10h12v4H6z",
     analitica: "M5 19V9 M12 19V5 M19 19v-7 M3 19h18",
     seleccion: "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2 M9 11a4 4 0 100-8 4 4 0 000 8z M19 8v6 M22 11h-6",
@@ -29,6 +31,7 @@ function Icono({ nombre }: { nombre: Seccion }) {
     salud: "M12 21s-8-4.5-8-11a4 4 0 017-2.6L12 9l1-1.6A4 4 0 0120 10c0 6.5-8 11-8 11z M9 13h6 M12 10v6",
     turnos: "M12 22a10 10 0 110-20 10 10 0 010 20z M12 6v6l4 2",
     contactos: "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2 M9 11a4 4 0 100-8 4 4 0 000 8z M19 8v6 M22 11h-6",
+    configuracion: "M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z M19.4 15a1.7 1.7 0 00.34 1.88l.06.06-2 3.46-.08-.02a1.7 1.7 0 00-1.8.27l-.4.23a1.7 1.7 0 00-.86 1.68V22h-4v-.1a1.7 1.7 0 00-.86-1.68l-.4-.23a1.7 1.7 0 00-1.8-.27l-.08.02-2-3.46.06-.06A1.7 1.7 0 004.6 15v-.46a1.7 1.7 0 00-1.2-1.61l-.08-.03v-4l.08-.03a1.7 1.7 0 001.2-1.61V6.8l2-3.46.08.02a1.7 1.7 0 001.8-.27l.4-.23A1.7 1.7 0 009.74 1.2V1h4v.1a1.7 1.7 0 00.86 1.68l.4.23a1.7 1.7 0 001.8.27l.08-.02 2 3.46-.06.06a1.7 1.7 0 00-.34 1.88v.46a1.7 1.7 0 001.2 1.61l.08.03v4l-.08.03A1.7 1.7 0 0019.4 15z",
   };
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d={rutas[nombre]} /></svg>;
 }
@@ -80,14 +83,25 @@ function Contactos() {
   return <><Encabezado titulo="Contactos de productores" descripcion="Permisos, reemplazos e historial con trazabilidad completa." /><ContactosGestion /></>;
 }
 
-function Produccion() {
-  return <><Encabezado titulo="Producción" descripcion="Recepción, fila de camiones y consultas de productores desde una sola operación." /><ProduccionGestion /></>;
+function Produccion({ area }: { area: "recepcion" | "fila" | "bot" }) {
+  const textos = {
+    recepcion: ["Recepción", "Ingreso de camiones y apertura de romaneos."],
+    fila: ["Fila de camiones", "Llamados, confirmaciones y pantalla de espera del portón."],
+    bot: ["Consultas de productores", "Estadísticas, reportes y simulador del bot."],
+  } as const;
+  return <><Encabezado titulo={textos[area][0]} descripcion={textos[area][1]} /><ProduccionGestion area={area} /></>;
+}
+
+function Configuracion({ sesion, guardar }: { sesion: { empresa: Empresa; perfil: Perfil }; guardar: (empresa: Empresa, perfil: Perfil) => void }) {
+  const [empresa, setEmpresa] = useState(sesion.empresa);
+  const [perfil, setPerfil] = useState(sesion.perfil);
+  return <><Encabezado titulo="Configuración" descripcion="Elegí la empresa y el perfil con los que querés recorrer la aplicación." /><section className="tarjeta configuracion"><label>Empresa<select value={empresa} onChange={(e) => setEmpresa(e.target.value as Empresa)}><option>ENAV</option><option>JUBIAR</option></select></label><label>Perfil<select value={perfil} onChange={(e) => setPerfil(e.target.value as Perfil)}>{Object.entries(perfiles).map(([id, p]) => <option key={id} value={id}>{p.nombre}</option>)}</select></label><button className="primario" onClick={() => guardar(empresa, perfil)}>Aplicar cambios</button></section></>;
 }
 
 function Pendiente({ seccion }: { seccion: Seccion }) { return <><Encabezado titulo={nombres[seccion]} descripcion="Módulo incorporado al armazón de Gestión." /><section className="tarjeta"><h2>Integración en curso</h2><p>El dominio existe, pero su API de gestión todavía debe completarse antes de habilitar esta operación. No se simulan reglas en el navegador.</p></section></>; }
 
-function Contenido({ seccion, empresa }: { seccion: Seccion; empresa: Empresa }) {
-  if (seccion === "inicio") return <Inicio empresa={empresa} />; if (seccion === "produccion") return <Produccion />; if (seccion === "epp") return <Epp />; if (seccion === "analitica") return <Analitica />; if (seccion === "seleccion") return <Seleccion />; if (seccion === "capacitaciones") return <Capacitaciones />; if (seccion === "legajo") return <Legajo />; if (seccion === "salud") return <Salud />; if (seccion === "turnos") return <Turnos />; if (seccion === "contactos") return <Contactos />; return <Pendiente seccion={seccion} />;
+function Contenido({ seccion, sesion, guardar }: { seccion: Seccion; sesion: { empresa: Empresa; perfil: Perfil }; guardar: (empresa: Empresa, perfil: Perfil) => void }) {
+  if (seccion === "inicio") return <Inicio empresa={sesion.empresa} />; if (seccion === "produccion") return <Produccion area="recepcion" />; if (seccion === "fila") return <Produccion area="fila" />; if (seccion === "bot") return <Produccion area="bot" />; if (seccion === "epp") return <Epp />; if (seccion === "analitica") return <Analitica />; if (seccion === "seleccion") return <Seleccion />; if (seccion === "capacitaciones") return <Capacitaciones />; if (seccion === "legajo") return <Legajo />; if (seccion === "salud") return <Salud />; if (seccion === "turnos") return <Turnos />; if (seccion === "contactos") return <Contactos />; if (seccion === "configuracion") return <Configuracion sesion={sesion} guardar={guardar} />; return <Pendiente seccion={seccion} />;
 }
 
 function AccesoDenegado({ perfil, seccion }: { perfil: Perfil; seccion: Seccion }) {
@@ -111,5 +125,6 @@ export default function Gestion({ seccionSolicitada }: { seccionSolicitada: Secc
   if (!sesion) return <Ingreso entrar={entrar} />;
   const valida = Object.hasOwn(nombres, seccionSolicitada) ? seccionSolicitada : "inicio";
   const permitido = puedeEntrar(sesion.perfil, valida);
-  return <div className="aplicacion"><aside><div className="marca"><span className="isotipo">SJ</span><div><strong>Suite Juviar</strong><small>Gestión interna</small></div></div><nav aria-label="Secciones">{perfiles[sesion.perfil].secciones.map((s) => <Link key={s} href={s === "inicio" ? "/" : `/${s}`} className={s === valida ? "activo" : ""}><Icono nombre={s} />{nombres[s]}</Link>)}</nav><div className="modo-prueba"><strong>Cambiar perfil</strong><label>Perfil<select value={sesion.perfil} onChange={(e) => entrar(sesion.empresa, e.target.value as Perfil)}>{Object.entries(perfiles).map(([id, p]) => <option key={id} value={id}>{p.nombre}</option>)}</select></label></div></aside><div className="principal-contenedor"><header className="barra"><div><span className="pulso" /> API interna</div><label>Empresa<select value={sesion.empresa} onChange={(e) => entrar(e.target.value as Empresa, sesion.perfil)}><option>ENAV</option><option>JUBIAR</option></select></label><button className="salir" onClick={() => { sessionStorage.removeItem("gestion-sesion"); setSesion(null); }}>Salir</button></header><main>{permitido ? <Contenido key={sesion.perfil} seccion={valida} empresa={sesion.empresa} /> : <AccesoDenegado perfil={sesion.perfil} seccion={valida} />}</main><footer>Suite Juviar Gestión v{VERSION} · commit {COMMIT}</footer></div></div>;
+  const permitidas = new Set(perfiles[sesion.perfil].secciones);
+  return <div className="aplicacion"><aside><div className="marca"><span className="isotipo">SJ</span><div><strong>Suite Juviar</strong><small>Gestión interna</small></div></div><nav aria-label="Secciones">{gruposMenu.map((grupo) => { const secciones = grupo.secciones.filter((s) => permitidas.has(s)); if (!secciones.length) return null; return <section className="menu-grupo" key={grupo.nombre}><h2>{grupo.nombre}</h2>{secciones.map((s) => <Link key={s} href={s === "inicio" ? "/" : `/${s}`} className={s === valida ? "activo" : ""}><Icono nombre={s} />{nombres[s]}</Link>)}</section>; })}</nav><Link className="perfil-actual" href="/configuracion"><span>{perfiles[sesion.perfil].nombre}</span><small>Cambiar configuración</small></Link></aside><div className="principal-contenedor"><header className="barra"><div><span className="pulso" /> API interna</div><strong>{sesion.empresa}</strong><button className="salir" onClick={() => { sessionStorage.removeItem("gestion-sesion"); setSesion(null); }}>Salir</button></header><main>{permitido ? <Contenido key={`${sesion.perfil}-${valida}`} seccion={valida} sesion={sesion} guardar={entrar} /> : <AccesoDenegado perfil={sesion.perfil} seccion={valida} />}</main><footer>Suite Juviar Gestión v{VERSION} · commit {COMMIT}</footer></div></div>;
 }
