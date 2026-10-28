@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import os
 from dataclasses import asdict
 from datetime import date
 
@@ -10,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from suite_juviar.plataforma.identidad.api.dependencias import SesionActual, exigir_permiso
 
-from ..application.lector_certificados import analizar_certificado
+from ..application.lector_certificados import analizar_certificado, usaria_ia_externa
 from ..application.servicios import GestionarSalud
 from ..domain.modelos import (
     MARCA_SIMULADA,
@@ -57,8 +58,14 @@ def crear_router(servicio: GestionarSalud, entorno: str = "prueba") -> APIRouter
     if entorno.lower() == "produccion" and servicio.catalogo.simulada:
         raise FuenteSimuladaEnProduccion("Salud no arranca en producción con catálogo simulado.")
     app = APIRouter()
+    # Mandar un certificado a DeepSeek saca datos de salud de la empresa: en producción
+    # solo se hace si alguien lo autorizó expresamente en la configuración del servidor.
+    ia_externa_permitida = entorno.lower() not in {"produccion", "production", "prod"} or (
+        os.getenv("SJ_SALUD_IA_EXTERNA_AUTORIZADA", "").strip().lower() in {"1", "true", "si"}
+    )
     leer = exigir_permiso("salud.diagnostico.leer")
     gestionar = exigir_permiso("salud.certificado.gestionar")
+    buscar = exigir_permiso("salud.persona.buscar")
 
     @app.get("/", response_class=HTMLResponse, dependencies=[Depends(leer)])
     def pantalla() -> str:
@@ -114,10 +121,15 @@ def crear_router(servicio: GestionarSalud, entorno: str = "prueba") -> APIRouter
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from exc
 
-    @app.get("/personas", dependencies=[Depends(leer)])
+    @app.get("/personas", dependencies=[Depends(buscar)])
     def buscar_personas(q: str, sesion: SesionActual):
         servicio.auditar(sesion.actor, None, "BUSQUEDA_PERSONA")
-        return [asdict(x) for x in servicio.buscar_personas(q)]
+        # Solo lo necesario para elegir a la persona; el resto del legajo queda en su módulo.
+        return [
+            {"legajo": p.legajo, "nombre_completo": p.nombre_completo,
+             "empresa": p.empresa, "sector": p.sector, "puesto": p.puesto}
+            for p in servicio.buscar_personas(q)
+        ]
 
     @app.post("/certificados/analizar", dependencies=[Depends(gestionar)])
     def analizar(entrada: AdjuntoEntrada, sesion: SesionActual):
@@ -125,9 +137,15 @@ def crear_router(servicio: GestionarSalud, entorno: str = "prueba") -> APIRouter
             contenido = base64.b64decode(entrada.adjunto_base64, validate=True)
         except (ValueError, base64.binascii.Error) as exc:
             raise HTTPException(400, "El archivo recibido no es válido.") from exc
-        servicio.auditar(sesion.actor, None, "ANALISIS_CERTIFICADO")
+        externa = ia_externa_permitida and usaria_ia_externa(entrada.adjunto_nombre)
+        servicio.auditar(
+            sesion.actor, None,
+            "ENVIO_CERTIFICADO_A_IA_EXTERNA_DEEPSEEK" if externa else "ANALISIS_CERTIFICADO",
+        )
         try:
-            return analizar_certificado(entrada.adjunto_nombre, contenido)
+            return analizar_certificado(
+                entrada.adjunto_nombre, contenido, permitir_ia_externa=ia_externa_permitida,
+            )
         except RuntimeError as exc:
             raise HTTPException(502, str(exc)) from exc
 

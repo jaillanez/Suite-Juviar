@@ -25,7 +25,10 @@ PERMISOS_POR_PERFIL: dict[str, frozenset[str]] = {
         "seleccion.gestionar", "capacitacion.gestionar", "legajo.leer", "legajo.adjuntos.gestionar",
         "turnos.cronograma.leer", "turnos.imputacion.aprobar",
     }),
-    "MEDICO": frozenset({"suite.acceder", "salud.diagnostico.leer", "salud.certificado.gestionar"}),
+    "MEDICO": frozenset({
+        "suite.acceder", "salud.diagnostico.leer", "salud.certificado.gestionar",
+        "salud.persona.buscar",
+    }),
     "HYS": frozenset({
         "suite.acceder", "epp.catalogo.leer", "epp.catalogo.editar",
         "epp.matriz.editar", "epp.stock.leer", "epp.entrega.leer",
