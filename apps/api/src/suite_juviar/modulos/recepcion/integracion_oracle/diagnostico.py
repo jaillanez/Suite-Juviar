@@ -130,7 +130,7 @@ def main(argv: list[str]) -> int:
     print("\n== 9. Tiempo de la consulta de ventana (15 días)")
     inicio = time.monotonic()
     # Oracle entrega FECHA sin zona; el filtro debe usar la misma semántica local.
-    filas = fuente.leer_ventana(datetime.now() - timedelta(days=15))  # noqa: DTZ005
+    filas = fuente.leer_ventana(datetime.now() - timedelta(days=15))
     print(f"   {len(filas)} filas en {time.monotonic() - inicio:.1f} s")
     print("\n== RESULTADO:", "BLOQUEANTE — no correr el worker" if bloqueante else "ok")
     return 1 if bloqueante else 0

@@ -25,7 +25,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "import-linter>=2.3",
-    "ruff>=0.9",
+    "ruff==0.17.3",  # misma versión que CI: cambian las reglas por defecto
     "pytest>=8.4",
     "pytest-asyncio>=1.0",
     "httpx>=0.28",
@@ -204,7 +204,7 @@ forbidden_modules = ["suite_juviar.modulos", "suite_juviar.plataforma"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-pythonpath = ["../.."]
+pythonpath = ["../..", "../consulta/src"]
 testpaths = ["tests"]
 markers = [
     "local: requiere las bases del PostgreSQL local (no corre en CI)",

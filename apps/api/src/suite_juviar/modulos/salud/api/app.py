@@ -15,9 +15,9 @@ from ..application.servicios import GestionarSalud
 from ..domain.modelos import (
     MARCA_SIMULADA,
     AccesoSaludDenegado,
+    Diagnostico,
     FuenteSimuladaEnProduccion,
     ReporteNominadoProhibido,
-    Diagnostico,
 )
 
 

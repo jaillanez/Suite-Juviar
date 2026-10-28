@@ -12,11 +12,11 @@ from .planificador import planificar
 from .repositorio import RepositorioDmz, RepositorioSuite
 
 log = logging.getLogger("recepcion.integracion_oracle")
-INICIO_HISTORICO = datetime(2000, 1, 1)  # noqa: DTZ001 - FECHA Oracle no tiene zona
+INICIO_HISTORICO = datetime(2000, 1, 1)  # FECHA Oracle no tiene zona
 
 
 def _desde(modo: str, config: Config) -> datetime:
-    ahora = datetime.now()  # noqa: DTZ005 - hora local, igual que FECHA de Oracle
+    ahora = datetime.now()  # hora local, igual que FECHA de Oracle
     if modo == "ventana":
         return ahora - timedelta(days=config.ventana_dias)
     if modo == "nocturna":

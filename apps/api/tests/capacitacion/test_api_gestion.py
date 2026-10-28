@@ -1,5 +1,6 @@
 import base64
 import io
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -16,7 +17,8 @@ def cliente() -> TestClient:
         Path(__file__).parents[2] / "src/suite_juviar/modulos/capacitacion/data/configuracion.yaml"
     )
     configuracion = ConfiguracionCapacitacionYAML(ruta)
-    return TestClient(crear_app(configuracion), headers={"X-Perfil-Simulado": "RRHH"})
+    base = str(Path(tempfile.mkdtemp()) / "modulos.sqlite3")  # nunca la base local de datos/
+    return TestClient(crear_app(configuracion, ruta_base=base), headers={"X-Perfil-Simulado": "RRHH"})
 
 
 def test_recorrido_tema_dictado_asistencia_y_planilla():

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import re
 import base64
 import json
 import os
+import re
 import subprocess
 import tempfile
 import urllib.error
@@ -21,7 +21,7 @@ def analizar_certificado(nombre: str, contenido: bytes) -> dict[str, object]:
         try:
             from pypdf import PdfReader
             texto = "\n".join(p.extract_text() or "" for p in PdfReader(BytesIO(contenido)).pages)
-        except Exception:  # PDF dañado o sin capa de texto
+        except Exception:  # noqa: BLE001 - PDF dañado o sin capa de texto
             texto = ""
     elif nombre.lower().endswith((".txt", ".csv")):
         texto = contenido.decode("utf-8", errors="ignore")

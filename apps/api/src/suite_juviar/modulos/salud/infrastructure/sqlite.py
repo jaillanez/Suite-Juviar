@@ -11,7 +11,6 @@ from suite_juviar.plataforma.persistencia.sqlite_colecciones import (
 from ..domain.modelos import Diagnostico
 from .simulados import AdjuntosSaludCifradosMemoria, SaludMemoria
 
-
 DIAGNOSTICOS_INICIALES = (
     ("RESP", "Enfermedades respiratorias", None),
     ("RESP-IRA", "Infección respiratoria aguda", "RESP"),
