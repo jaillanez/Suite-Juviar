@@ -19,10 +19,11 @@ que lo apunta a `actual`. Las claves siguen en `/etc/suite/*.env`, fuera de Git.
 Como root en el servidor:
 
 ```bash
-bash /opt/suite-juviar/infra/desplegar.sh
+bash /opt/suite-juviar-releases/actual/infra/desplegar.sh
 ```
 
-Instala lo último de `main`. El script:
+Instala lo último de `main`. Se corre siempre desde la versión instalada, que es de root, y
+nunca desde `/opt/suite-juviar`, que puede modificar el usuario del servicio. El script:
 
 1. se niega si alguien editó archivos a mano en `/opt/suite-juviar`;
 2. copia la versión a su carpeta e instala las dependencias de Python que falten;
@@ -30,12 +31,12 @@ Instala lo último de `main`. El script:
 4. cambia `actual`, reinicia los servicios y comprueba que respondan;
 5. si algo falla, vuelve solo a la versión anterior.
 
-Para instalar una versión puntual: `bash /opt/suite-juviar/infra/desplegar.sh <commit>`.
+Para instalar una versión puntual: `bash /opt/suite-juviar-releases/actual/infra/desplegar.sh <commit>`.
 
 ## Volver atrás
 
 ```bash
-bash /opt/suite-juviar/infra/desplegar.sh --volver
+bash /opt/suite-juviar-releases/actual/infra/desplegar.sh --volver
 ```
 
 Los cambios de base de datos (`infra/*.sql`) no los aplica el script: se aplican a mano y

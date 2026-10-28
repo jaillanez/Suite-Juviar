@@ -2,9 +2,12 @@
 # Instala en el servidor una versión guardada en GitHub y la pone en marcha.
 #
 # Uso, como root en el servidor:
-#   bash /opt/suite-juviar/infra/desplegar.sh            # instala main
-#   bash /opt/suite-juviar/infra/desplegar.sh <commit>   # instala una versión puntual
-#   bash /opt/suite-juviar/infra/desplegar.sh --volver   # vuelve a la versión anterior
+#   bash /opt/suite-juviar-releases/actual/infra/desplegar.sh            # instala main
+#   bash /opt/suite-juviar-releases/actual/infra/desplegar.sh <commit>   # instala una versión puntual
+#   bash /opt/suite-juviar-releases/actual/infra/desplegar.sh --volver   # vuelve a la versión anterior
+#
+# Se ejecuta desde la versión instalada (de root), nunca desde /opt/suite-juviar, que es
+# del usuario «suite».
 #
 # Cada versión queda en su propia carpeta, /opt/suite-juviar-releases/<commit>,
 # copiada tal cual de Git. Los servicios leen siempre /opt/suite-juviar-releases/actual,
@@ -145,15 +148,15 @@ if [[ -n $("${GIT[@]}" status --porcelain --untracked-files=no) ]]; then
 fi
 
 paso "Trayendo la versión '$REF' desde GitHub"
-[[ $("${GIT[@]}" config --get remote.origin.url) == "$REPO_ESPERADO" ]] \
-  || falla "la copia de Git no apunta a $REPO_ESPERADO."
-"${GIT[@]}" fetch -q --prune origin
+# La dirección va fija acá: no se toma de la configuración de la copia, que es de «suite».
+"${GIT[@]}" fetch -q --prune "$REPO_ESPERADO" "+refs/heads/*:refs/remotes/origin/*"
 if [[ $REF =~ ^[0-9a-f]{7,40}$ ]]; then
   # Un commit suelto solo vale si ya está en alguna rama de GitHub.
   SHA=$("${GIT[@]}" rev-parse --verify -q "$REF^{commit}") || falla "no encontré la versión '$REF'."
-  [[ -n $("${GIT[@]}" branch -r --contains "$SHA") ]] || falla "la versión '$REF' no está en GitHub."
+  [[ -n $("${GIT[@]}" for-each-ref --contains "$SHA" refs/remotes/origin/) ]] \
+    || falla "la versión '$REF' no está en GitHub."
 else
-  SHA=$("${GIT[@]}" rev-parse --verify -q "origin/$REF^{commit}") || falla "no encontré la rama '$REF' en GitHub."
+  SHA=$("${GIT[@]}" rev-parse --verify -q "refs/remotes/origin/$REF^{commit}") || falla "no encontré la rama '$REF' en GitHub."
 fi
 CORTO=${SHA:0:7}
 NUEVA="$RELEASES/$CORTO"
@@ -161,13 +164,12 @@ echo "  $CORTO $("${GIT[@]}" log -1 --format='%ad %s' --date=short "$SHA")"
 
 if [[ ! -d $NUEVA ]]; then
   paso "Copiando la versión a $NUEVA"
+  # Se extrae como root en una carpeta que «suite» no puede tocar mientras tanto.
+  # La versión instalada queda de root: los servicios la leen pero no la pueden cambiar.
   TMP=$(mktemp -d "$RELEASES/.tmp-$CORTO-XXXX")
   trap 'rm -rf "$TMP"' EXIT
-  chown suite:suite "$TMP"
-  "${GIT[@]}" archive "$SHA" | "${COMO_SUITE[@]}" tar -x -C "$TMP"
-  # La versión instalada queda de root: los servicios la leen pero no la pueden cambiar.
-  chown -R root:root "$TMP"
-  chmod -R u=rwX,go=rX "$TMP"
+  "${GIT[@]}" archive "$SHA" | (umask 022 && tar -x --no-same-owner --no-same-permissions -C "$TMP")
+  chmod 755 "$TMP"
   mv -T "$TMP" "$NUEVA"
   trap - EXIT
 fi
