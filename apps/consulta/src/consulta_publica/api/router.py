@@ -21,4 +21,6 @@ async def consultante_autenticado() -> str:
 
 @router.get("/mis-descargas")
 async def mis_descargas(productor_hmac: str = Depends(consultante_autenticado)):
-    raise HTTPException(status_code=501, detail="Etapa 4: requiere recepción en producción")
+    raise HTTPException(
+        status_code=501, detail="Etapa 4: requiere recepción en producción"
+    )

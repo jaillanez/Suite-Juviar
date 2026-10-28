@@ -1,0 +1,22 @@
+[Unit]
+Description=Suite Juviar - bot WhatsApp por Chattigo
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=suite
+Group=suite
+WorkingDirectory=/opt/suite-juviar
+Environment=PYTHONPATH=/opt/suite-juviar/apps/consulta/src
+EnvironmentFile=/etc/suite/bot.env
+ExecStart=/opt/suite-juviar/.venv/bin/python -m consulta_publica.bot.worker
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

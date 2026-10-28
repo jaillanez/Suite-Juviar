@@ -1,0 +1,13 @@
+[Unit]
+Description=Suite Juviar: sincronización corta de recepción
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=suite
+WorkingDirectory=/opt/suite-juviar/apps/api
+EnvironmentFile=/etc/suite/recepcion.env
+Environment=PYTHONPATH=src
+ExecStart=/opt/suite-juviar/.venv/bin/python -m suite_juviar.modulos.recepcion.integracion_oracle.worker ventana
+TimeoutStartSec=240

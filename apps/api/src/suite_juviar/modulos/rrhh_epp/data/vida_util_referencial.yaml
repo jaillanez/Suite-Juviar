@@ -1,0 +1,122 @@
+# ===========================================================================
+# VIDA ÚTIL REFERENCIAL — investigada por nosotros, no provista por la empresa
+# ===========================================================================
+# El RD 068/11 no trae vida útil. Sin ese dato el sistema no puede avisar
+# vencimientos, así que armamos una tabla de referencia con criterio de
+# industria y normativa, para que ENAV la corrija en vez de armarla.
+#
+# Regla general que vale para todo: la vida útil es un TECHO, no un piso.
+# Cualquier elemento roto, perforado, rayado o deteriorado se cambia el mismo
+# día, sin importar la fecha. El sistema avisa por fecha; el criterio de
+# descarte por estado sigue siendo del usuario y del supervisor.
+#
+# Fuentes: normas IRAM/EN citadas en cada línea, criterios de recambio de
+# fabricante y práctica de industria. Todo esto es corregible por HyS.
+# ===========================================================================
+version: 1
+estado: REFERENCIAL_INVESTIGADO
+origen: "Investigación propia — pendiente de ajuste por Higiene y Seguridad"
+
+por_familia:
+  "Ropa de trabajo":
+    dias: 180
+    criterio: "Entrega estacional por convenio: verano e invierno (CCT 154/91 bodega, 85/89 viña)."
+
+  "Calzado de seguridad":
+    dias: 365
+    criterio: "Uso diario en planta. Tope absoluto: no usar más de 10 años desde la fecha de fabricación, aunque esté sin estrenar."
+
+  "Botas de goma":
+    dias: 365
+    criterio: "Uso en zona húmeda permanente. Se descarta antes ante la primera perforación."
+
+  "Guantes":
+    dias: 30
+    criterio: "Valor por defecto para guante reutilizable de uso intensivo. Ver excepciones por código: el descartable es por jornada y el dieléctrico tiene régimen propio."
+
+  "Protección ocular":
+    dias: 365
+    criterio: "Se cambia antes al primer rayón profundo que afecte la visión."
+
+  "Protección auditiva":
+    dias: 365
+    criterio: "Copa: recambio anual y de almohadillas según fabricante. El endoaural de espuma tiene régimen propio."
+
+  "Protección respiratoria":
+    dias: 15
+    criterio: "Descartables (P2/N95): por jornada o hasta 15 días con uso intermitente. Las piezas faciales reutilizables tienen régimen propio."
+
+  "Filtros y cartuchos":
+    dias: 90
+    criterio: "El vencimiento real es por 'tiempo de servicio': depende de concentración, humedad, temperatura y frecuencia de uso. 90 días es un techo conservador. Un cartucho abierto empieza a consumirse aunque no se use."
+
+  "Protección de cráneo":
+    dias: 1825
+    criterio: "5 años desde la fabricación (IRAM 3620). Descarte inmediato ante cualquier golpe, aunque no se vea la fisura."
+
+  "Protección contra caídas":
+    dias: 1825
+    criterio: "Arnés: inspección documentada al menos anual y antes de cada uso. Descarte inmediato tras detener una caída."
+
+  "Protección para soldadura":
+    dias: 365
+    criterio: "Delantal, polainas y mangas de descarne: recambio por desgaste o quemadura pasante."
+
+  "Protección facial":
+    dias: 365
+    criterio: "El visor se cambia antes ante rayaduras o pérdida de transparencia."
+
+  "Alta visibilidad":
+    dias: 365
+    criterio: "Se cambia cuando las bandas reflectivas pierden retrorreflexión, que ocurre antes que el desgaste de la tela."
+
+  "Protección lumbar":
+    dias: null
+    criterio: "NO es un EPP. Ver la nota en excepciones."
+
+# --- Excepciones por código, donde la familia no alcanza -------------------
+por_codigo:
+  "133":
+    dias: 1
+    criterio: "Nitrilo descartable de laboratorio: se cambia por jornada o al contaminarse. El sistema lo entrega por caja, no por par."
+
+  "71":
+    dias: 180
+    criterio: >-
+      Guante dieléctrico. Régimen propio bajo IEC/EN 60903: verificación con ensayo
+      dieléctrico cada 6 meses si es de uso frecuente, 12 meses si es de uso ocasional
+      o está guardado. Un guante sin reensayo vigente NO se puede usar, ni siquiera
+      nuevo. Si no se puede hacer el ensayo, se reemplaza cada 12 meses.
+
+  "134":
+    dias: 180
+    criterio: "Guante dieléctrico de caucho natural. Mismo régimen que el código 71."
+
+  "72":
+    dias: 365
+    criterio: >-
+      Sobreguante de vaqueta para el dieléctrico. No es opcional: el guante aislante
+      nunca se usa solo, porque un corte de una décima de milímetro en el caucho ya
+      es camino para la corriente.
+
+  "87":
+    dias: 15
+    criterio: "Protector endoaural de espuma con cordón: uso personal, recambio quincenal o antes por higiene."
+
+  "27":
+    dias: 15
+    criterio: "Protector endoaural: mismo criterio que el código 87."
+
+  "33":
+    dias: null
+    criterio: >-
+      La faja lumbar NO es un elemento de protección personal. El estudio de NIOSH
+      publicado en JAMA en diciembre de 2000, el más grande hecho sobre el tema, no
+      encontró evidencia de que reduzca lesiones ni dolor de espalda en trabajadores
+      que levantan carga. NIOSH concluye que no debe considerarse EPP y desaconseja
+      su uso ocupacional, entre otras razones por la falsa sensación de seguridad que
+      genera. Si ENAV decide seguir entregándola, que se registre como elemento de
+      confort y NO como protección: computarla como EPP debilita la defensa ante una
+      inspección, porque implica que el riesgo ergonómico se "cubrió" con algo que no
+      lo cubre. Lo que sí corresponde es evaluación ergonómica del puesto y medios
+      mecánicos de izaje.

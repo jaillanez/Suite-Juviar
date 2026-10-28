@@ -26,6 +26,8 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.14" }
       - run: pip install -e "apps/api[dev]"
+      # Las pruebas del bot importan apps/consulta; lo único que le falta a apps/api es matplotlib.
+      - run: pip install "matplotlib>=3.10"
       - name: Contratos de importación
         run: cd apps/api && PYTHONPATH=../.. lint-imports
       - run: cd apps/api && ruff check .

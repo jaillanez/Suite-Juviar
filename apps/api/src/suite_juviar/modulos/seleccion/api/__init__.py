@@ -1,0 +1,2 @@
+"""API interna de selección."""
+

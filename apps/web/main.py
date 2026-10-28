@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
-from secrets import token_urlsafe
+from secrets import compare_digest, token_urlsafe
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -85,7 +85,12 @@ def portada(request: Request) -> HTMLResponse:
         },
     )
     respuesta.set_cookie(
-        "csrf", token, httponly=False, secure=True, samesite="strict", max_age=7200
+        "csrf",
+        token,
+        httponly=False,
+        secure=config.entorno != "local",
+        samesite="strict",
+        max_age=7200,
     )
     return respuesta
 
@@ -94,7 +99,13 @@ def portada(request: Request) -> HTMLResponse:
 def recibir_solicitud(solicitud: SolicitudMuestra, request: Request) -> SolicitudAceptada:
     ip = request.client.host if request.client else "desconocida"
 
-    if request.headers.get("X-CSRF-Token") != request.cookies.get("csrf"):
+    token_encabezado = request.headers.get("X-CSRF-Token")
+    token_cookie = request.cookies.get("csrf")
+    if (
+        not token_encabezado
+        or not token_cookie
+        or not compare_digest(token_encabezado, token_cookie)
+    ):
         raise HTTPException(status_code=403, detail="token invalido")
 
     if _limite_alcanzado(ip):

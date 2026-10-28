@@ -1,0 +1,18 @@
+# PROPUESTA PARA PRUEBAS - NO USAR PARA DECIDIR CONTRATACIONES REALES
+version: 1
+dueno_dato: RRHH
+estado: PROPUESTA_SIN_VALIDAR
+perfiles:
+  ADMINISTRACION:
+    - administración
+    - administrativo
+    - contable
+  MANTENIMIENTO:
+    - mantenimiento
+    - mecánico
+    - electricista
+  BODEGA:
+    - bodega
+    - enología
+    - operario
+

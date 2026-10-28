@@ -2,16 +2,28 @@
 
 Sistema unificado ENAV S.A. — Jubiar. Monolito modular con Domain-Driven Design.
 
-- Arquitectura y decisiones: [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md)
-- Reglas transversales de negocio: `00_Base_Comun_Sistema_Unificado_ENAV_Jubiar_v02.md`
-- Decisiones registradas: [`docs/adr/`](docs/adr/)
+- Base Común vigente: [`Docs/00_Base_Comun_Sistema_Unificado_ENAV_Jubiar_v04.md`](Docs/00_Base_Comun_Sistema_Unificado_ENAV_Jubiar_v04.md)
+- Plan de implementación: [`Docs/PLAN_DE_IMPLEMENTACION.md`](Docs/PLAN_DE_IMPLEMENTACION.md)
+- Instrucciones base: [`Docs/INSTRUCCIONES_AGENTE.md`](Docs/INSTRUCCIONES_AGENTE.md)
+- Instrucciones Olas 3–5: [`Docs/INSTRUCCIONES_AGENTE_OLAS_3_4_5.md`](Docs/INSTRUCCIONES_AGENTE_OLAS_3_4_5.md)
+- Fuente inicial de RRHH/EPP: [`Docs/README_rrhh_epp.md`](Docs/README_rrhh_epp.md)
+- Estado real y bloqueos: [`Docs/ESTADO_INSTRUCCIONES_AGENTE.md`](Docs/ESTADO_INSTRUCCIONES_AGENTE.md)
+- Inventario de Gestión: [`Docs/INVENTARIO_APLICACION_GESTION.md`](Docs/INVENTARIO_APLICACION_GESTION.md)
+- Guía de ejecución: [`Docs/GUIA_APLICACION_GESTION.md`](Docs/GUIA_APLICACION_GESTION.md)
+- Arquitectura y decisiones: [`Docs/ARQUITECTURA.md`](Docs/ARQUITECTURA.md)
+- Endpoints pendientes de Gestión: [`Docs/ENDPOINTS_GESTION_PENDIENTES.md`](Docs/ENDPOINTS_GESTION_PENDIENTES.md)
+- Decisiones registradas: [`Docs/adr/`](Docs/adr/)
+- README operativo vigente de EPP: [`apps/api/src/suite_juviar/modulos/rrhh_epp/README.md`](apps/api/src/suite_juviar/modulos/rrhh_epp/README.md)
+- Integración de recepción Oracle de Juviar-ENAV: [`Docs/RECEPCION_CAMIONES_ORACLE.md`](Docs/RECEPCION_CAMIONES_ORACLE.md)
+- Módulos nuevos: [Analítica EPP](apps/api/src/suite_juviar/modulos/epp_analitica/README.md), [Legajo](apps/api/src/suite_juviar/modulos/legajo/README.md), [Salud](apps/api/src/suite_juviar/modulos/salud/README.md) y [Turnos](apps/api/src/suite_juviar/modulos/turnos/README.md)
 
 ```
 apps/
   api/        backend único desplegable (FastAPI)
   consulta/   bot de consulta externa — deployable aparte, DMZ, solo lectura
-  web/        panel (Next.js 16)
+  web/        sitio público aislado (Next.js 16)
   mobile/     app única con tres perfiles (Capacitor 8.5.1)
+  gestion/    escritorio interno (Next.js 16, sólo consume HTTP)
 packages/
   contratos/  tipos generados desde el OpenAPI de la API
   ui/         componentes shadcn/ui compartidos
@@ -39,6 +51,12 @@ Para ejecutar los servicios:
 pnpm dev:web
 pnpm dev:mobile
 pnpm api:dev
+```
+
+Para levantar juntos API, tablet y Gestión en modo prueba:
+
+```bash
+./iniciar_prueba.sh
 ```
 
 Las claves incluidas en `.env.example` son solo marcadores de desarrollo y deben

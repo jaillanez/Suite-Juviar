@@ -1,0 +1,149 @@
+"""Modelos puros para conservar los CV originales."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+from enum import StrEnum
+
+DUENO_DATO = "RRHH"
+
+
+class OrigenCV(StrEnum):
+    CARPETA_CHIMBAS = "CARPETA_CHIMBAS"
+    CORREO = "CORREO"
+
+
+@dataclass(frozen=True, slots=True)
+class DocumentoEntrante:
+    origen: OrigenCV
+    referencia_fuente: str
+    nombre_archivo: str
+    contenido: bytes
+    recibido_en: datetime
+    fuente_simulada: bool
+
+    def __post_init__(self) -> None:
+        if not self.referencia_fuente or not self.referencia_fuente.strip():
+            raise ValueError("La referencia de fuente no puede estar vacía")
+        if not self.nombre_archivo or not self.nombre_archivo.strip():
+            raise ValueError("El nombre del CV no puede estar vacío")
+        if not self.contenido:
+            raise ValueError("El archivo original no puede estar vacío")
+
+
+@dataclass(frozen=True, slots=True)
+class CVOriginal:
+    id: str
+    origen: OrigenCV
+    referencia_fuente: str
+    nombre_archivo: str
+    contenido: bytes
+    sha256: str
+    recibido_en: datetime
+    incorporado_en: datetime
+    dueno_dato: str = DUENO_DATO
+    fuente_simulada: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class CampoExtraido:
+    nombre: str
+    valor: str
+    fragmento_fuente: str
+    verificado: bool = False
+
+    def __post_init__(self) -> None:
+        if not self.nombre or not self.nombre.strip():
+            raise ValueError("El nombre del campo extraído no puede estar vacío")
+        if not self.valor or not self.valor.strip():
+            raise ValueError("El valor extraído no puede estar vacío")
+        if not self.fragmento_fuente or not self.fragmento_fuente.strip():
+            raise ValueError("Todo campo extraído requiere un fragmento de evidencia")
+        if self.verificado:
+            raise ValueError("La extracción automática no puede marcar un campo como verificado")
+
+
+@dataclass(frozen=True, slots=True)
+class ExtraccionCV:
+    id_original: str
+    campos: tuple[CampoExtraido, ...]
+    campos_pendientes: tuple[str, ...]
+    extraido_en: datetime
+    estado: str = "NO_VERIFICADO"
+
+    @property
+    def requiere_revision(self) -> bool:
+        return bool(self.campos_pendientes)
+
+
+class PerfilBusqueda(StrEnum):
+    ADMINISTRACION = "ADMINISTRACION"
+    MANTENIMIENTO = "MANTENIMIENTO"
+    BODEGA = "BODEGA"
+
+
+@dataclass(frozen=True, slots=True)
+class Busqueda:
+    id: str
+    nombre: str
+    perfil: PerfilBusqueda
+    definido_por: str
+    definido_en: datetime
+    edad_minima: int | None = None
+    edad_maxima: int | None = None
+    secundaria_completa: bool = False
+    abierta: bool = True
+
+    def __post_init__(self) -> None:
+        for etiqueta, valor in (
+            ("identificador", self.id),
+            ("nombre", self.nombre),
+            ("responsable", self.definido_por),
+        ):
+            if not valor or not valor.strip():
+                raise ValueError(f"El {etiqueta} de la búsqueda no puede estar vacío")
+        if not isinstance(self.perfil, PerfilBusqueda):
+            raise TypeError("El perfil de búsqueda no es válido")
+        for edad in (self.edad_minima, self.edad_maxima):
+            if edad is not None and (isinstance(edad, bool) or edad < 0):
+                raise ValueError("Las edades deben ser enteros positivos")
+        if (
+            self.edad_minima is not None
+            and self.edad_maxima is not None
+            and self.edad_minima > self.edad_maxima
+        ):
+            raise ValueError("La edad mínima no puede superar la máxima")
+
+
+@dataclass(frozen=True, slots=True)
+class ResultadoPostulante:
+    id_original: str
+    cumple: bool
+    requiere_revision: bool
+    puntaje: int
+    razones: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class AvisoCoincidencia:
+    busqueda_id: str
+    id_original: str
+    destinatario: str
+    creado_en: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class ConfirmacionCampo:
+    id_original: str
+    campo: str
+    valor: str
+    confirmado_por: str
+    confirmado_en: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class ConsultaOriginal:
+    id_original: str
+    actor: str
+    consultado_en: datetime

@@ -20,7 +20,7 @@ class EstadoConstancia(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class ElementoCatalogo:
-    """Una fila del RD 068/11 digitalizado. Ej.: código interno 1580."""
+    """Una fila del RD 068/11 digitalizado. Ej.: número de orden ``104-B``."""
 
     codigo: str
     descripcion: str
@@ -50,7 +50,7 @@ class ConstanciaEntrega:
     otra: el papel que vería una inspección no se reescribe.
     """
 
-    legajo: str                      # viene de Nexus, no se tipea
+    legajo: str  # viene de Nexus, no se tipea
     sector: str
     puesto: str
     entregado_por_legajo: str

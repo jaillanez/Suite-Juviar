@@ -5,6 +5,8 @@ requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.118",
     "uvicorn[standard]>=0.37",
+    "jinja2>=3.1",
+    "pyyaml>=6.0",
     "sqlalchemy[asyncio]>=2.0.43",
     "asyncpg>=0.30",
     "alembic>=1.16",
@@ -14,14 +16,20 @@ dependencies = [
     "cryptography>=45.0",
     "geoalchemy2>=0.17",
     "psycopg[binary]>=3.2",
+    "oracledb>=3.4",
+    "reportlab>=4.4,<5",
+    "pypdf>=6,<7",
+    "openpyxl>=3.1,<4",
 ]
 
 [project.optional-dependencies]
 dev = [
     "import-linter>=2.3",
-    "ruff>=0.9",
+    "ruff==0.17.3",  # misma versión que CI: cambian las reglas por defecto
     "pytest>=8.4",
     "pytest-asyncio>=1.0",
+    "httpx>=0.28",
+    "xlrd>=2.0",
     "mypy>=1.17",
 ]
 
@@ -44,11 +52,16 @@ name = "Capas dentro de cada módulo de negocio"
 type = "layers"
 layers = ["api", "infrastructure", "application", "domain"]
 containers = [
+    "suite_juviar.modulos.epp_analitica",
+    "suite_juviar.modulos.legajo",
+    "suite_juviar.modulos.salud",
     "suite_juviar.modulos.turnos",
     "suite_juviar.modulos.rrhh_epp",
     "suite_juviar.modulos.cosecha",
     "suite_juviar.modulos.recepcion",
     "suite_juviar.modulos.ddjj",
+    "suite_juviar.modulos.seleccion",
+    "suite_juviar.modulos.capacitacion",
 ]
 
 [[tool.importlinter.contracts]]
@@ -68,22 +81,32 @@ containers = [
 name = "Los módulos de negocio no se conocen entre sí"
 type = "independence"
 modules = [
+    "suite_juviar.modulos.epp_analitica",
+    "suite_juviar.modulos.legajo",
+    "suite_juviar.modulos.salud",
     "suite_juviar.modulos.turnos",
     "suite_juviar.modulos.rrhh_epp",
     "suite_juviar.modulos.cosecha",
     "suite_juviar.modulos.recepcion",
     "suite_juviar.modulos.ddjj",
+    "suite_juviar.modulos.seleccion",
+    "suite_juviar.modulos.capacitacion",
 ]
 
 [[tool.importlinter.contracts]]
 name = "El dominio es Python puro"
 type = "forbidden"
 source_modules = [
+    "suite_juviar.modulos.epp_analitica.domain",
+    "suite_juviar.modulos.legajo.domain",
+    "suite_juviar.modulos.salud.domain",
     "suite_juviar.modulos.turnos.domain",
     "suite_juviar.modulos.rrhh_epp.domain",
     "suite_juviar.modulos.cosecha.domain",
     "suite_juviar.modulos.recepcion.domain",
     "suite_juviar.modulos.ddjj.domain",
+    "suite_juviar.modulos.seleccion.domain",
+    "suite_juviar.modulos.capacitacion.domain",
     "suite_juviar.plataforma.identidad.domain",
     "suite_juviar.plataforma.terceros.domain",
     "suite_juviar.plataforma.firma.domain",
@@ -97,11 +120,16 @@ forbidden_modules = ["sqlalchemy", "fastapi", "asyncpg", "redis", "alembic", "py
 name = "La aplicación no conoce implementaciones"
 type = "forbidden"
 source_modules = [
+    "suite_juviar.modulos.epp_analitica.application",
+    "suite_juviar.modulos.legajo.application",
+    "suite_juviar.modulos.salud.application",
     "suite_juviar.modulos.turnos.application",
     "suite_juviar.modulos.rrhh_epp.application",
     "suite_juviar.modulos.cosecha.application",
     "suite_juviar.modulos.recepcion.application",
     "suite_juviar.modulos.ddjj.application",
+    "suite_juviar.modulos.seleccion.application",
+    "suite_juviar.modulos.capacitacion.application",
 ]
 forbidden_modules = ["sqlalchemy", "fastapi", "asyncpg"]
 
@@ -134,9 +162,54 @@ type = "forbidden"
 source_modules = ["suite_juviar.modulos", "suite_juviar.plataforma"]
 forbidden_modules = ["apps.web"]
 
+[[tool.importlinter.contracts]]
+name = "apps.gestion consume negocio solo por HTTP"
+type = "forbidden"
+source_modules = ["apps.gestion"]
+forbidden_modules = ["suite_juviar.modulos", "suite_juviar.plataforma"]
+
+[[tool.importlinter.contracts]]
+name = "Analitica EPP permanece de solo lectura"
+type = "forbidden"
+source_modules = ["suite_juviar.modulos.epp_analitica"]
+forbidden_modules = [
+    "suite_juviar.modulos.rrhh_epp.infrastructure",
+    "sqlalchemy",
+    "psycopg",
+]
+
+[[tool.importlinter.contracts]]
+name = "Legajo y Salud permanecen separados"
+type = "independence"
+modules = [
+    "suite_juviar.modulos.legajo",
+    "suite_juviar.modulos.salud",
+]
+
+[[tool.importlinter.contracts]]
+name = "Turnos confina integraciones en infraestructura"
+type = "forbidden"
+source_modules = [
+    "suite_juviar.modulos.turnos.domain",
+    "suite_juviar.modulos.turnos.application",
+    "suite_juviar.modulos.turnos.api",
+]
+forbidden_modules = ["pyodbc", "pymssql"]
+
+[[tool.importlinter.contracts]]
+name = "El simulador no accede al dominio de la Suite"
+type = "forbidden"
+source_modules = ["apps.simulador"]
+forbidden_modules = ["suite_juviar.modulos", "suite_juviar.plataforma"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+pythonpath = ["../..", "../consulta/src"]
 testpaths = ["tests"]
+markers = [
+    "local: requiere las bases del PostgreSQL local (no corre en CI)",
+]
+addopts = "-m 'not local'"
 
 [tool.ruff]
 line-length = 100

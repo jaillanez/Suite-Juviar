@@ -1,0 +1,270 @@
+# ===========================================================================
+# MATRIZ DE EPP POR SECTOR Y PUESTO — PROPUESTA, NO VALIDADA
+# ===========================================================================
+# Los 19 sectores salen de la hoja "esquema" del Excel de ENAV
+# ("Elementos de protección personal de uso obligatorio por sector", 2012).
+# Los códigos salen del RD 068/11 V 02 real (hoja "Especificaciones").
+#
+# El cruce sector x elemento NO estaba en el archivo: las columnas quedaron
+# vacías. Esta propuesta lo reconstruye. Cada línea lleva su fundamento.
+#
+# Fundamentos, de más fuerte a más débil:
+#   RD 068/11        el propio catálogo declara el destino de ese elemento
+#   CCT              entrega estacional obligatoria por convenio
+#   RIESGO           riesgo del sector; hay que contrastarlo contra el RGRL
+#   PROPUESTA        criterio nuestro. Es lo que HyS tiene que revisar primero.
+#
+# NADA DE ESTO ES CRITERIO DE PROTECCIÓN VÁLIDO HASTA QUE HIGIENE Y SEGURIDAD
+# LO APRUEBE Y FIRME. El sistema lo muestra marcado como propuesta.
+# ===========================================================================
+version: 1
+estado: PROPUESTA_SIN_VALIDAR
+dueno_del_dato: "Higiene y Seguridad"
+validada_por: null
+fecha_validacion: null
+origen_sectores: "Excel RD 062/11, hoja 'esquema', 2012"
+origen_codigos: "RD 068/11 V 02, Septiembre 2023"
+
+# --- Lo que le corresponde a todo el personal operativo --------------------
+base_operativa:
+  descripcion: "Personal de planta y viña. No aplica a Administración."
+  elementos:
+    - {codigo: "8",   cantidad: 2, frecuencia: SEMESTRAL, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "CCT — camisa de grafa, entrega estacional (154/91 bodega, 85/89 viña)"}
+    - {codigo: "9",   cantidad: 2, frecuencia: SEMESTRAL, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "CCT — pantalón de grafa, entrega estacional"}
+    - {codigo: "16",  cantidad: 2, frecuencia: SEMESTRAL, temporada: VERANO,       obligatorio: true,  fundamento: "CCT — chomba, entrega de verano"}
+    - {codigo: "14",  cantidad: 1, frecuencia: ANUAL,     temporada: VERANO,       obligatorio: false, fundamento: "RIESGO — exposición solar en tareas de exterior"}
+    - {codigo: "114", cantidad: 1, frecuencia: A_DEMANDA, temporada: INVIERNO,     obligatorio: false, fundamento: "RIESGO — estrés térmico por frío (RGRL)"}
+    - {codigo: "5",   cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — calzado de seguridad IRAM 3610, riesgo mecánico general"}
+
+sectores:
+  BOD:
+    nombre: "Bodega"
+    aplica_base: true
+    elementos:
+      - {codigo: "84",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — caída de objetos, IRAM 3620"}
+      - {codigo: "97",  cantidad: 2, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — manipulación general"}
+      - {codigo: "41",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — proyección de partículas y salpicaduras"}
+      - {codigo: "26",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — ruido de maquinaria. CONFIRMAR contra dosimetría"}
+
+  COL:
+    nombre: "Columnas"
+    aplica_base: true
+    elementos:
+      - {codigo: "11",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'P/gente de columnas' para este mameluco Tyvek"}
+      - {codigo: "80",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — partículas en suspensión"}
+      - {codigo: "84",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — trabajo bajo estructura"}
+      - {codigo: "78",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "PROPUESTA — trabajo en altura. CONFIRMAR si aplica a este sector"}
+      - {codigo: "41",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — proyección de partículas"}
+
+  CLA:
+    nombre: "Clarificación"
+    aplica_base: true
+    elementos:
+      - {codigo: "10",  cantidad: 2, frecuencia: SEMESTRAL, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — contacto con producto, mameluco de grafa"}
+      - {codigo: "69",  cantidad: 2, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — manipulación de coadyuvantes; guante de nitrilo largo"}
+      - {codigo: "96",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — salpicadura química, antiparra cerrada"}
+      - {codigo: "80",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — polvo de bentonita y coadyuvantes en polvo"}
+      - {codigo: "7",   cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — piso húmedo"}
+
+  FIL:
+    nombre: "Filtros"
+    aplica_base: true
+    elementos:
+      - {codigo: "82",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Filtro/Bosque' para este traje de agua"}
+      - {codigo: "7",   cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — piso húmedo permanente"}
+      - {codigo: "69",  cantidad: 2, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — manipulación de tierras filtrantes"}
+      - {codigo: "80",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — polvo de tierra de diatomeas. VERIFICAR nivel de protección requerido"}
+      - {codigo: "41",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — proyección"}
+
+  CON:
+    nombre: "Concentrador"
+    aplica_base: true
+    elementos:
+      - {codigo: "97",  cantidad: 2, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — superficies calientes. REVISAR si corresponde guante térmico, que el catálogo no tiene"}
+      - {codigo: "41",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — vapor y salpicadura"}
+      - {codigo: "26",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — ruido"}
+
+  EFL:
+    nombre: "Efluentes"
+    aplica_base: true
+    elementos:
+      - {codigo: "68",  cantidad: 2, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Mant./Efluente' para este guante de nitrilo"}
+      - {codigo: "62",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Efluente' entre los destinos de este anteojo"}
+      - {codigo: "7",   cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — zona húmeda"}
+      - {codigo: "10",  cantidad: 2, frecuencia: SEMESTRAL, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — contacto con efluente"}
+      - {codigo: "80",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "PROPUESTA — riesgo biológico y gases. CONFIRMAR con el RGRL"}
+
+  FVA:
+    nombre: "F. Vacío"
+    aplica_base: true
+    elementos:
+      - {codigo: "97",  cantidad: 2, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — manipulación"}
+      - {codigo: "41",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — proyección"}
+      - {codigo: "26",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — ruido de bombas de vacío"}
+      - {codigo: "7",   cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — piso húmedo"}
+
+  ENV:
+    nombre: "Envasado"
+    aplica_base: true
+    elementos:
+      - {codigo: "97",  cantidad: 2, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — corte por vidrio. REVISAR si corresponde guante anticorte, que el catálogo no tiene declarado"}
+      - {codigo: "41",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — proyección de vidrio"}
+      - {codigo: "26",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — ruido de línea"}
+
+  LIM:
+    nombre: "Limpieza General"
+    aplica_base: true
+    elementos:
+      - {codigo: "85",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo describe este mameluco para 'tareas de aseo y limpieza'"}
+      - {codigo: "75",  cantidad: 2, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo describe este guante MAPA 'p/tareas de Lavado'"}
+      - {codigo: "24",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — salpicadura de productos de limpieza"}
+      - {codigo: "96",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — salpicadura a los ojos"}
+      - {codigo: "7",   cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — piso húmedo"}
+
+  MEC:
+    nombre: "Mecánicos"
+    aplica_base: true
+    elementos:
+      - {codigo: "70",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Mant.' para este guante de soldador"}
+      - {codigo: "68",  cantidad: 2, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Mant./Efluente'"}
+      - {codigo: "73",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Mant.' para este anteojo (apto cristales recetados)"}
+      - {codigo: "63",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Mant.' para este delantal de cuero"}
+      - {codigo: "64",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Mant.' para estas polainas"}
+      - {codigo: "65",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Mant.' para estas mangas"}
+      - {codigo: "61",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Mant.' para este protector auditivo"}
+      - {codigo: "84",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — caída de objetos"}
+      - {codigo: "25",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: false, fundamento: "PROPUESTA — careta para soldar. El catálogo la lista sin marca ni certificación: FALTA COMPLETAR"}
+
+  ELE:
+    nombre: "Electricistas"
+    aplica_base: true
+    elementos:
+      - {codigo: "66",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Electricista' para este guante 3M G750"}
+      - {codigo: "67",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Electricista/Bosque' para este guante de vaqueta"}
+      - {codigo: "71",  cantidad: 1, frecuencia: SEMESTRAL, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — dieléctrico. ATENCIÓN: 2500 V es la tensión de PRUEBA, no la de uso. Si es clase 00, la tensión máxima de uso es 500 V. Verificar clase marcada en el puño contra la tensión real de trabajo (IEC 60903)"}
+      - {codigo: "72",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — sobreguante de vaqueta. El dieléctrico nunca se usa solo: un corte de 0,1 mm en el caucho ya conduce"}
+      - {codigo: "131", cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — casco carcasa clase B, aislante eléctrico"}
+      - {codigo: "62",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Mant.' entre los destinos"}
+
+  CAL:
+    nombre: "Calderas"
+    aplica_base: true
+    elementos:
+      - {codigo: "84",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — caída de objetos"}
+      - {codigo: "70",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — superficie caliente, guante de kevlar"}
+      - {codigo: "96",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — proyección y calor radiante"}
+      - {codigo: "26",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — ruido"}
+      - {codigo: "12",  cantidad: 2, frecuencia: SEMESTRAL, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — camisa antiácido. El catálogo la lista SIN MARCA: falta completar"}
+      - {codigo: "13",  cantidad: 2, frecuencia: SEMESTRAL, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — pantalón antiácido. El catálogo lo lista SIN MARCA: falta completar"}
+
+  LAB:
+    nombre: "Laboratorio"
+    aplica_base: false
+    elementos:
+      - {codigo: "17",  cantidad: 2, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — guardapolvo"}
+      - {codigo: "133", cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo describe este nitrilo 'para examen - laboratorio'"}
+      - {codigo: "96",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — salpicadura de reactivos"}
+      - {codigo: "5",   cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: false, fundamento: "PROPUESTA — CONFIRMAR si en laboratorio se exige calzado de seguridad"}
+
+  ADM:
+    nombre: "Administración"
+    aplica_base: false
+    elementos: []
+    # En el esquema original de 2012 Administración es el único sector sin
+    # ninguna marca. Se respeta. Si alguien de administración baja a planta,
+    # el EPP lo define el sector que visita, no el suyo.
+
+  BAS:
+    nombre: "Báscula"
+    aplica_base: true
+    elementos:
+      - {codigo: "142", cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — circulación de camiones, alta visibilidad"}
+      - {codigo: "84",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — playa de maniobras"}
+      - {codigo: "97",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: false, fundamento: "PROPUESTA — manipulación de muestras de uva"}
+
+  MAE:
+    nombre: "Maestranza"
+    aplica_base: true
+    elementos:
+      - {codigo: "97",  cantidad: 2, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — manipulación general"}
+      - {codigo: "41",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — proyección"}
+      - {codigo: "142", cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: false, fundamento: "PROPUESTA — circulación por zonas de tránsito"}
+
+  PAN:
+    nombre: "Pañol"
+    aplica_base: true
+    elementos:
+      - {codigo: "97",  cantidad: 2, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — manipulación de materiales"}
+      - {codigo: "142", cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — circulación de autoelevadores"}
+    # Faja lumbar (código 33): NO se incluye. No es un EPP — ver
+    # datos/vida_util_referencial.yaml. Contra el riesgo de levantamiento de
+    # cargas corresponde evaluación ergonómica y medios mecánicos de izaje.
+
+  LAG:
+    nombre: "Lagares"
+    aplica_base: true
+    elementos:
+      - {codigo: "7",   cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — piso húmedo permanente"}
+      - {codigo: "97",  cantidad: 2, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — manipulación"}
+      - {codigo: "41",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — proyección de mosto"}
+      - {codigo: "26",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — ruido de moledora"}
+    # RIESGO NO CUBIERTO POR EL CATÁLOGO — leer antes de aprobar este sector.
+    # El CO2 de fermentación desplaza el oxígeno. Ningún respirador con filtro
+    # protege contra eso: filtran contaminantes, no fabrican oxígeno. Se puede
+    # perder la conciencia en menos de minuto y medio y morir en unos tres.
+    # Las tareas de descube y limpieza de vasijas son espacio confinado, y ahí
+    # rige la Res. SRT 953/2010 con la Norma IRAM 3625: medición de oxígeno y
+    # gases ANTES de entrar y desde afuera, ventilación forzada, permiso de
+    # trabajo, vigía afuera y equipo de respiración autónomo para emergencia.
+    # Eso es procedimiento y equipamiento de sector, no un EPP de entrega
+    # individual, y por eso NO figura como línea de esta matriz.
+    # La Comisión Cuatripartita de la industria vitivinícola publicó una ficha
+    # técnica específica de espacios confinados en bodegas (ProNaPre).
+
+  PRE:
+    nombre: "Prensa"
+    aplica_base: true
+    elementos:
+      - {codigo: "7",   cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — piso húmedo"}
+      - {codigo: "97",  cantidad: 2, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — manipulación cerca de partes móviles"}
+      - {codigo: "26",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — ruido de prensa"}
+      - {codigo: "41",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — proyección"}
+
+# --- Agregados por puesto, además de lo que da el sector -------------------
+# Un electricista que trabaja en Bodega suma lo suyo a lo de Bodega.
+puestos:
+  OP-AUT:
+    nombre: "Operador de autoelevador"
+    elementos:
+      - {codigo: "62",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Autoelevadorista' entre los destinos de este anteojo"}
+      - {codigo: "142", cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — alta visibilidad"}
+    # Faja lumbar (código 33): NO se incluye, no es un EPP. Contra la vibración
+    # de cuerpo entero corresponde asiento con suspensión y control de la
+    # exposición, no un elemento de entrega individual.
+
+  SOLDADOR:
+    nombre: "Soldador"
+    elementos:
+      - {codigo: "70",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — guante de soldador declarado 'Mant.'"}
+      - {codigo: "63",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — delantal de cuero declarado 'Mant.'"}
+      - {codigo: "64",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — polainas declaradas 'Mant.'"}
+      - {codigo: "65",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — mangas declaradas 'Mant.'"}
+      - {codigo: "25",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — careta para soldar. El catálogo la lista sin marca ni certificación"}
+
+  BOSQUE:
+    nombre: "Personal de bosque / forestación"
+    elementos:
+      - {codigo: "77",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Bosque' para esta máscara 3M 6800"}
+      - {codigo: "82",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Filtro/Bosque' para este traje de agua"}
+      - {codigo: "67",  cantidad: 1, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Electricista/Bosque'"}
+      - {codigo: "62",  cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RD 068/11 — el catálogo declara 'Bosque' entre los destinos"}
+
+  COSECHERO:
+    nombre: "Cosechero / personal temporario de vendimia"
+    elementos:
+      - {codigo: "14",  cantidad: 1, frecuencia: ANUAL,     temporada: VERANO,       obligatorio: true,  fundamento: "RIESGO — exposición solar prolongada"}
+      - {codigo: "97",  cantidad: 2, frecuencia: A_DEMANDA, temporada: TODO_EL_ANIO, obligatorio: true,  fundamento: "RIESGO — corte con tijera de cosecha. REVISAR si corresponde anticorte"}
+      - {codigo: "7",   cantidad: 1, frecuencia: ANUAL,     temporada: TODO_EL_ANIO, obligatorio: false, fundamento: "PROPUESTA — riego por manto en viña. CONFIRMAR"}
+    # Aviso: el temporario de cosecha entra por el mismo maestro de legajos
+    # (base común §3.1) y le corresponde EPP igual que al permanente, aunque
+    # cobre por tacho bajo la tarifa sustitutiva de la Ley 26.377.

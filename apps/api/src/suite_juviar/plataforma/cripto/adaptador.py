@@ -9,8 +9,6 @@ import os
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from suite_juviar.config import settings
-
 
 class ProtectorAESGCM:
     """HMAC determinístico para índice + AES-256-GCM para el valor."""
@@ -32,6 +30,8 @@ class ProtectorAESGCM:
 
 
 def construir_protector() -> ProtectorAESGCM:
+    from suite_juviar.config import settings
+
     return ProtectorAESGCM(
         clave_hmac=settings.hmac_datos_personales.encode(),
         clave_cifrado=hashlib.sha256(

@@ -11,6 +11,9 @@ class ProveedorSelloDeTiempo(Protocol):
 
 
 class MotorDeFirma(Protocol):
+    @property
+    def estado(self) -> str: ...
+
     async def firmar_como_empresa(
         self, documento_id: UUID, contenido: bytes, firmante: str
     ) -> Firma: ...

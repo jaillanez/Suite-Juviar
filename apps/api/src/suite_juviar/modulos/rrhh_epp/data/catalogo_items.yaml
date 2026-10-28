@@ -1,0 +1,3068 @@
+# ARCHIVO GENERADO por apps/api/tools/generar_items_simulados.py
+# Datos SIMULADOS: no representan códigos internos ni variantes reales de ENAV.
+version: 1
+dueno_dato: Higiene y Seguridad
+estado: SIMULADO
+nota: Generado sin el Excel de códigos internos. Reemplazar el archivo completo; no
+  editar ni usar en producción.
+items:
+- codigo_interno: SIM-110-01
+  elemento_codigo: '110'
+  marca: Varias
+  modelo: Reutilizable p/protección COVID
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-110-02
+  elemento_codigo: '110'
+  marca: Varias
+  modelo: Reutilizable p/protección COVID
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-110-03
+  elemento_codigo: '110'
+  marca: Varias
+  modelo: Reutilizable p/protección COVID
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-111-01
+  elemento_codigo: '111'
+  marca: ENAV
+  modelo: Reutilizable p/protección COVID c/logo ENAV
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-111-02
+  elemento_codigo: '111'
+  marca: ENAV
+  modelo: Reutilizable p/protección COVID c/logo ENAV
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-111-03
+  elemento_codigo: '111'
+  marca: ENAV
+  modelo: Reutilizable p/protección COVID c/logo ENAV
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-84-01
+  elemento_codigo: '84'
+  marca: Libus
+  modelo: Casco Milenium con arnes
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-84-02
+  elemento_codigo: '84'
+  marca: Libus
+  modelo: Casco Milenium con arnes
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-84-03
+  elemento_codigo: '84'
+  marca: Libus
+  modelo: Casco Milenium con arnes
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-131-01
+  elemento_codigo: '131'
+  marca: UCU - DP
+  modelo: Carcasa clase B
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-131-02
+  elemento_codigo: '131'
+  marca: UCU - DP
+  modelo: Carcasa clase B
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-131-03
+  elemento_codigo: '131'
+  marca: UCU - DP
+  modelo: Carcasa clase B
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-1-01
+  elemento_codigo: '1'
+  marca: MSA
+  modelo: GMC
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-1-02
+  elemento_codigo: '1'
+  marca: MSA
+  modelo: GMC
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-1-03
+  elemento_codigo: '1'
+  marca: MSA
+  modelo: GMC
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-2-01
+  elemento_codigo: '2'
+  marca: MSA
+  modelo: 200 LS
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-2-02
+  elemento_codigo: '2'
+  marca: MSA
+  modelo: 200 LS
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-2-03
+  elemento_codigo: '2'
+  marca: MSA
+  modelo: 200 LS
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-3-01
+  elemento_codigo: '3'
+  marca: 3M
+  modelo: Serie 6000
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-3-02
+  elemento_codigo: '3'
+  marca: 3M
+  modelo: Serie 6000
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-3-03
+  elemento_codigo: '3'
+  marca: 3M
+  modelo: Serie 6000
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-32-01
+  elemento_codigo: '32'
+  marca: 3M
+  modelo: Serie 6003/07047
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-32-02
+  elemento_codigo: '32'
+  marca: 3M
+  modelo: Serie 6003/07047
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-32-03
+  elemento_codigo: '32'
+  marca: 3M
+  modelo: Serie 6003/07047
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-86-01
+  elemento_codigo: '86'
+  marca: Libus
+  modelo: G03
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-86-02
+  elemento_codigo: '86'
+  marca: Libus
+  modelo: G03
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-86-03
+  elemento_codigo: '86'
+  marca: Libus
+  modelo: G03
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-95-01
+  elemento_codigo: '95'
+  marca: 3M
+  modelo: AP3 para vapores orgánicos
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-95-02
+  elemento_codigo: '95'
+  marca: 3M
+  modelo: AP3 para vapores orgánicos
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-95-03
+  elemento_codigo: '95'
+  marca: 3M
+  modelo: AP3 para vapores orgánicos
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-46-01
+  elemento_codigo: '46'
+  marca: Fravida
+  modelo: 5300/22
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-46-02
+  elemento_codigo: '46'
+  marca: Fravida
+  modelo: 5300/22
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-46-03
+  elemento_codigo: '46'
+  marca: Fravida
+  modelo: 5300/22
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-47-01
+  elemento_codigo: '47'
+  marca: Fravida
+  modelo: 5300/24
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-47-02
+  elemento_codigo: '47'
+  marca: Fravida
+  modelo: 5300/24
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-47-03
+  elemento_codigo: '47'
+  marca: Fravida
+  modelo: 5300/24
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-100-01
+  elemento_codigo: '100'
+  marca: 3M
+  modelo: P100
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-100-02
+  elemento_codigo: '100'
+  marca: 3M
+  modelo: P100
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-100-03
+  elemento_codigo: '100'
+  marca: 3M
+  modelo: P100
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-4-01
+  elemento_codigo: '4'
+  marca: 3M
+  modelo: Advantage 200 H
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-4-02
+  elemento_codigo: '4'
+  marca: 3M
+  modelo: Advantage 200 H
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-4-03
+  elemento_codigo: '4'
+  marca: 3M
+  modelo: Advantage 200 H
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-45-01
+  elemento_codigo: '45'
+  marca: Fravida
+  modelo: '5260.0'
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-45-02
+  elemento_codigo: '45'
+  marca: Fravida
+  modelo: '5260.0'
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-45-03
+  elemento_codigo: '45'
+  marca: Fravida
+  modelo: '5260.0'
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-28-01
+  elemento_codigo: '28'
+  marca: 3M 8210
+  modelo: 3M 8210
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-28-02
+  elemento_codigo: '28'
+  marca: 3M 8210
+  modelo: 3M 8210
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-28-03
+  elemento_codigo: '28'
+  marca: 3M 8210
+  modelo: 3M 8210
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-44-01
+  elemento_codigo: '44'
+  marca: Jackson
+  modelo: R 10 64250
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-44-02
+  elemento_codigo: '44'
+  marca: Jackson
+  modelo: R 10 64250
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-44-03
+  elemento_codigo: '44'
+  marca: Jackson
+  modelo: R 10 64250
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-104-01
+  elemento_codigo: '104'
+  marca: Libus
+  modelo: '1501.0'
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-104-02
+  elemento_codigo: '104'
+  marca: Libus
+  modelo: '1501.0'
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-104-03
+  elemento_codigo: '104'
+  marca: Libus
+  modelo: '1501.0'
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-77-01
+  elemento_codigo: '77'
+  marca: 3M 6800
+  modelo: 3M 6800
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-77-02
+  elemento_codigo: '77'
+  marca: 3M 6800
+  modelo: 3M 6800
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-77-03
+  elemento_codigo: '77'
+  marca: 3M 6800
+  modelo: 3M 6800
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-83-01
+  elemento_codigo: '83'
+  marca: Libus
+  modelo: Respirador particulado N95 1740
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-83-02
+  elemento_codigo: '83'
+  marca: Libus
+  modelo: Respirador particulado N95 1740
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-83-03
+  elemento_codigo: '83'
+  marca: Libus
+  modelo: Respirador particulado N95 1740
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-91-01
+  elemento_codigo: '91'
+  marca: Libus
+  modelo: Mascara de Respirador media cara Mod.9200-Serie 9000
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-91-02
+  elemento_codigo: '91'
+  marca: Libus
+  modelo: Mascara de Respirador media cara Mod.9200-Serie 9000
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-91-03
+  elemento_codigo: '91'
+  marca: Libus
+  modelo: Mascara de Respirador media cara Mod.9200-Serie 9000
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-94-01
+  elemento_codigo: '94'
+  marca: Steelpro Safety
+  modelo: Respirador para partículas con válvula de exhalación N95 2740V
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-94-02
+  elemento_codigo: '94'
+  marca: Steelpro Safety
+  modelo: Respirador para partículas con válvula de exhalación N95 2740V
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-94-03
+  elemento_codigo: '94'
+  marca: Steelpro Safety
+  modelo: Respirador para partículas con válvula de exhalación N95 2740V
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-98-01
+  elemento_codigo: '98'
+  marca: De Pascale
+  modelo: Protección Ocular UCU 411A
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-98-02
+  elemento_codigo: '98'
+  marca: De Pascale
+  modelo: Protección Ocular UCU 411A
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-98-03
+  elemento_codigo: '98'
+  marca: De Pascale
+  modelo: Protección Ocular UCU 411A
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-99-01
+  elemento_codigo: '99'
+  marca: Libus
+  modelo: Mascarilla 1501-Polvo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-99-02
+  elemento_codigo: '99'
+  marca: Libus
+  modelo: Mascarilla 1501-Polvo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-99-03
+  elemento_codigo: '99'
+  marca: Libus
+  modelo: Mascarilla 1501-Polvo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-102-01
+  elemento_codigo: '102'
+  marca: 3M
+  modelo: Pieza facial de cara completa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-102-02
+  elemento_codigo: '102'
+  marca: 3M
+  modelo: Pieza facial de cara completa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-102-03
+  elemento_codigo: '102'
+  marca: 3M
+  modelo: Pieza facial de cara completa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-109-01
+  elemento_codigo: '109'
+  marca: Varias
+  modelo: Protección COVID-19
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-109-02
+  elemento_codigo: '109'
+  marca: Varias
+  modelo: Protección COVID-19
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-109-03
+  elemento_codigo: '109'
+  marca: Varias
+  modelo: Protección COVID-19
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-80-01
+  elemento_codigo: '80'
+  marca: Steelpro
+  modelo: F720 V (para polvo-tierra)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-80-02
+  elemento_codigo: '80'
+  marca: Steelpro
+  modelo: F720 V (para polvo-tierra)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-80-03
+  elemento_codigo: '80'
+  marca: Steelpro
+  modelo: F720 V (para polvo-tierra)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-124-01
+  elemento_codigo: '124'
+  marca: Steelpro Safety
+  modelo: KN95 protective mask
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-124-02
+  elemento_codigo: '124'
+  marca: Steelpro Safety
+  modelo: KN95 protective mask
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-124-03
+  elemento_codigo: '124'
+  marca: Steelpro Safety
+  modelo: KN95 protective mask
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-5-01
+  elemento_codigo: '5'
+  marca: Funcional
+  modelo: Cobra
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-5-02
+  elemento_codigo: '5'
+  marca: Funcional
+  modelo: Cobra
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-5-03
+  elemento_codigo: '5'
+  marca: Funcional
+  modelo: Cobra
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-35-01
+  elemento_codigo: '35'
+  marca: Funcional
+  modelo: Infinit
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-35-02
+  elemento_codigo: '35'
+  marca: Funcional
+  modelo: Infinit
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-35-03
+  elemento_codigo: '35'
+  marca: Funcional
+  modelo: Infinit
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-6-01
+  elemento_codigo: '6'
+  marca: Escorpio
+  modelo: Botín Frances Cuero flor
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-6-02
+  elemento_codigo: '6'
+  marca: Escorpio
+  modelo: Botín Frances Cuero flor
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-6-03
+  elemento_codigo: '6'
+  marca: Escorpio
+  modelo: Botín Frances Cuero flor
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-36-01
+  elemento_codigo: '36'
+  marca: Febo
+  modelo: Botín Oil resistant
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-36-02
+  elemento_codigo: '36'
+  marca: Febo
+  modelo: Botín Oil resistant
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-36-03
+  elemento_codigo: '36'
+  marca: Febo
+  modelo: Botín Oil resistant
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-57-01
+  elemento_codigo: '57'
+  marca: ForTrack
+  modelo: Botín Frances Cuero flor
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-57-02
+  elemento_codigo: '57'
+  marca: ForTrack
+  modelo: Botín Frances Cuero flor
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-57-03
+  elemento_codigo: '57'
+  marca: ForTrack
+  modelo: Botín Frances Cuero flor
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-105-01
+  elemento_codigo: '105'
+  marca: ForTrack
+  modelo: Botín TISZA
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-105-02
+  elemento_codigo: '105'
+  marca: ForTrack
+  modelo: Botín TISZA
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-105-03
+  elemento_codigo: '105'
+  marca: ForTrack
+  modelo: Botín TISZA
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-106-01
+  elemento_codigo: '106'
+  marca: ForTrack
+  modelo: Botín NIGER
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-106-02
+  elemento_codigo: '106'
+  marca: ForTrack
+  modelo: Botín NIGER
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-106-03
+  elemento_codigo: '106'
+  marca: ForTrack
+  modelo: Botín NIGER
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-107-01
+  elemento_codigo: '107'
+  marca: ForTrack
+  modelo: Botín JUCAR
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-107-02
+  elemento_codigo: '107'
+  marca: ForTrack
+  modelo: Botín JUCAR
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-107-03
+  elemento_codigo: '107'
+  marca: ForTrack
+  modelo: Botín JUCAR
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-108-01
+  elemento_codigo: '108'
+  marca: ForTrack
+  modelo: Botín TARIME
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-108-02
+  elemento_codigo: '108'
+  marca: ForTrack
+  modelo: Botín TARIME
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-108-03
+  elemento_codigo: '108'
+  marca: ForTrack
+  modelo: Botín TARIME
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-121-01
+  elemento_codigo: '121'
+  marca: Ombu
+  modelo: Botín Francés ojalado C/P Plástica
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-121-02
+  elemento_codigo: '121'
+  marca: Ombu
+  modelo: Botín Francés ojalado C/P Plástica
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-121-03
+  elemento_codigo: '121'
+  marca: Ombu
+  modelo: Botín Francés ojalado C/P Plástica
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-122-01
+  elemento_codigo: '122'
+  marca: Voran
+  modelo: Cronos N - Botín de Seguridad Mod.Francés
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-122-02
+  elemento_codigo: '122'
+  marca: Voran
+  modelo: Cronos N - Botín de Seguridad Mod.Francés
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-122-03
+  elemento_codigo: '122'
+  marca: Voran
+  modelo: Cronos N - Botín de Seguridad Mod.Francés
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-7-01
+  elemento_codigo: '7'
+  marca: Escorpio
+  modelo: Agricola Industrial con puntera de acero
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-7-02
+  elemento_codigo: '7'
+  marca: Escorpio
+  modelo: Agricola Industrial con puntera de acero
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-7-03
+  elemento_codigo: '7'
+  marca: Escorpio
+  modelo: Agricola Industrial con puntera de acero
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-8-01
+  elemento_codigo: '8'
+  marca: Ombú
+  modelo: Camisa de Grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-8-02
+  elemento_codigo: '8'
+  marca: Ombú
+  modelo: Camisa de Grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-8-03
+  elemento_codigo: '8'
+  marca: Ombú
+  modelo: Camisa de Grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-125-01
+  elemento_codigo: '125'
+  marca: Varias
+  modelo: Camisa de Grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-125-02
+  elemento_codigo: '125'
+  marca: Varias
+  modelo: Camisa de Grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-125-03
+  elemento_codigo: '125'
+  marca: Varias
+  modelo: Camisa de Grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-9-01
+  elemento_codigo: '9'
+  marca: Ombú
+  modelo: Pantalón de Grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-9-02
+  elemento_codigo: '9'
+  marca: Ombú
+  modelo: Pantalón de Grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-9-03
+  elemento_codigo: '9'
+  marca: Ombú
+  modelo: Pantalón de Grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-126-01
+  elemento_codigo: '126'
+  marca: Varias
+  modelo: Pantalón de Grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-126-02
+  elemento_codigo: '126'
+  marca: Varias
+  modelo: Pantalón de Grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-126-03
+  elemento_codigo: '126'
+  marca: Varias
+  modelo: Pantalón de Grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-56-01
+  elemento_codigo: '56'
+  marca: Gaucho
+  modelo: Pantalón Cargo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-56-02
+  elemento_codigo: '56'
+  marca: Gaucho
+  modelo: Pantalón Cargo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-56-03
+  elemento_codigo: '56'
+  marca: Gaucho
+  modelo: Pantalón Cargo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-10-01
+  elemento_codigo: '10'
+  marca: Ombú
+  modelo: Mamelucos de grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-10-02
+  elemento_codigo: '10'
+  marca: Ombú
+  modelo: Mamelucos de grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-10-03
+  elemento_codigo: '10'
+  marca: Ombú
+  modelo: Mamelucos de grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-60-01
+  elemento_codigo: '60'
+  marca: Guayabera
+  modelo: Mamelucos de grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-60-02
+  elemento_codigo: '60'
+  marca: Guayabera
+  modelo: Mamelucos de grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-60-03
+  elemento_codigo: '60'
+  marca: Guayabera
+  modelo: Mamelucos de grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-89-01
+  elemento_codigo: '89'
+  marca: Varios
+  modelo: Mamelucos de grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-89-02
+  elemento_codigo: '89'
+  marca: Varios
+  modelo: Mamelucos de grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-89-03
+  elemento_codigo: '89'
+  marca: Varios
+  modelo: Mamelucos de grafa
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-11-01
+  elemento_codigo: '11'
+  marca: Dupont
+  modelo: Mameluco descartable (BLANCO) Tyvek Classic CHF5 LA c/capucha.Contra particulas,
+    protección electrostática y ag.químicos
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-11-02
+  elemento_codigo: '11'
+  marca: Dupont
+  modelo: Mameluco descartable (BLANCO) Tyvek Classic CHF5 LA c/capucha.Contra particulas,
+    protección electrostática y ag.químicos
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-11-03
+  elemento_codigo: '11'
+  marca: Dupont
+  modelo: Mameluco descartable (BLANCO) Tyvek Classic CHF5 LA c/capucha.Contra particulas,
+    protección electrostática y ag.químicos
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-40-01
+  elemento_codigo: '40'
+  marca: Kimberly-Clark
+  modelo: Mameluco descartable (BLANCO) Kimberly-Clark Profesional KleenGuard A40
+    c/capucha.Contra liquidos bajo presión y particulas
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-40-02
+  elemento_codigo: '40'
+  marca: Kimberly-Clark
+  modelo: Mameluco descartable (BLANCO) Kimberly-Clark Profesional KleenGuard A40
+    c/capucha.Contra liquidos bajo presión y particulas
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-40-03
+  elemento_codigo: '40'
+  marca: Kimberly-Clark
+  modelo: Mameluco descartable (BLANCO) Kimberly-Clark Profesional KleenGuard A40
+    c/capucha.Contra liquidos bajo presión y particulas
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-51-01
+  elemento_codigo: '51'
+  marca: Kimberly-Clark
+  modelo: Mameluco descartable (BLANCO) Kimberly-Clark Profesional KleenGuard A30
+    c/capucha.Contra salpicaduras y particulas
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-51-02
+  elemento_codigo: '51'
+  marca: Kimberly-Clark
+  modelo: Mameluco descartable (BLANCO) Kimberly-Clark Profesional KleenGuard A30
+    c/capucha.Contra salpicaduras y particulas
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-51-03
+  elemento_codigo: '51'
+  marca: Kimberly-Clark
+  modelo: Mameluco descartable (BLANCO) Kimberly-Clark Profesional KleenGuard A30
+    c/capucha.Contra salpicaduras y particulas
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-85-01
+  elemento_codigo: '85'
+  marca: NUBUS
+  modelo: Mameluco descartable (BLANCO) NUB. Tareas de aseo y limpieza. Importado
+    por De Pascacale SA
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-85-02
+  elemento_codigo: '85'
+  marca: NUBUS
+  modelo: Mameluco descartable (BLANCO) NUB. Tareas de aseo y limpieza. Importado
+    por De Pascacale SA
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-85-03
+  elemento_codigo: '85'
+  marca: NUBUS
+  modelo: Mameluco descartable (BLANCO) NUB. Tareas de aseo y limpieza. Importado
+    por De Pascacale SA
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-88-01
+  elemento_codigo: '88'
+  marca: Lakelan
+  modelo: Mameluco descartable (BLANCO) Micromax NS ANSI. Protector contra suciedad,
+    grasas, mugre y salpicaduras leves químicos
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-88-02
+  elemento_codigo: '88'
+  marca: Lakelan
+  modelo: Mameluco descartable (BLANCO) Micromax NS ANSI. Protector contra suciedad,
+    grasas, mugre y salpicaduras leves químicos
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-88-03
+  elemento_codigo: '88'
+  marca: Lakelan
+  modelo: Mameluco descartable (BLANCO) Micromax NS ANSI. Protector contra suciedad,
+    grasas, mugre y salpicaduras leves químicos
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-34-01
+  elemento_codigo: '34'
+  marca: Dupont
+  modelo: Mameluco descartable (AMARILLO) Tychem QC c/capucha. Contra salpicaduras
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-34-02
+  elemento_codigo: '34'
+  marca: Dupont
+  modelo: Mameluco descartable (AMARILLO) Tychem QC c/capucha. Contra salpicaduras
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-34-03
+  elemento_codigo: '34'
+  marca: Dupont
+  modelo: Mameluco descartable (AMARILLO) Tychem QC c/capucha. Contra salpicaduras
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-127-01
+  elemento_codigo: '127'
+  marca: WS Dustex Pro
+  modelo: Mameluco descartable microporoso 60gr
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-127-02
+  elemento_codigo: '127'
+  marca: WS Dustex Pro
+  modelo: Mameluco descartable microporoso 60gr
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-127-03
+  elemento_codigo: '127'
+  marca: WS Dustex Pro
+  modelo: Mameluco descartable microporoso 60gr
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-138-01
+  elemento_codigo: '138'
+  marca: STEELGEN
+  modelo: Mameluco desechable microporoso-antiestático
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-138-02
+  elemento_codigo: '138'
+  marca: STEELGEN
+  modelo: Mameluco desechable microporoso-antiestático
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-138-03
+  elemento_codigo: '138'
+  marca: STEELGEN
+  modelo: Mameluco desechable microporoso-antiestático
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-12-01
+  elemento_codigo: '12'
+  marca: SIN_DATO
+  modelo: Camisa antiácido
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-12-02
+  elemento_codigo: '12'
+  marca: SIN_DATO
+  modelo: Camisa antiácido
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-12-03
+  elemento_codigo: '12'
+  marca: SIN_DATO
+  modelo: Camisa antiácido
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-13-01
+  elemento_codigo: '13'
+  marca: SIN_DATO
+  modelo: Pantalón Antiácido
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-13-02
+  elemento_codigo: '13'
+  marca: SIN_DATO
+  modelo: Pantalón Antiácido
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-13-03
+  elemento_codigo: '13'
+  marca: SIN_DATO
+  modelo: Pantalón Antiácido
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-14-01
+  elemento_codigo: '14'
+  marca: Dosier
+  modelo: Gorra
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-14-02
+  elemento_codigo: '14'
+  marca: Dosier
+  modelo: Gorra
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-14-03
+  elemento_codigo: '14'
+  marca: Dosier
+  modelo: Gorra
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-58-01
+  elemento_codigo: '58'
+  marca: Guayabera
+  modelo: Gorra
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-58-02
+  elemento_codigo: '58'
+  marca: Guayabera
+  modelo: Gorra
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-58-03
+  elemento_codigo: '58'
+  marca: Guayabera
+  modelo: Gorra
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-93-01
+  elemento_codigo: '93'
+  marca: Varias
+  modelo: Gorra
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-93-02
+  elemento_codigo: '93'
+  marca: Varias
+  modelo: Gorra
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-93-03
+  elemento_codigo: '93'
+  marca: Varias
+  modelo: Gorra
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-15-01
+  elemento_codigo: '15'
+  marca: Dosier
+  modelo: Remera
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-15-02
+  elemento_codigo: '15'
+  marca: Dosier
+  modelo: Remera
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-15-03
+  elemento_codigo: '15'
+  marca: Dosier
+  modelo: Remera
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-90-01
+  elemento_codigo: '90'
+  marca: Varias
+  modelo: Remera con Logo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-90-02
+  elemento_codigo: '90'
+  marca: Varias
+  modelo: Remera con Logo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-90-03
+  elemento_codigo: '90'
+  marca: Varias
+  modelo: Remera con Logo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-16-01
+  elemento_codigo: '16'
+  marca: Dosier
+  modelo: Chomba
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-16-02
+  elemento_codigo: '16'
+  marca: Dosier
+  modelo: Chomba
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-16-03
+  elemento_codigo: '16'
+  marca: Dosier
+  modelo: Chomba
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-59-01
+  elemento_codigo: '59'
+  marca: Guayabera
+  modelo: Chomba
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-59-02
+  elemento_codigo: '59'
+  marca: Guayabera
+  modelo: Chomba
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-59-03
+  elemento_codigo: '59'
+  marca: Guayabera
+  modelo: Chomba
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-92-01
+  elemento_codigo: '92'
+  marca: Varias
+  modelo: Chomba
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-92-02
+  elemento_codigo: '92'
+  marca: Varias
+  modelo: Chomba
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-92-03
+  elemento_codigo: '92'
+  marca: Varias
+  modelo: Chomba
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-17-01
+  elemento_codigo: '17'
+  marca: Varias
+  modelo: Guardapolvo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-17-02
+  elemento_codigo: '17'
+  marca: Varias
+  modelo: Guardapolvo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-17-03
+  elemento_codigo: '17'
+  marca: Varias
+  modelo: Guardapolvo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-82-01
+  elemento_codigo: '82'
+  marca: Max Track
+  modelo: Traje de Agua/ Chaqueta Pantalón. MXT-300
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-82-02
+  elemento_codigo: '82'
+  marca: Max Track
+  modelo: Traje de Agua/ Chaqueta Pantalón. MXT-300
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-82-03
+  elemento_codigo: '82'
+  marca: Max Track
+  modelo: Traje de Agua/ Chaqueta Pantalón. MXT-300
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-103-01
+  elemento_codigo: '103'
+  marca: N/A
+  modelo: Primera Piel
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-103-02
+  elemento_codigo: '103'
+  marca: N/A
+  modelo: Primera Piel
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-103-03
+  elemento_codigo: '103'
+  marca: N/A
+  modelo: Primera Piel
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-104-B-01
+  elemento_codigo: 104-B
+  marca: N/A
+  modelo: Cuello Polar
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-104-B-02
+  elemento_codigo: 104-B
+  marca: N/A
+  modelo: Cuello Polar
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-104-B-03
+  elemento_codigo: 104-B
+  marca: N/A
+  modelo: Cuello Polar
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-113-01
+  elemento_codigo: '113'
+  marca: Varias
+  modelo: Pantalón cargo - antiácido
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-113-02
+  elemento_codigo: '113'
+  marca: Varias
+  modelo: Pantalón cargo - antiácido
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-113-03
+  elemento_codigo: '113'
+  marca: Varias
+  modelo: Pantalón cargo - antiácido
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-114-01
+  elemento_codigo: '114'
+  marca: ForTrack
+  modelo: Campera - Softshell
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-114-02
+  elemento_codigo: '114'
+  marca: ForTrack
+  modelo: Campera - Softshell
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-114-03
+  elemento_codigo: '114'
+  marca: ForTrack
+  modelo: Campera - Softshell
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-115-01
+  elemento_codigo: '115'
+  marca: Bonk
+  modelo: Campera – Modelo Aconcagua
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-115-02
+  elemento_codigo: '115'
+  marca: Bonk
+  modelo: Campera – Modelo Aconcagua
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-115-03
+  elemento_codigo: '115'
+  marca: Bonk
+  modelo: Campera – Modelo Aconcagua
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-116-01
+  elemento_codigo: '116'
+  marca: Varias
+  modelo: Camisa de jean
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-116-02
+  elemento_codigo: '116'
+  marca: Varias
+  modelo: Camisa de jean
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-116-03
+  elemento_codigo: '116'
+  marca: Varias
+  modelo: Camisa de jean
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-18-01
+  elemento_codigo: '18'
+  marca: Segufer
+  modelo: Tejido de Algodón Moteado 1 cara. 25cm
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-18-02
+  elemento_codigo: '18'
+  marca: Segufer
+  modelo: Tejido de Algodón Moteado 1 cara. 25cm
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-18-03
+  elemento_codigo: '18'
+  marca: Segufer
+  modelo: Tejido de Algodón Moteado 1 cara. 25cm
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-19-01
+  elemento_codigo: '19'
+  marca: Segufer
+  modelo: Cuero Vaqueta Amarillos
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-19-02
+  elemento_codigo: '19'
+  marca: Segufer
+  modelo: Cuero Vaqueta Amarillos
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-19-03
+  elemento_codigo: '19'
+  marca: Segufer
+  modelo: Cuero Vaqueta Amarillos
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-20-01
+  elemento_codigo: '20'
+  marca: Segufer
+  modelo: PVC largo pesado. 40cm
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-20-02
+  elemento_codigo: '20'
+  marca: Segufer
+  modelo: PVC largo pesado. 40cm
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-20-03
+  elemento_codigo: '20'
+  marca: Segufer
+  modelo: PVC largo pesado. 40cm
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-54-01
+  elemento_codigo: '54'
+  marca: DPS
+  modelo: PVC largo rojo DPS 31545.40cm.Nivel 4
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-54-02
+  elemento_codigo: '54'
+  marca: DPS
+  modelo: PVC largo rojo DPS 31545.40cm.Nivel 4
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-54-03
+  elemento_codigo: '54'
+  marca: DPS
+  modelo: PVC largo rojo DPS 31545.40cm.Nivel 4
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-21-01
+  elemento_codigo: '21'
+  marca: R&R
+  modelo: Descarne
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-21-02
+  elemento_codigo: '21'
+  marca: R&R
+  modelo: Descarne
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-21-03
+  elemento_codigo: '21'
+  marca: R&R
+  modelo: Descarne
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-29-01
+  elemento_codigo: '29'
+  marca: Pampero
+  modelo: Para soldar color rojo. Uso Intensivo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-29-02
+  elemento_codigo: '29'
+  marca: Pampero
+  modelo: Para soldar color rojo. Uso Intensivo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-29-03
+  elemento_codigo: '29'
+  marca: Pampero
+  modelo: Para soldar color rojo. Uso Intensivo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-70-01
+  elemento_codigo: '70'
+  marca: DPS
+  modelo: Guantes Soldador Kevlar Steelpro
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-70-02
+  elemento_codigo: '70'
+  marca: DPS
+  modelo: Guantes Soldador Kevlar Steelpro
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-70-03
+  elemento_codigo: '70'
+  marca: DPS
+  modelo: Guantes Soldador Kevlar Steelpro
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-79-01
+  elemento_codigo: '79'
+  marca: DPS
+  modelo: Guantes Soldador DPS 31113 (marrón)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-79-02
+  elemento_codigo: '79'
+  marca: DPS
+  modelo: Guantes Soldador DPS 31113 (marrón)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-79-03
+  elemento_codigo: '79'
+  marca: DPS
+  modelo: Guantes Soldador DPS 31113 (marrón)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-37-01
+  elemento_codigo: '37'
+  marca: Steelpro SA
+  modelo: Multiflex-Poliester Latex. Resiste Abrasión/Vorte/Rasgado/Perforación
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-37-02
+  elemento_codigo: '37'
+  marca: Steelpro SA
+  modelo: Multiflex-Poliester Latex. Resiste Abrasión/Vorte/Rasgado/Perforación
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-37-03
+  elemento_codigo: '37'
+  marca: Steelpro SA
+  modelo: Multiflex-Poliester Latex. Resiste Abrasión/Vorte/Rasgado/Perforación
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-49-01
+  elemento_codigo: '49'
+  marca: Segufer
+  modelo: Cuero Vaqueta Amarillos Puño Largo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-49-02
+  elemento_codigo: '49'
+  marca: Segufer
+  modelo: Cuero Vaqueta Amarillos Puño Largo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-49-03
+  elemento_codigo: '49'
+  marca: Segufer
+  modelo: Cuero Vaqueta Amarillos Puño Largo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-66-01
+  elemento_codigo: '66'
+  marca: 3M
+  modelo: 3M G750 NYLON PU BIT.9
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-66-02
+  elemento_codigo: '66'
+  marca: 3M
+  modelo: 3M G750 NYLON PU BIT.9
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-66-03
+  elemento_codigo: '66'
+  marca: 3M
+  modelo: 3M G750 NYLON PU BIT.9
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-67-01
+  elemento_codigo: '67'
+  marca: DPS
+  modelo: Guantes Cuero Vaqueta Cod. 222025
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-67-02
+  elemento_codigo: '67'
+  marca: DPS
+  modelo: Guantes Cuero Vaqueta Cod. 222025
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-67-03
+  elemento_codigo: '67'
+  marca: DPS
+  modelo: Guantes Cuero Vaqueta Cod. 222025
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-68-01
+  elemento_codigo: '68'
+  marca: DPS
+  modelo: Guantes de Nitrilo Azul (Corto Cod.13255)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-68-02
+  elemento_codigo: '68'
+  marca: DPS
+  modelo: Guantes de Nitrilo Azul (Corto Cod.13255)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-68-03
+  elemento_codigo: '68'
+  marca: DPS
+  modelo: Guantes de Nitrilo Azul (Corto Cod.13255)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-69-01
+  elemento_codigo: '69'
+  marca: DPS
+  modelo: Guantes de Nitrilo Azul (Largo Cod.11356)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-69-02
+  elemento_codigo: '69'
+  marca: DPS
+  modelo: Guantes de Nitrilo Azul (Largo Cod.11356)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-69-03
+  elemento_codigo: '69'
+  marca: DPS
+  modelo: Guantes de Nitrilo Azul (Largo Cod.11356)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-71-01
+  elemento_codigo: '71'
+  marca: KRAFTEX
+  modelo: Guantes Dieléctrico 2500 Volt
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-71-02
+  elemento_codigo: '71'
+  marca: KRAFTEX
+  modelo: Guantes Dieléctrico 2500 Volt
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-71-03
+  elemento_codigo: '71'
+  marca: KRAFTEX
+  modelo: Guantes Dieléctrico 2500 Volt
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-72-01
+  elemento_codigo: '72'
+  marca: KRAFTEX
+  modelo: Guante Vaqueta Cobertor Dieléctrico
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-72-02
+  elemento_codigo: '72'
+  marca: KRAFTEX
+  modelo: Guante Vaqueta Cobertor Dieléctrico
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-72-03
+  elemento_codigo: '72'
+  marca: KRAFTEX
+  modelo: Guante Vaqueta Cobertor Dieléctrico
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-74-01
+  elemento_codigo: '74'
+  marca: GAMISOL
+  modelo: Guante Gamisol 120 CET (color naranja)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-74-02
+  elemento_codigo: '74'
+  marca: GAMISOL
+  modelo: Guante Gamisol 120 CET (color naranja)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-74-03
+  elemento_codigo: '74'
+  marca: GAMISOL
+  modelo: Guante Gamisol 120 CET (color naranja)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-75-01
+  elemento_codigo: '75'
+  marca: MAPA
+  modelo: MAPA Ultranitril 492 p/tareas de Lavado (Verde largo)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-75-02
+  elemento_codigo: '75'
+  marca: MAPA
+  modelo: MAPA Ultranitril 492 p/tareas de Lavado (Verde largo)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-75-03
+  elemento_codigo: '75'
+  marca: MAPA
+  modelo: MAPA Ultranitril 492 p/tareas de Lavado (Verde largo)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-81-01
+  elemento_codigo: '81'
+  marca: MAPA
+  modelo: MAPA Professionnel ULTRANE 526
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-81-02
+  elemento_codigo: '81'
+  marca: MAPA
+  modelo: MAPA Professionnel ULTRANE 526
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-81-03
+  elemento_codigo: '81'
+  marca: MAPA
+  modelo: MAPA Professionnel ULTRANE 526
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-97-01
+  elemento_codigo: '97'
+  marca: SteelproSafety
+  modelo: Guante Multiflex PU negro
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-97-02
+  elemento_codigo: '97'
+  marca: SteelproSafety
+  modelo: Guante Multiflex PU negro
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-97-03
+  elemento_codigo: '97'
+  marca: SteelproSafety
+  modelo: Guante Multiflex PU negro
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-101-01
+  elemento_codigo: '101'
+  marca: SteelproSafety
+  modelo: Nitrilo verde largo para tareas de lavado
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-101-02
+  elemento_codigo: '101'
+  marca: SteelproSafety
+  modelo: Nitrilo verde largo para tareas de lavado
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-101-03
+  elemento_codigo: '101'
+  marca: SteelproSafety
+  modelo: Nitrilo verde largo para tareas de lavado
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-112-01
+  elemento_codigo: '112'
+  marca: FN
+  modelo: Vaqueta GV100
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-112-02
+  elemento_codigo: '112'
+  marca: FN
+  modelo: Vaqueta GV100
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-112-03
+  elemento_codigo: '112'
+  marca: FN
+  modelo: Vaqueta GV100
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-120-01
+  elemento_codigo: '120'
+  marca: CVE
+  modelo: Cuero Vaqueta Art. V-901
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-120-02
+  elemento_codigo: '120'
+  marca: CVE
+  modelo: Cuero Vaqueta Art. V-901
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-120-03
+  elemento_codigo: '120'
+  marca: CVE
+  modelo: Cuero Vaqueta Art. V-901
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-128-01
+  elemento_codigo: '128'
+  marca: Deltaplus
+  modelo: Guante Nitrilo Pesado Recubrimiento NI175 puño de lona
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-128-02
+  elemento_codigo: '128'
+  marca: Deltaplus
+  modelo: Guante Nitrilo Pesado Recubrimiento NI175 puño de lona
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-128-03
+  elemento_codigo: '128'
+  marca: Deltaplus
+  modelo: Guante Nitrilo Pesado Recubrimiento NI175 puño de lona
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-129-01
+  elemento_codigo: '129'
+  marca: DPS (De Pascale)
+  modelo: Guante sintético de acrilonitrilo premium
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-129-02
+  elemento_codigo: '129'
+  marca: DPS (De Pascale)
+  modelo: Guante sintético de acrilonitrilo premium
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-129-03
+  elemento_codigo: '129'
+  marca: DPS (De Pascale)
+  modelo: Guante sintético de acrilonitrilo premium
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-130-01
+  elemento_codigo: '130'
+  marca: FN
+  modelo: Guante soldador forrado con hilo de kevlar. Descarne amarillo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-130-02
+  elemento_codigo: '130'
+  marca: FN
+  modelo: Guante soldador forrado con hilo de kevlar. Descarne amarillo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-130-03
+  elemento_codigo: '130'
+  marca: FN
+  modelo: Guante soldador forrado con hilo de kevlar. Descarne amarillo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-133-01
+  elemento_codigo: '133'
+  marca: ELIT
+  modelo: Nitrilo para examen - laboratorio
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-133-02
+  elemento_codigo: '133'
+  marca: ELIT
+  modelo: Nitrilo para examen - laboratorio
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-133-03
+  elemento_codigo: '133'
+  marca: ELIT
+  modelo: Nitrilo para examen - laboratorio
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-134-01
+  elemento_codigo: '134'
+  marca: DPS
+  modelo: Dieléctrico – Caucho Natural Aislante – Borde Enrollado
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-134-02
+  elemento_codigo: '134'
+  marca: DPS
+  modelo: Dieléctrico – Caucho Natural Aislante – Borde Enrollado
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-134-03
+  elemento_codigo: '134'
+  marca: DPS
+  modelo: Dieléctrico – Caucho Natural Aislante – Borde Enrollado
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-139-01
+  elemento_codigo: '139'
+  marca: Hi-Flex
+  modelo: Nitrilo Azul Puño Lona
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-139-02
+  elemento_codigo: '139'
+  marca: Hi-Flex
+  modelo: Nitrilo Azul Puño Lona
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-139-03
+  elemento_codigo: '139'
+  marca: Hi-Flex
+  modelo: Nitrilo Azul Puño Lona
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-141-01
+  elemento_codigo: '141'
+  marca: CANOR
+  modelo: Medio Paseo Cuero Vaqueta
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-141-02
+  elemento_codigo: '141'
+  marca: CANOR
+  modelo: Medio Paseo Cuero Vaqueta
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-141-03
+  elemento_codigo: '141'
+  marca: CANOR
+  modelo: Medio Paseo Cuero Vaqueta
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-143-01
+  elemento_codigo: '143'
+  marca: DPS
+  modelo: Recubierto en palma PU Negro Tejido Poliester G13. DPS85195
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-143-02
+  elemento_codigo: '143'
+  marca: DPS
+  modelo: Recubierto en palma PU Negro Tejido Poliester G13. DPS85195
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-143-03
+  elemento_codigo: '143'
+  marca: DPS
+  modelo: Recubierto en palma PU Negro Tejido Poliester G13. DPS85195
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-144-01
+  elemento_codigo: '144'
+  marca: DPS
+  modelo: Guante Tejido sin costura recubierto completo en Nitrilo Gris
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-144-02
+  elemento_codigo: '144'
+  marca: DPS
+  modelo: Guante Tejido sin costura recubierto completo en Nitrilo Gris
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-144-03
+  elemento_codigo: '144'
+  marca: DPS
+  modelo: Guante Tejido sin costura recubierto completo en Nitrilo Gris
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-22-01
+  elemento_codigo: '22'
+  marca: Segufer
+  modelo: Fluor naranja c/reflectivo 80cm PVC
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-22-02
+  elemento_codigo: '22'
+  marca: Segufer
+  modelo: Fluor naranja c/reflectivo 80cm PVC
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-22-03
+  elemento_codigo: '22'
+  marca: Segufer
+  modelo: Fluor naranja c/reflectivo 80cm PVC
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-142-01
+  elemento_codigo: '142'
+  marca: varias
+  modelo: Fluor reglamentario
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-142-02
+  elemento_codigo: '142'
+  marca: varias
+  modelo: Fluor reglamentario
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-142-03
+  elemento_codigo: '142'
+  marca: varias
+  modelo: Fluor reglamentario
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-23-01
+  elemento_codigo: '23'
+  marca: MSA
+  modelo: Modelo Ecolight- Marco Transparente
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-23-02
+  elemento_codigo: '23'
+  marca: MSA
+  modelo: Modelo Ecolight- Marco Transparente
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-23-03
+  elemento_codigo: '23'
+  marca: MSA
+  modelo: Modelo Ecolight- Marco Transparente
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-30-01
+  elemento_codigo: '30'
+  marca: Uvex
+  modelo: Modelo Uvex Stealth S3960C
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-30-02
+  elemento_codigo: '30'
+  marca: Uvex
+  modelo: Modelo Uvex Stealth S3960C
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-30-03
+  elemento_codigo: '30'
+  marca: Uvex
+  modelo: Modelo Uvex Stealth S3960C
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-39-01
+  elemento_codigo: '39'
+  marca: MSA
+  modelo: Modelo GH 3000
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-39-02
+  elemento_codigo: '39'
+  marca: MSA
+  modelo: Modelo GH 3000
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-39-03
+  elemento_codigo: '39'
+  marca: MSA
+  modelo: Modelo GH 3000
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-41-01
+  elemento_codigo: '41'
+  marca: LIBUS
+  modelo: Modelo New Classic Transparente HC
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-41-02
+  elemento_codigo: '41'
+  marca: LIBUS
+  modelo: Modelo New Classic Transparente HC
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-41-03
+  elemento_codigo: '41'
+  marca: LIBUS
+  modelo: Modelo New Classic Transparente HC
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-53-01
+  elemento_codigo: '53'
+  marca: LIBUS
+  modelo: Modelo Eco Line GRIS HC
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-53-02
+  elemento_codigo: '53'
+  marca: LIBUS
+  modelo: Modelo Eco Line GRIS HC
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-53-03
+  elemento_codigo: '53'
+  marca: LIBUS
+  modelo: Modelo Eco Line GRIS HC
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-43-01
+  elemento_codigo: '43'
+  marca: Steelro SA
+  modelo: Modelo Spy Claro
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-43-02
+  elemento_codigo: '43'
+  marca: Steelro SA
+  modelo: Modelo Spy Claro
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-43-03
+  elemento_codigo: '43'
+  marca: Steelro SA
+  modelo: Modelo Spy Claro
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-50-01
+  elemento_codigo: '50'
+  marca: Fravida
+  modelo: Modelo N° 109
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-50-02
+  elemento_codigo: '50'
+  marca: Fravida
+  modelo: Modelo N° 109
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-50-03
+  elemento_codigo: '50'
+  marca: Fravida
+  modelo: Modelo N° 109
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-62-01
+  elemento_codigo: '62'
+  marca: LIBUS
+  modelo: Anteojos ARGON ELITE Indoor/Outdoor HC. Cod.902441
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-62-02
+  elemento_codigo: '62'
+  marca: LIBUS
+  modelo: Anteojos ARGON ELITE Indoor/Outdoor HC. Cod.902441
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-62-03
+  elemento_codigo: '62'
+  marca: LIBUS
+  modelo: Anteojos ARGON ELITE Indoor/Outdoor HC. Cod.902441
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-73-01
+  elemento_codigo: '73'
+  marca: MSA
+  modelo: Modelo LUXOR (p/cristales recetados)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-73-02
+  elemento_codigo: '73'
+  marca: MSA
+  modelo: Modelo LUXOR (p/cristales recetados)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-73-03
+  elemento_codigo: '73'
+  marca: MSA
+  modelo: Modelo LUXOR (p/cristales recetados)
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-96-01
+  elemento_codigo: '96'
+  marca: LIBUS
+  modelo: Antiparra. AVIATOR Trasparente AF - GRIS
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-96-02
+  elemento_codigo: '96'
+  marca: LIBUS
+  modelo: Antiparra. AVIATOR Trasparente AF - GRIS
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-96-03
+  elemento_codigo: '96'
+  marca: LIBUS
+  modelo: Antiparra. AVIATOR Trasparente AF - GRIS
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-145-01
+  elemento_codigo: '145'
+  marca: DPS
+  modelo: Anteojo Negro K, Patilel recta regulable, UCU022E
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-145-02
+  elemento_codigo: '145'
+  marca: DPS
+  modelo: Anteojo Negro K, Patilel recta regulable, UCU022E
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-145-03
+  elemento_codigo: '145'
+  marca: DPS
+  modelo: Anteojo Negro K, Patilel recta regulable, UCU022E
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-24-01
+  elemento_codigo: '24'
+  marca: Segufer
+  modelo: PVC
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-24-02
+  elemento_codigo: '24'
+  marca: Segufer
+  modelo: PVC
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-24-03
+  elemento_codigo: '24'
+  marca: Segufer
+  modelo: PVC
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-63-01
+  elemento_codigo: '63'
+  marca: DPS
+  modelo: Delantal De Cuero para Soldar.
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-63-02
+  elemento_codigo: '63'
+  marca: DPS
+  modelo: Delantal De Cuero para Soldar.
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-63-03
+  elemento_codigo: '63'
+  marca: DPS
+  modelo: Delantal De Cuero para Soldar.
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-140-01
+  elemento_codigo: '140'
+  marca: DPS
+  modelo: Descarne Standar 60x90
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-140-02
+  elemento_codigo: '140'
+  marca: DPS
+  modelo: Descarne Standar 60x90
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-140-03
+  elemento_codigo: '140'
+  marca: DPS
+  modelo: Descarne Standar 60x90
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-25-01
+  elemento_codigo: '25'
+  marca: SIN_DATO
+  modelo: SIN_DATO
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-25-02
+  elemento_codigo: '25'
+  marca: SIN_DATO
+  modelo: SIN_DATO
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-25-03
+  elemento_codigo: '25'
+  marca: SIN_DATO
+  modelo: SIN_DATO
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-64-01
+  elemento_codigo: '64'
+  marca: DPS
+  modelo: Polainas para Soldar.
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-64-02
+  elemento_codigo: '64'
+  marca: DPS
+  modelo: Polainas para Soldar.
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-64-03
+  elemento_codigo: '64'
+  marca: DPS
+  modelo: Polainas para Soldar.
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-135-01
+  elemento_codigo: '135'
+  marca: CANOR
+  modelo: Polainas para Soldar
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-135-02
+  elemento_codigo: '135'
+  marca: CANOR
+  modelo: Polainas para Soldar
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-135-03
+  elemento_codigo: '135'
+  marca: CANOR
+  modelo: Polainas para Soldar
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-117-01
+  elemento_codigo: '117'
+  marca: Libus
+  modelo: Soporte para protector facial con arnés estándar
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-117-02
+  elemento_codigo: '117'
+  marca: Libus
+  modelo: Soporte para protector facial con arnés estándar
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-117-03
+  elemento_codigo: '117'
+  marca: Libus
+  modelo: Soporte para protector facial con arnés estándar
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-137-01
+  elemento_codigo: '137'
+  marca: FRAVIDA
+  modelo: 2020/HB
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-137-02
+  elemento_codigo: '137'
+  marca: FRAVIDA
+  modelo: 2020/HB
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-137-03
+  elemento_codigo: '137'
+  marca: FRAVIDA
+  modelo: 2020/HB
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-118-01
+  elemento_codigo: '118'
+  marca: Libus
+  modelo: Protector facial plano
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-118-02
+  elemento_codigo: '118'
+  marca: Libus
+  modelo: Protector facial plano
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-118-03
+  elemento_codigo: '118'
+  marca: Libus
+  modelo: Protector facial plano
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-65-01
+  elemento_codigo: '65'
+  marca: DPS
+  modelo: Mangas para Soldar.
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-65-02
+  elemento_codigo: '65'
+  marca: DPS
+  modelo: Mangas para Soldar.
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-65-03
+  elemento_codigo: '65'
+  marca: DPS
+  modelo: Mangas para Soldar.
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-136-01
+  elemento_codigo: '136'
+  marca: CANOR
+  modelo: Mangas para Soldar.
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-136-02
+  elemento_codigo: '136'
+  marca: CANOR
+  modelo: Mangas para Soldar.
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-136-03
+  elemento_codigo: '136'
+  marca: CANOR
+  modelo: Mangas para Soldar.
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-26-01
+  elemento_codigo: '26'
+  marca: Fravida
+  modelo: Fravida 4005
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-26-02
+  elemento_codigo: '26'
+  marca: Fravida
+  modelo: Fravida 4005
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-26-03
+  elemento_codigo: '26'
+  marca: Fravida
+  modelo: Fravida 4005
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-31-01
+  elemento_codigo: '31'
+  marca: Prowork
+  modelo: Prowork EY23
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-31-02
+  elemento_codigo: '31'
+  marca: Prowork
+  modelo: Prowork EY23
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-31-03
+  elemento_codigo: '31'
+  marca: Prowork
+  modelo: Prowork EY23
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-38-01
+  elemento_codigo: '38'
+  marca: Libus
+  modelo: Alternative 22dB Externo-Modelo Vincha
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-38-02
+  elemento_codigo: '38'
+  marca: Libus
+  modelo: Alternative 22dB Externo-Modelo Vincha
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-38-03
+  elemento_codigo: '38'
+  marca: Libus
+  modelo: Alternative 22dB Externo-Modelo Vincha
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-48-01
+  elemento_codigo: '48'
+  marca: Libus
+  modelo: Modelo L-320
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-48-02
+  elemento_codigo: '48'
+  marca: Libus
+  modelo: Modelo L-320
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-48-03
+  elemento_codigo: '48'
+  marca: Libus
+  modelo: Modelo L-320
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-52-01
+  elemento_codigo: '52'
+  marca: Fravida
+  modelo: Fravida 4006
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-52-02
+  elemento_codigo: '52'
+  marca: Fravida
+  modelo: Fravida 4006
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-52-03
+  elemento_codigo: '52'
+  marca: Fravida
+  modelo: Fravida 4006
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-55-01
+  elemento_codigo: '55'
+  marca: Masprot
+  modelo: Masprot MR. MPA -103
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-55-02
+  elemento_codigo: '55'
+  marca: Masprot
+  modelo: Masprot MR. MPA -103
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-55-03
+  elemento_codigo: '55'
+  marca: Masprot
+  modelo: Masprot MR. MPA -103
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-61-01
+  elemento_codigo: '61'
+  marca: LIBUS
+  modelo: Con Vincha tras nuca C/ Atenuación de 25 a 27 Decibeles
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-61-02
+  elemento_codigo: '61'
+  marca: LIBUS
+  modelo: Con Vincha tras nuca C/ Atenuación de 25 a 27 Decibeles
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-61-03
+  elemento_codigo: '61'
+  marca: LIBUS
+  modelo: Con Vincha tras nuca C/ Atenuación de 25 a 27 Decibeles
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-123-01
+  elemento_codigo: '123'
+  marca: Libus L-300
+  modelo: Modelo L-340
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-123-02
+  elemento_codigo: '123'
+  marca: Libus L-300
+  modelo: Modelo L-340
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-123-03
+  elemento_codigo: '123'
+  marca: Libus L-300
+  modelo: Modelo L-340
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-132-01
+  elemento_codigo: '132'
+  marca: DPS
+  modelo: Tipo vincha naranja fluo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-132-02
+  elemento_codigo: '132'
+  marca: DPS
+  modelo: Tipo vincha naranja fluo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-132-03
+  elemento_codigo: '132'
+  marca: DPS
+  modelo: Tipo vincha naranja fluo
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-27-01
+  elemento_codigo: '27'
+  marca: R&R
+  modelo: SIN_DATO
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-27-02
+  elemento_codigo: '27'
+  marca: R&R
+  modelo: SIN_DATO
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-27-03
+  elemento_codigo: '27'
+  marca: R&R
+  modelo: SIN_DATO
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-87-01
+  elemento_codigo: '87'
+  marca: Libus
+  modelo: Protector auditivo de inserción pre-moldeado tipo plug con cordón
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-87-02
+  elemento_codigo: '87'
+  marca: Libus
+  modelo: Protector auditivo de inserción pre-moldeado tipo plug con cordón
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-87-03
+  elemento_codigo: '87'
+  marca: Libus
+  modelo: Protector auditivo de inserción pre-moldeado tipo plug con cordón
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-33-01
+  elemento_codigo: '33'
+  marca: Mustang
+  modelo: Cinturón de espalda.Patente Nº 71740
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-33-02
+  elemento_codigo: '33'
+  marca: Mustang
+  modelo: Cinturón de espalda.Patente Nº 71740
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-33-03
+  elemento_codigo: '33'
+  marca: Mustang
+  modelo: Cinturón de espalda.Patente Nº 71740
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-42-01
+  elemento_codigo: '42'
+  marca: Musitani
+  modelo: Arnes
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-42-02
+  elemento_codigo: '42'
+  marca: Musitani
+  modelo: Arnes
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-42-03
+  elemento_codigo: '42'
+  marca: Musitani
+  modelo: Arnes
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-78-01
+  elemento_codigo: '78'
+  marca: Urban
+  modelo: Arnes Apolo X URBAN c/cola de amarre doble -55mm
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-78-02
+  elemento_codigo: '78'
+  marca: Urban
+  modelo: Arnes Apolo X URBAN c/cola de amarre doble -55mm
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-78-03
+  elemento_codigo: '78'
+  marca: Urban
+  modelo: Arnes Apolo X URBAN c/cola de amarre doble -55mm
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-119-01
+  elemento_codigo: '119'
+  marca: Libus
+  modelo: Arnés milenium a cremallera plástico
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-119-02
+  elemento_codigo: '119'
+  marca: Libus
+  modelo: Arnés milenium a cremallera plástico
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
+- codigo_interno: SIM-119-03
+  elemento_codigo: '119'
+  marca: Libus
+  modelo: Arnés milenium a cremallera plástico
+  talle: SIN_DATO
+  color: SIN_DATO
+  estado: SIMULADO
