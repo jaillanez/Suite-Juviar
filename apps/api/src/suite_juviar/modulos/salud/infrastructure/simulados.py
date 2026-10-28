@@ -25,6 +25,14 @@ class CatalogoDiagnosticoSimulado:
     def listar(self) -> list[Diagnostico]:
         return list(self._datos.values())
 
+    def guardar(self, diagnostico: Diagnostico) -> None:
+        self._datos[diagnostico.codigo] = diagnostico
+
+    def eliminar(self, codigo: str) -> None:
+        if codigo not in self._datos:
+            raise LookupError("Diagnóstico inexistente.")
+        del self._datos[codigo]
+
 
 class SaludMemoria:
     def __init__(self):

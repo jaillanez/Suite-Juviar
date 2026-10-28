@@ -10,12 +10,14 @@ from pydantic import BaseModel, Field
 
 from suite_juviar.plataforma.identidad.api.dependencias import SesionActual, exigir_permiso
 
+from ..application.lector_certificados import analizar_certificado
 from ..application.servicios import GestionarSalud
 from ..domain.modelos import (
     MARCA_SIMULADA,
     AccesoSaludDenegado,
     FuenteSimuladaEnProduccion,
     ReporteNominadoProhibido,
+    Diagnostico,
 )
 
 
@@ -28,6 +30,19 @@ class CertificadoEntrada(BaseModel):
     profesional: str = Field(min_length=1)
     adjunto_nombre: str = Field(min_length=1)
     adjunto_base64: str = Field(min_length=1)
+    resumen: str = ""
+    tipo_accidente: str = "NO_INFORMADO"
+
+
+class AdjuntoEntrada(BaseModel):
+    adjunto_nombre: str = Field(min_length=1)
+    adjunto_base64: str = Field(min_length=1)
+
+
+class DiagnosticoEntrada(BaseModel):
+    codigo: str = Field(min_length=2, max_length=50)
+    descripcion: str = Field(min_length=2, max_length=160)
+    padre_codigo: str | None = None
 
 
 def tabla_de_errores() -> list[tuple[type[BaseException], int]]:
@@ -63,6 +78,59 @@ def crear_router(servicio: GestionarSalud, entorno: str = "prueba") -> APIRouter
             "dueno_dato": servicio.catalogo.dueno_dato,
         }
 
+    @app.post("/catalogo", dependencies=[Depends(gestionar)])
+    def crear_diagnostico(entrada: DiagnosticoEntrada, sesion: SesionActual):
+        codigo = entrada.codigo.strip().upper()
+        if servicio.catalogo.obtener(codigo):
+            raise HTTPException(409, "Ya existe un diagnóstico con ese código.")
+        return _guardar_diagnostico(entrada, codigo, sesion)
+
+    @app.put("/catalogo/{codigo}", dependencies=[Depends(gestionar)])
+    def editar_diagnostico(codigo: str, entrada: DiagnosticoEntrada, sesion: SesionActual):
+        codigo = codigo.strip().upper()
+        if servicio.catalogo.obtener(codigo) is None:
+            raise HTTPException(404, "Diagnóstico inexistente.")
+        return _guardar_diagnostico(entrada, codigo, sesion)
+
+    def _guardar_diagnostico(entrada: DiagnosticoEntrada, codigo: str, sesion: SesionActual):
+        padre = entrada.padre_codigo.strip().upper() if entrada.padre_codigo else None
+        if padre == codigo:
+            raise HTTPException(400, "Un diagnóstico no puede ser su propia categoría.")
+        if padre and servicio.catalogo.obtener(padre) is None:
+            raise HTTPException(400, "La categoría elegida no existe.")
+        diagnostico = Diagnostico(codigo, entrada.descripcion.strip(), padre)
+        servicio.catalogo.guardar(diagnostico)
+        servicio.auditar(sesion.actor, None, "GESTION_CATALOGO_DIAGNOSTICOS")
+        return asdict(diagnostico)
+
+    @app.delete("/catalogo/{codigo}", dependencies=[Depends(gestionar)])
+    def eliminar_diagnostico(codigo: str, sesion: SesionActual):
+        try:
+            servicio.catalogo.eliminar(codigo.strip().upper())
+            servicio.auditar(sesion.actor, None, "GESTION_CATALOGO_DIAGNOSTICOS")
+            return {"eliminado": True}
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+
+    @app.get("/personas", dependencies=[Depends(leer)])
+    def buscar_personas(q: str, sesion: SesionActual):
+        servicio.auditar(sesion.actor, None, "BUSQUEDA_PERSONA")
+        return [asdict(x) for x in servicio.buscar_personas(q)]
+
+    @app.post("/certificados/analizar", dependencies=[Depends(gestionar)])
+    def analizar(entrada: AdjuntoEntrada, sesion: SesionActual):
+        try:
+            contenido = base64.b64decode(entrada.adjunto_base64, validate=True)
+        except (ValueError, base64.binascii.Error) as exc:
+            raise HTTPException(400, "El archivo recibido no es válido.") from exc
+        servicio.auditar(sesion.actor, None, "ANALISIS_CERTIFICADO")
+        try:
+            return analizar_certificado(entrada.adjunto_nombre, contenido)
+        except RuntimeError as exc:
+            raise HTTPException(502, str(exc)) from exc
+
     @app.post("/certificados", dependencies=[Depends(gestionar)])
     def cargar(entrada: CertificadoEntrada, sesion: SesionActual):
         try:
@@ -70,6 +138,7 @@ def crear_router(servicio: GestionarSalud, entorno: str = "prueba") -> APIRouter
             certificado = servicio.cargar(
                 entrada.legajo, entrada.diagnostico_codigo, entrada.desde, entrada.hasta,
                 entrada.dias, entrada.profesional, entrada.adjunto_nombre, contenido,
+                entrada.resumen, entrada.tipo_accidente,
             )
             servicio.auditar(sesion.actor, entrada.legajo, "CARGA_CERTIFICADO")
             return asdict(certificado)

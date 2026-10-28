@@ -24,11 +24,11 @@ from suite_juviar.modulos.legajo.infrastructure.sqlite import AdjuntosCifradosSQ
 from suite_juviar.modulos.salud.api.app import crear_router as crear_salud
 from suite_juviar.modulos.salud.application.servicios import GestionarSalud
 from suite_juviar.modulos.salud.infrastructure.simulados import (
-    CatalogoDiagnosticoSimulado,
     FuenteLaboralSimulada,
 )
 from suite_juviar.modulos.salud.infrastructure.sqlite import (
     AdjuntosSaludCifradosSQLite,
+    CatalogoDiagnosticoSQLite,
     SaludSQLite,
 )
 from suite_juviar.modulos.seleccion.api.app import crear_router as crear_seleccion
@@ -53,13 +53,15 @@ def construir_routers(rrhh):
         PreciosSimulados(),
         int(os.getenv("SJ_EPP_MUESTRA_MINIMA") or "5"),
     )
+    fuente_legajos = FuenteLegajosDesdePuerto(rrhh.legajos)
     legajo = GestionarLegajo(
-        FuenteLegajosDesdePuerto(rrhh.legajos),
+        fuente_legajos,
         AdjuntosCifradosSQLite(clave_adjuntos, ruta_modulos),
     )
     salud = GestionarSalud(
-        CatalogoDiagnosticoSimulado(), SaludSQLite(ruta_modulos),
+        CatalogoDiagnosticoSQLite(ruta_modulos), SaludSQLite(ruta_modulos),
         AdjuntosSaludCifradosSQLite(clave_adjuntos, ruta_modulos), FuenteLaboralSimulada(),
+        fuente_legajos,
     )
     turnos = ConciliarTurnos(
         FuenteFichadasSQLite(ruta_modulos),

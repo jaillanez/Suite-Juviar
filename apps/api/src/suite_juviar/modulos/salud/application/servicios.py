@@ -23,14 +23,17 @@ class GestionarSalud:
     ROLES_LECTURA = frozenset({"MEDICO"})
 
     def __init__(self, catalogo: CatalogoDiagnostico, repositorio: RepositorioSalud,
-                 adjuntos: RepositorioAdjuntosSalud, fuente_laboral: FuenteLaboralArticulo208):
+                 adjuntos: RepositorioAdjuntosSalud, fuente_laboral: FuenteLaboralArticulo208,
+                 fuente_personas=None):
         self.catalogo = catalogo
         self.repositorio = repositorio
         self.adjuntos = adjuntos
         self.fuente_laboral = fuente_laboral
+        self.fuente_personas = fuente_personas
 
     def cargar(self, legajo: str, diagnostico_codigo: str, desde: date, hasta: date,
-               dias: int, profesional: str, nombre_adjunto: str, contenido_adjunto: bytes) -> CertificadoMedico:
+               dias: int, profesional: str, nombre_adjunto: str, contenido_adjunto: bytes,
+               resumen: str = "", tipo_accidente: str = "NO_INFORMADO") -> CertificadoMedico:
         if self.catalogo.obtener(diagnostico_codigo) is None:
             raise ValueError("El diagnóstico debe elegirse del catálogo médico.")
         if hasta < desde:
@@ -44,7 +47,7 @@ class GestionarSalud:
         self.adjuntos.guardar(adjunto)
         certificado = CertificadoMedico(
             str(uuid4()), legajo, diagnostico_codigo, desde, hasta, dias,
-            profesional.strip(), adjunto.id,
+            profesional.strip(), adjunto.id, resumen.strip(), tipo_accidente,
         )
         self.repositorio.guardar(certificado)
         return certificado
@@ -95,13 +98,30 @@ class GestionarSalud:
         if datos is None:
             raise LookupError("El legajo no existe en la fuente laboral.")
         antiguedad_dias, cargas_familia = datos
-        aplica = antiguedad_dias >= 365 and cargas_familia > 0
+        antiguedad_anios = antiguedad_dias / 365.25
+        meses = 3 if antiguedad_anios < 5 else 6
+        if cargas_familia > 0:
+            meses *= 2
         preliminar = self.fuente_laboral.simulada
-        return {"aplica": aplica, "estado": "PRELIMINAR" if preliminar else "DEFINITIVO",
+        return {"aplica": True, "estado": "REFERENCIA" if preliminar else "CALCULADO",
+                "meses_remunerados": meses, "antiguedad_anios": round(antiguedad_anios, 1),
+                "cargas_familia": cargas_familia,
                 "preliminar": preliminar, "leyenda": (
                     "Preliminar: antigüedad y cargas de familia simuladas, sin conexión a Nexus"
                     if preliminar else "Datos laborales verificados en Nexus"),
                 "imprimible": not preliminar, "exportable": not preliminar}
+
+    def buscar_personas(self, texto: str):
+        if self.fuente_personas is None or len(texto.strip()) < 2:
+            return []
+        consulta = texto.strip()
+        if hasattr(self.fuente_personas, "buscar_texto"):
+            return self.fuente_personas.buscar_texto(consulta)[:20]
+        resultados = self.fuente_personas.buscar(apellido=consulta)
+        if consulta.isdigit():
+            por_legajo = self.fuente_personas.buscar(legajo=consulta)
+            resultados = list({p.legajo: p for p in [*resultados, *por_legajo]}.values())
+        return resultados[:20]
 
     def auditar(self, actor: str, legajo: str | None, accion: str) -> None:
         self.repositorio.auditar(ConsultaAuditoria(

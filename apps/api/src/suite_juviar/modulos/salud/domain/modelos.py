@@ -23,6 +23,8 @@ class CertificadoMedico:
     dias: int
     profesional: str
     adjunto_id: str
+    resumen: str = ""
+    tipo_accidente: str = "NO_INFORMADO"
 
 
 @dataclass(frozen=True, slots=True)

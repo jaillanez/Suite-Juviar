@@ -7,6 +7,12 @@ API_PID=""
 MOBILE_PID=""
 GESTION_PID=""
 
+if [[ -f "$RAIZ/apps/api/.env.local" ]]; then
+  set -a
+  source "$RAIZ/apps/api/.env.local"
+  set +a
+fi
+
 limpiar() {
   trap - EXIT INT TERM
   echo

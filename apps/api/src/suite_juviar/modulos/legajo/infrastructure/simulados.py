@@ -51,6 +51,14 @@ class FuenteLegajosDesdePuerto:
         ]
         return _filtrar(proyectadas, apellido, legajo, sector, empresa)
 
+    def buscar_texto(self, texto: str):
+        """Busca por cualquier dato que soporte la fuente original (nombre, DNI o legajo)."""
+        personas = self._fuente.buscar(texto)
+        return [
+            PersonaLegajo(p.legajo, p.nombre_completo, p.empresa, p.sector, p.puesto)
+            for p in personas
+        ]
+
 
 def _filtrar(personas, apellido, legajo, sector, empresa):
     def contiene(valor: str, filtro: str | None) -> bool:
