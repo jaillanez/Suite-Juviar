@@ -150,7 +150,7 @@ fi
 paso "Trayendo la versión '$REF' desde GitHub"
 [[ $("${GIT[@]}" config --get remote.origin.url) == "$REPO_ESPERADO" ]] \
   || falla "la copia de Git no apunta a $REPO_ESPERADO."
-"${GIT[@]}" fetch -q --prune origin
+"${GIT[@]}" fetch -q --prune origin "+refs/heads/*:refs/remotes/origin/*"
 if [[ $REF =~ ^[0-9a-f]{7,40}$ ]]; then
   # Un commit suelto solo vale si ya está en alguna rama de GitHub.
   SHA=$("${GIT[@]}" rev-parse --verify -q "$REF^{commit}") || falla "no encontré la versión '$REF'."
