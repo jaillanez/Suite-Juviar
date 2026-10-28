@@ -2,9 +2,12 @@
 # Instala en el servidor una versión guardada en GitHub y la pone en marcha.
 #
 # Uso, como root en el servidor:
-#   bash /opt/suite-juviar/infra/desplegar.sh            # instala main
-#   bash /opt/suite-juviar/infra/desplegar.sh <commit>   # instala una versión puntual
-#   bash /opt/suite-juviar/infra/desplegar.sh --volver   # vuelve a la versión anterior
+#   bash /opt/suite-juviar-releases/actual/infra/desplegar.sh            # instala main
+#   bash /opt/suite-juviar-releases/actual/infra/desplegar.sh <commit>   # instala una versión puntual
+#   bash /opt/suite-juviar-releases/actual/infra/desplegar.sh --volver   # vuelve a la versión anterior
+#
+# Se ejecuta desde la versión instalada (de root), nunca desde /opt/suite-juviar, que es
+# del usuario «suite».
 #
 # Cada versión queda en su propia carpeta, /opt/suite-juviar-releases/<commit>,
 # copiada tal cual de Git. Los servicios leen siempre /opt/suite-juviar-releases/actual,
