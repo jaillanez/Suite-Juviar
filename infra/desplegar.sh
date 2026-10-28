@@ -156,7 +156,7 @@ if [[ $REF =~ ^[0-9a-f]{7,40}$ ]]; then
   [[ -n $("${GIT[@]}" for-each-ref --contains "$SHA" refs/remotes/origin/) ]] \
     || falla "la versión '$REF' no está en GitHub."
 else
-  SHA=$("${GIT[@]}" rev-parse --verify -q "origin/$REF^{commit}") || falla "no encontré la rama '$REF' en GitHub."
+  SHA=$("${GIT[@]}" rev-parse --verify -q "refs/remotes/origin/$REF^{commit}") || falla "no encontré la rama '$REF' en GitHub."
 fi
 CORTO=${SHA:0:7}
 NUEVA="$RELEASES/$CORTO"
