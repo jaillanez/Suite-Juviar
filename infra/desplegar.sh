@@ -172,7 +172,12 @@ if [[ ! -d $NUEVA ]]; then
   TMP=$(mktemp -d "$RELEASES/.tmp-$CORTO-XXXX")
   trap 'rm -rf "$TMP"' EXIT
   "${GIT[@]}" archive "$SHA" | (umask 022 && tar -x --no-same-owner --no-same-permissions -C "$TMP")
-  chmod 755 "$TMP"
+  # El contenido sale de una copia de «suite»: nada de dispositivos ni permisos especiales.
+  if [[ -n $(find "$TMP" \( -type b -o -type c -o -type p -o -type s -o -perm /6000 \) -print -quit) ]]; then
+    falla "la versión $CORTO trae archivos especiales; no se instala."
+  fi
+  chown -R root:root "$TMP"
+  chmod -R u=rwX,go=rX "$TMP"
   mv -T "$TMP" "$NUEVA"
   trap - EXIT
 fi
