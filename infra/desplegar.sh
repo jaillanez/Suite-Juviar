@@ -59,6 +59,9 @@ paso() { printf '\n==> %s\n' "$*"; }
 falla() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
 
 [[ $EUID -eq 0 ]] || falla "correlo como root."
+ESTE=$(readlink -f "${BASH_SOURCE[0]}")
+[[ $ESTE == "$RELEASES/"* ]] || falla "corré el script desde $ACTUAL/infra/desplegar.sh, no desde $FUENTE."
+[[ $(stat -c '%u %a' "$ESTE") =~ ^0\ [0-7][0-5][0-5]$ ]] || falla "el script no es de root o lo pueden modificar otros."
 exec 9>/run/suite-juviar-desplegar.lock
 flock -n 9 || falla "ya hay otra actualización en curso."
 
