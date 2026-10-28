@@ -59,6 +59,9 @@ paso() { printf '\n==> %s\n' "$*"; }
 falla() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
 
 [[ $EUID -eq 0 ]] || falla "correlo como root."
+ESTE=$(readlink -f "${BASH_SOURCE[0]}")
+[[ $ESTE == "$RELEASES/"* ]] || falla "corré el script desde $ACTUAL/infra/desplegar.sh, no desde $FUENTE."
+[[ $(stat -c '%u %a' "$ESTE") =~ ^0\ [0-7][0-5][0-5]$ ]] || falla "el script no es de root o lo pueden modificar otros."
 exec 9>/run/suite-juviar-desplegar.lock
 flock -n 9 || falla "ya hay otra actualización en curso."
 
@@ -169,7 +172,12 @@ if [[ ! -d $NUEVA ]]; then
   TMP=$(mktemp -d "$RELEASES/.tmp-$CORTO-XXXX")
   trap 'rm -rf "$TMP"' EXIT
   "${GIT[@]}" archive "$SHA" | (umask 022 && tar -x --no-same-owner --no-same-permissions -C "$TMP")
-  chmod 755 "$TMP"
+  # El contenido sale de una copia de «suite»: nada de dispositivos ni permisos especiales.
+  if [[ -n $(find "$TMP" \( -type b -o -type c -o -type p -o -type s -o -perm /6000 \) -print -quit) ]]; then
+    falla "la versión $CORTO trae archivos especiales; no se instala."
+  fi
+  chown -R root:root "$TMP"
+  chmod -R u=rwX,go=rX "$TMP"
   mv -T "$TMP" "$NUEVA"
   trap - EXIT
 fi
