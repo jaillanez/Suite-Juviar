@@ -25,6 +25,8 @@ COPY apps/api/pyproject.toml /opt/gestion/api/pyproject.toml
 COPY apps/api/src /opt/gestion/api/src
 RUN pip install /opt/gestion/api && rm -rf /opt/gestion/api
 COPY --from=pantallas /repo/apps/gestion/out /opt/gestion/pantallas
+# Datos de ejemplo para un servidor nuevo: docker exec suite-juviar-gestion python /opt/gestion/cargar_demostracion.py
+COPY apps/api/tools/cargar_demostracion.py /opt/gestion/cargar_demostracion.py
 RUN useradd --system --uid 10001 --home-dir /datos gestion
 USER gestion
 WORKDIR /datos
