@@ -28,6 +28,7 @@ def test_sin_habilitar_no_manda_nada(monkeypatch):
 def test_manda_el_mensaje_como_whatsapp_y_lee_respuestas(monkeypatch):
     monkeypatch.setenv("SJ_SIMULADOR_BOT_HABILITADO", "si")
     monkeypatch.setenv("SJ_BOT_WEBHOOK_URL", "http://bot/webhook/secreto")
+    monkeypatch.setenv("SJ_SIMULADOR_TELEFONOS", "5492645551234")
     enviados = []
 
     class Respuesta:
@@ -48,3 +49,18 @@ def test_manda_el_mensaje_como_whatsapp_y_lee_respuestas(monkeypatch):
     assert mensaje["from"] == "5492645551234"
     r = c.get("/simulador-bot/respuestas", headers=BODEGA, params={"telefono": "5492645551234"}).json()
     assert r[0]["texto"] == "Hola"
+
+
+def test_no_deja_hacerse_pasar_por_un_productor_real(monkeypatch):
+    monkeypatch.setenv("SJ_SIMULADOR_BOT_HABILITADO", "si")
+    monkeypatch.setenv("SJ_BOT_WEBHOOK_URL", "http://bot/webhook/secreto")
+    monkeypatch.setenv("SJ_SIMULADOR_TELEFONOS", "5492645551234")
+    monkeypatch.setattr(simulador_bot.httpx, "post", lambda *a, **k: (_ for _ in ()).throw(AssertionError))
+    c = cliente()
+    assert c.post("/simulador-bot/enviar", headers=BODEGA,
+                  json={"telefono": "5492640000000", "texto": "hola"}).status_code == 400
+    assert c.get("/simulador-bot/respuestas", headers=BODEGA,
+                 params={"telefono": "5492640000000"}).status_code == 400
+    assert c.get("/simulador-bot/telefonos", headers=BODEGA).json() == [{"telefono": "5492645551234"}]
+    monkeypatch.setenv("SJ_ENTORNO", "produccion")
+    assert c.get("/simulador-bot/estado", headers=BODEGA).json() == {"habilitado": False}

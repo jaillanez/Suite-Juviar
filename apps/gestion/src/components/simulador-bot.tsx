@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { ErrorVisible } from "./compartidos";
 
 type Mensaje = { id: string; de: "productor" | "bot"; texto: string; hora: string };
-type Telefono = { telefono: string; productores: number };
+type Telefono = { telefono: string };
 
 const hora = (valor?: string) => (valor ? new Date(valor) : new Date()).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
 
@@ -52,7 +52,7 @@ export function SimuladorBot() {
   if (!habilitado) return <section className="tarjeta"><h2>Simulador del bot</h2><p className="ayuda">El simulador no está habilitado en este servidor.</p></section>;
   return <section className="tarjeta simulador">
     <div className="titulo-fila"><div><h2>Simulador de WhatsApp</h2><p className="ayuda">Escribile al bot como si fueras el productor. Nada sale por WhatsApp de verdad: las respuestas aparecen acá. Probá con «Hola» o «Pedir turno».</p></div>
-      <label>Teléfono del productor<select value={telefono} onChange={(e) => setTelefono(e.target.value)}>{telefonos.map((t) => <option key={t.telefono} value={t.telefono}>{t.telefono} · {t.productores} {t.productores === 1 ? "cuenta" : "cuentas"}</option>)}</select></label></div>
+      <label>Teléfono de prueba<select value={telefono} onChange={(e) => setTelefono(e.target.value)}>{telefonos.map((t) => <option key={t.telefono} value={t.telefono}>{t.telefono}</option>)}</select></label></div>
     {error && <ErrorVisible mensaje={error} />}
     <div className="chat" aria-live="polite">{mensajes.length ? mensajes.map((m) => <div key={m.id} className={`burbuja burbuja-${m.de}`}><span>{m.texto}</span><small>{m.hora}</small></div>) : <p className="ayuda chat-vacio">Escribí un mensaje para empezar.</p>}<div ref={fondo} /></div>
     <form className="chat-envio" onSubmit={enviar}><input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Escribí un mensaje" maxLength={1000} aria-label="Mensaje" /><button className="primario" disabled={!texto.trim()}>Enviar</button></form>

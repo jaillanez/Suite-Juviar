@@ -3,7 +3,10 @@
 Manda al webhook del bot el mismo mensaje que mandaría WhatsApp y lee las respuestas que el
 bot guarda en modo simulado (consulta.bot_salida_simulada). Sólo funciona si el servidor lo
 habilita (SJ_SIMULADOR_BOT_HABILITADO=si), que se pone únicamente con el bot en modo
-simulado: así nunca dispara mensajes reales a productores.
+simulado: así nunca dispara mensajes reales a productores. Nunca en producción.
+
+Sólo se puede escribir como los teléfonos de prueba de SJ_SIMULADOR_TELEFONOS: nadie puede
+hacerse pasar por un productor real para ver sus entregas o anotarle turnos.
 """
 
 from __future__ import annotations
@@ -32,9 +35,21 @@ class Envio(BaseModel):
 
 def _habilitado() -> str:
     url = os.getenv("SJ_BOT_WEBHOOK_URL", "").strip()
-    if os.getenv("SJ_SIMULADOR_BOT_HABILITADO", "").strip().lower() not in {"1", "si", "true"} or not url:
+    entorno = (os.getenv("SJ_ENTORNO") or "").strip().lower()
+    if (os.getenv("SJ_SIMULADOR_BOT_HABILITADO", "").strip().lower() not in {"1", "si", "true"}
+            or not url or entorno in {"produccion", "production", "prod"}):
         raise HTTPException(503, "El simulador del bot no está habilitado en este servidor.")
     return url
+
+
+def telefonos_de_prueba() -> list[str]:
+    valor = os.getenv("SJ_SIMULADOR_TELEFONOS", "")
+    return [t.strip() for t in valor.split(",") if t.strip().isdigit() and 8 <= len(t.strip()) <= 20]
+
+
+def _exigir_de_prueba(telefono: str) -> None:
+    if telefono not in telefonos_de_prueba():
+        raise HTTPException(400, "Ese teléfono no es de prueba: el simulador sólo usa los teléfonos de prueba.")
 
 
 def payload_meta(telefono: str, texto: str, wamid: str, marca: int) -> dict:
@@ -63,16 +78,13 @@ def estado(_: Autorizado):
 @router.get("/telefonos")
 def telefonos(_: Autorizado):
     _habilitado()
-    return _leer(
-        """SELECT telefono, count(*) AS productores FROM consulta.telefono_productor
-            WHERE activo GROUP BY telefono ORDER BY telefono LIMIT 200""",
-        {},
-    )
+    return [{"telefono": t} for t in telefonos_de_prueba()]
 
 
 @router.post("/enviar")
 def enviar(envio: Envio, _: Autorizado):
     url = _habilitado()
+    _exigir_de_prueba(envio.telefono)
     wamid = f"sim.in.{uuid4().hex}"
     try:
         respuesta = httpx.post(url, json=payload_meta(envio.telefono, envio.texto, wamid, int(time.time())),
@@ -88,6 +100,7 @@ def enviar(envio: Envio, _: Autorizado):
 def respuestas(_: Autorizado, telefono: str = Query(pattern=r"^\d{8,20}$"),
                desde_id: int = Query(0, ge=0)):
     _habilitado()
+    _exigir_de_prueba(telefono)
     return _leer(
         """SELECT id, texto, creado_en FROM consulta.bot_salida_simulada
             WHERE telefono = %(telefono)s AND id > %(desde)s ORDER BY id LIMIT 50""",
