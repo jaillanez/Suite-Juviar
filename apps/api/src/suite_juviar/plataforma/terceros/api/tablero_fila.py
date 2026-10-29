@@ -104,3 +104,62 @@ def tablero(_: Autorizado):
     except psycopg.Error as exc:
         raise HTTPException(503, "No se pudo leer la fila de camiones.") from exc
     return armar_tablero([dict(f) for f in filas], hoy, sedes())
+
+
+# --- Datos reales para Recepción (misma base y mismo rol de sólo lectura) ------------------
+recepcion = APIRouter(prefix="/recepcion-datos", tags=["recepción"])
+PuedeRecibir = Annotated[object, Depends(exigir_permiso("recepcion.romaneo.crear"))]
+
+
+def _leer(consulta: str, parametros: dict[str, Any]) -> list[dict[str, Any]]:
+    if not _dsn:
+        raise HTTPException(503, "Los datos de la fila no están conectados.")
+    try:
+        with psycopg.connect(_dsn, row_factory=dict_row, connect_timeout=5) as cn:
+            return [dict(f) for f in cn.execute(consulta, parametros).fetchall()]
+    except psycopg.Error as exc:
+        raise HTTPException(503, "No se pudieron leer los datos de la fila.") from exc
+
+
+@recepcion.get("/productores")
+def buscar_productores(_: PuedeRecibir, q: str = ""):
+    texto = q.strip()
+    if len(texto) < 2:
+        return []
+    digitos = "".join(c for c in texto if c.isdigit())
+    filas = _leer(
+        """SELECT clientecuit, razonsocial, codigos, ultima_entrega FROM fila.productor
+            WHERE razonsocial ILIKE %(nombre)s OR (%(cuit)s <> '' AND clientecuit LIKE %(cuit)s)
+               OR %(texto)s = ANY(codigos)
+            ORDER BY ultima_entrega DESC NULLS LAST, razonsocial LIMIT 15""",
+        {"nombre": f"%{texto}%", "cuit": f"{digitos}%" if len(digitos) >= 3 else "", "texto": texto.upper()},
+    )
+    return [{"cuit": f["clientecuit"], "razon_social": f["razonsocial"], "codigos": f["codigos"],
+             "ultima_entrega": f["ultima_entrega"]} for f in filas]
+
+
+@recepcion.get("/variedades")
+def variedades(_: PuedeRecibir):
+    filas = _leer(
+        """SELECT variedad, count(*) AS n FROM consulta.descarga_publica
+            WHERE variedad IS NOT NULL AND btrim(variedad) <> ''
+            GROUP BY variedad ORDER BY n DESC, variedad LIMIT 80""",
+        {},
+    )
+    return [f["variedad"] for f in filas]
+
+
+@recepcion.get("/camiones")
+def camiones_en_fila(_: PuedeRecibir, sede: str = "chimbas"):
+    if sede not in sedes():
+        raise HTTPException(404, "Sede inexistente.")
+    filas = _leer(
+        """SELECT v.id, v.numero_dia, v.patente, v.patente_acoplado, v.clientecuit, v.chofer_dni,
+                  v.chofer_nombre, v.productor_texto, v.variedad_declarada, v.estado,
+                  p.razonsocial
+             FROM fila.viaje v LEFT JOIN fila.productor p ON p.clientecuit = v.clientecuit
+            WHERE v.sede = %(sede)s AND v.estado IN ('en_espera', 'llamado', 'en_bascula')
+            ORDER BY v.estado = 'en_espera', v.numero_dia NULLS LAST""",
+        {"sede": sede},
+    )
+    return [{**f, "productor": f["razonsocial"] or f["productor_texto"]} for f in filas]

@@ -10,7 +10,8 @@ que no existe.
 
 from __future__ import annotations
 
-from dataclasses import replace
+import json
+from dataclasses import asdict, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import ClassVar
@@ -41,7 +42,11 @@ class CatalogoYAML:
         ruta_matriz: str | Path,
         ruta_vida_util: str | Path | None = None,
         ruta_items: str | Path | None = None,
+        ruta_cambios_matriz: str | Path | None = None,
     ) -> None:
+        # Los cambios hechos desde Gestión se guardan aparte del YAML base y se reaplican al
+        # arrancar: así no se pierden al reiniciar ni al instalar una versión nueva.
+        self._ruta_cambios = Path(ruta_cambios_matriz) if ruta_cambios_matriz else None
         self._ruta_catalogo = Path(ruta_catalogo)
         self._ruta_matriz = Path(ruta_matriz)
         self._ruta_vida_util = Path(ruta_vida_util) if ruta_vida_util else None
@@ -64,6 +69,34 @@ class CatalogoYAML:
         self._cargar_catalogo()
         self._cargar_items()
         self._cargar_matriz()
+        self._cargar_cambios_matriz()
+
+    def _cargar_cambios_matriz(self) -> None:
+        if not self._ruta_cambios or not self._ruta_cambios.exists():
+            return
+        datos = json.loads(self._ruta_cambios.read_text(encoding="utf-8"))
+        for puesto, requisitos in (datos.get("puestos") or {}).items():
+            self._puestos[puesto] = [RequisitoEPP(**r) for r in requisitos]
+        self._historial_matriz = list(datos.get("historial") or [])
+        if datos.get("estado"):
+            self._estado_matriz = datos["estado"]
+        self._validacion_matriz = datos.get("validacion")
+        self._editados = set((datos.get("puestos") or {}).keys())
+
+    def _guardar_cambios_matriz(self) -> None:
+        if not self._ruta_cambios:
+            return
+        editados = getattr(self, "_editados", set())
+        datos = {
+            "puestos": {p: [asdict(r) for r in self._puestos.get(p, [])] for p in sorted(editados)},
+            "historial": self._historial_matriz,
+            "estado": self._estado_matriz,
+            "validacion": self._validacion_matriz,
+        }
+        self._ruta_cambios.parent.mkdir(parents=True, exist_ok=True)
+        temporal = self._ruta_cambios.with_suffix(".tmp")
+        temporal.write_text(json.dumps(datos, ensure_ascii=False, indent=1), encoding="utf-8")
+        temporal.replace(self._ruta_cambios)
 
     @property
     def estado_matriz(self) -> str:
@@ -301,6 +334,8 @@ class CatalogoYAML:
         cambio = {"puesto": puesto, "autor": autor, "momento": momento,
                   "elementos": [r.codigo for r in requisitos]}
         self._historial_matriz.append(cambio)
+        self._editados = getattr(self, "_editados", set()) | {puesto}
+        self._guardar_cambios_matriz()
         return cambio
 
     def validar_matriz(self, actor: str) -> dict[str, str]:
@@ -308,6 +343,7 @@ class CatalogoYAML:
         self._validacion_matriz = {
             "firmada_por": actor, "firmada_en": datetime.now(UTC).isoformat()
         }
+        self._guardar_cambios_matriz()
         return self._validacion_matriz
 
     @property

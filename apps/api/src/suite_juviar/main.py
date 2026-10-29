@@ -34,6 +34,7 @@ from suite_juviar.plataforma.terceros.api.contactos import router as contactos_r
 from suite_juviar.plataforma.terceros.api.guardias import configurar as configurar_guardias
 from suite_juviar.plataforma.terceros.api.guardias import router as guardias_router
 from suite_juviar.plataforma.terceros.api.tablero_fila import configurar as configurar_tablero_fila
+from suite_juviar.plataforma.terceros.api.tablero_fila import recepcion as recepcion_datos_router
 from suite_juviar.plataforma.terceros.api.tablero_fila import router as tablero_fila_router
 from suite_juviar.plataforma.terceros.application.contactos import GestionarContactos
 from suite_juviar.plataforma.terceros.infrastructure.contactos_postgres import (
@@ -74,6 +75,7 @@ app.include_router(contactos_router, prefix="/api/v1")
 app.include_router(guardias_router, prefix="/api/v1")
 configurar_tablero_fila(os.getenv("SJ_FILA_DSN_DMZ_LECTURA", "").strip())
 app.include_router(tablero_fila_router, prefix="/api/v1")
+app.include_router(recepcion_datos_router, prefix="/api/v1")
 rrhh_epp = construir_rrhh_epp()
 app.include_router(crear_rrhh_epp_router(rrhh_epp), prefix="/api/v1/rrhh-epp")
 for nombre, router in construir_routers(rrhh_epp).items():
