@@ -837,3 +837,25 @@ th button {
 .ficha { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 20px; margin: 0; }
 .ficha dt { font-size: .8rem; color: var(--muted); }
 .ficha dd { margin: 2px 0 0; font-weight: 600; }
+.tablero-fila { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start; margin-bottom: 16px; }
+.columna-bodega { display: grid; gap: 12px; }
+.columna-bodega header h2 { margin: 0; }
+.contadores-fila { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted); font-size: .9rem; }
+.contadores-fila strong { color: var(--tinta); font-size: 1.1rem; }
+.lista-camiones { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.camion { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--borde); border-radius: 10px; background: #fff; }
+.camion-llamado { border-color: var(--verde); box-shadow: inset 4px 0 0 var(--verde); }
+.camion-descargado { opacity: .72; }
+.camion-cabecera { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.camion-productor { color: #35423c; }
+.camion small { color: var(--muted); }
+.estado-camion { font-size: .78rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #eef3ef; color: #35423c; white-space: nowrap; }
+.estado-llamado { background: var(--verde); color: #fff; }
+.estado-en_bascula { background: #e6eef6; color: #245e83; }
+.camion-uva { display: grid; gap: 4px; margin: 0; }
+.camion-uva div { display: flex; gap: 6px; flex-wrap: wrap; }
+.camion-uva dt { color: var(--muted); font-size: .85rem; }
+.camion-uva dt::after { content: ":"; }
+.camion-uva dd { margin: 0; font-weight: 600; }
+.resumen-produccion { margin-top: 24px; display: grid; gap: 12px; }
+.resumen-produccion h2 { margin: 0; font-size: 1.1rem; }

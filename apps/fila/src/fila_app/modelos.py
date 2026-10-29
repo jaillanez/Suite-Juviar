@@ -1,10 +1,26 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, BeforeValidator, Field
+from pydantic_core import PydanticCustomError
+
+MAX_VARIEDAD = 60
+
+
+def normalizar_variedad(valor: Any) -> str | None:
+    """Variedad declarada: texto libre recortado a 60 caracteres; vacío equivale a nada."""
+    if valor is None:
+        return None
+    if not isinstance(valor, str):
+        raise PydanticCustomError("variedad_tipo", "la variedad tiene que ser texto")
+    texto = " ".join(valor.split())[:MAX_VARIEDAD].strip()
+    return texto or None
+
+
+VariedadDeclarada = Annotated[str | None, BeforeValidator(normalizar_variedad)]
 
 
 class AltaPublica(BaseModel):
@@ -12,6 +28,7 @@ class AltaPublica(BaseModel):
     patente: str = Field(min_length=5, max_length=20)
     productor: str = Field(min_length=2, max_length=120)
     telefono: str | None = Field(default=None, pattern=r"^[0-9]{8,20}$")
+    variedad: VariedadDeclarada = None
     id_cliente: UUID
 
 
@@ -21,6 +38,7 @@ class Confirmacion(BaseModel):
     clientecodigo: str | None = Field(default=None, max_length=60)
     declara_organica: bool = False
     productor_revision_manual: bool = False
+    variedad: VariedadDeclarada = None
     momento_cliente: datetime
 
 
