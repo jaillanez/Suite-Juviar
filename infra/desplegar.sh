@@ -144,7 +144,8 @@ cambiar_a() {  # $1 = carpeta de la versión nueva
 }
 
 gestion_instalada() { [[ -f $GESTION_ENV ]]; }
-gestion_version() { docker inspect -f '{{.Config.Image}}' "$GESTION_CONTENEDOR" 2>/dev/null | sed 's/.*://'; }
+# Vacío si todavía no hay contenedor (primera instalación): no tiene que cortar el script.
+gestion_version() { docker inspect -f '{{.Config.Image}}' "$GESTION_CONTENEDOR" 2>/dev/null | sed 's/.*://' || true; }
 
 construir_gestion() {  # $1 = carpeta de la versión, $2 = commit corto
   gestion_instalada || return 0
