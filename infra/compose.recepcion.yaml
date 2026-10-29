@@ -38,6 +38,17 @@ services:
       retries: 20
     mem_limit: 512m
     cpus: 0.5
+    # tablero: red exclusiva con Gestión (lectura del tablero de la fila). Sin suite-db.
+    networks:
+      default: {}
+      tablero:
+        aliases: [dmz-db-tablero]
+
+networks:
+  # Se crea una vez: docker network create --internal suite-juviar-tablero
+  tablero:
+    external: true
+    name: suite-juviar-tablero
 
 volumes:
   suite_data:
