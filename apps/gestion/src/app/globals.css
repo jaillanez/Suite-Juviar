@@ -859,3 +859,9 @@ th button {
 .camion-uva dd { margin: 0; font-weight: 600; }
 .resumen-produccion { margin-top: 24px; display: grid; gap: 12px; }
 .resumen-produccion h2 { margin: 0; font-size: 1.1rem; }
+.empresas-usuario { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; border: 1px solid #bfc9c2; border-radius: 8px; padding: 8px 12px; margin: 0; }
+.empresas-usuario legend { font-weight: 650; color: #35423c; padding: 0 4px; }
+.empresas-usuario label { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.empresas-usuario input { min-height: 0; width: 18px; height: 18px; }
+.selector-empresa select { font-weight: 750; min-height: 38px; }
+.solo-lectores { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

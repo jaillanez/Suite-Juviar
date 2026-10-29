@@ -1,6 +1,6 @@
 """Crea el primer usuario de Gestión desde la consola del servidor.
 
-    python -m suite_juviar.plataforma.identidad.api.consola correo@empresa "Nombre" SUPERADMIN ENAV
+    python -m suite_juviar.plataforma.identidad.api.consola correo@empresa "Nombre" SUPERADMIN ENAV,JUBIAR
 
 La contraseña se pide sin mostrarla en pantalla. Los demás usuarios se crean
 desde la pantalla Usuarios de Gestión.
@@ -30,7 +30,9 @@ def principal(argumentos: list[str]) -> int:
         print("Las contraseñas no coinciden.", file=sys.stderr)
         return 1
     try:
-        usuario = servicio.crear_usuario("consola", email, nombre, perfil, empresa, clave)
+        usuario = servicio.crear_usuario(
+            "consola", email, nombre, perfil, empresa.split(","), clave
+        )
     except DatosDeUsuarioInvalidos as exc:
         print(exc, file=sys.stderr)
         return 1

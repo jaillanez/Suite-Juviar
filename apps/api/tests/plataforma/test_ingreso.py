@@ -35,7 +35,7 @@ def entorno(monkeypatch, tmp_path):
 
 
 def alta(servicio, email, perfil, cambiar=False):
-    usuario = servicio.crear_usuario("test", email, "Nombre", perfil, "ENAV", CLAVE)
+    usuario = servicio.crear_usuario("test", email, "Nombre", perfil, ["ENAV"], CLAVE)
     if not cambiar:
         guardada = servicio.repositorio.obtener_por_email(usuario.email)[1]
         servicio.repositorio.cambiar_clave(usuario.id, guardada, debe_cambiar=False)
@@ -101,19 +101,19 @@ def test_solo_el_superadministrador_gestiona_usuarios(entorno):
     entrar(medica, "medica@enav.com")
     assert medica.get("/api/v1/usuarios").status_code == 403
     assert medica.post("/api/v1/usuarios", json={
-        "email": "x@enav.com", "nombre": "X", "perfil": "SUPERADMIN", "empresa": "ENAV",
+        "email": "x@enav.com", "nombre": "X", "perfil": "SUPERADMIN", "empresas": ["ENAV"],
         "clave_inicial": CLAVE,
     }).status_code == 403
 
     admin = TestClient(app)
     entrar(admin, "admin@enav.com")
     creado = admin.post("/api/v1/usuarios", json={
-        "email": "compras@enav.com", "nombre": "Compras", "perfil": "COMPRAS", "empresa": "JUBIAR",
+        "email": "compras@enav.com", "nombre": "Compras", "perfil": "COMPRAS", "empresas": ["JUBIAR"],
         "clave_inicial": CLAVE,
     })
     assert creado.status_code == 200 and creado.json()["debe_cambiar_clave"] is True
     repetido = admin.post("/api/v1/usuarios", json={
-        "email": "compras@enav.com", "nombre": "Otro", "perfil": "COMPRAS", "empresa": "ENAV",
+        "email": "compras@enav.com", "nombre": "Otro", "perfil": "COMPRAS", "empresas": ["ENAV"],
         "clave_inicial": CLAVE,
     })
     assert repetido.status_code == 400
@@ -130,11 +130,11 @@ def test_desactivar_un_usuario_corta_su_sesion(entorno):
     assert medica.get("/api/v1/salud-protegida").status_code == 200
     admin = TestClient(app)
     entrar(admin, "admin@enav.com")
-    cambios = {"nombre": "Nombre", "perfil": "MEDICO", "empresa": "ENAV", "activo": False}
+    cambios = {"nombre": "Nombre", "perfil": "MEDICO", "empresas": ["ENAV"], "activo": False}
     assert admin.put(f"/api/v1/usuarios/{medica_u.id}", json=cambios).status_code == 200
     assert medica.get("/api/v1/salud-protegida").status_code == 401
     assert entrar(medica, "medica@enav.com").status_code == 401
-    propio = {"nombre": "Yo", "perfil": "SUPERADMIN", "empresa": "ENAV", "activo": False}
+    propio = {"nombre": "Yo", "perfil": "SUPERADMIN", "empresas": ["ENAV"], "activo": False}
     assert admin.put(f"/api/v1/usuarios/{admin_u.id}", json=propio).status_code == 400
 
 
@@ -165,3 +165,30 @@ def test_la_bitacora_no_guarda_texto_arbitrario_como_correo(entorno):
     with pytest.raises(IngresoInvalido):
         servicio.ingresar("<script>" + "x" * 500, "algo", origen="10.0.0.9")
     assert servicio.repositorio.eventos()[0]["actor"] == "(correo no válido)"
+
+
+def test_un_usuario_puede_tener_las_dos_empresas_y_cambiar_entre_ellas(entorno):
+    servicio, app = entorno
+    alta(servicio, "admin@enav.com", "SUPERADMIN")
+    admin = TestClient(app)
+    entrar(admin, "admin@enav.com")
+    creado = admin.post("/api/v1/usuarios", json={
+        "email": "ambas@enav.com", "nombre": "Ambas", "perfil": "RRHH",
+        "empresas": ["jubiar", "ENAV"], "clave_inicial": CLAVE,
+    })
+    assert creado.status_code == 200 and creado.json()["empresas"] == ["ENAV", "JUBIAR"]
+    sin_empresa = admin.post("/api/v1/usuarios", json={
+        "email": "nada@enav.com", "nombre": "Nada", "perfil": "RRHH", "empresas": [],
+        "clave_inicial": CLAVE,
+    })
+    assert sin_empresa.status_code == 422
+
+    solo_enav = alta(servicio, "solo@enav.com", "RRHH")
+    persona = TestClient(app)
+    yo = entrar(persona, "solo@enav.com").json()
+    assert yo["empresa_sesion"] == "ENAV"
+    assert persona.put("/api/v1/ingreso/empresa", json={"empresa": "JUBIAR"}).status_code == 400
+    cambios = {"nombre": "Solo", "perfil": "RRHH", "empresas": ["ENAV", "JUBIAR"], "activo": True}
+    assert admin.put(f"/api/v1/usuarios/{solo_enav.id}", json=cambios).status_code == 200
+    cambio = persona.put("/api/v1/ingreso/empresa", json={"empresa": "JUBIAR"})
+    assert cambio.status_code == 200 and cambio.json()["empresa_sesion"] == "JUBIAR"

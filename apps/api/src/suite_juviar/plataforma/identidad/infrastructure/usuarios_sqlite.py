@@ -62,7 +62,7 @@ class UsuariosSQLite:
     def _armar(fila: sqlite3.Row) -> Usuario:
         return Usuario(
             id=fila["id"], email=fila["email"], nombre=fila["nombre"], perfil=fila["perfil"],
-            empresa=fila["empresa"], activo=bool(fila["activo"]),
+            empresas=tuple(fila["empresa"].split(",")), activo=bool(fila["activo"]),
             debe_cambiar_clave=bool(fila["debe_cambiar_clave"]),
             creado_en=datetime.fromisoformat(fila["creado_en"]),
         )
@@ -72,7 +72,7 @@ class UsuariosSQLite:
             try:
                 self._cn.execute(
                     "INSERT INTO usuario VALUES (?,?,?,?,?,?,?,?,?)",
-                    (usuario.id, usuario.email, usuario.nombre, usuario.perfil, usuario.empresa,
+                    (usuario.id, usuario.email, usuario.nombre, usuario.perfil, ",".join(usuario.empresas),
                      clave_cifrada, int(usuario.activo), int(usuario.debe_cambiar_clave),
                      usuario.creado_en.isoformat()),
                 )
@@ -100,7 +100,7 @@ class UsuariosSQLite:
             self._cn.execute(
                 "UPDATE usuario SET nombre=?, perfil=?, empresa=?, activo=?, debe_cambiar_clave=? "
                 "WHERE id=?",
-                (usuario.nombre, usuario.perfil, usuario.empresa, int(usuario.activo),
+                (usuario.nombre, usuario.perfil, ",".join(usuario.empresas), int(usuario.activo),
                  int(usuario.debe_cambiar_clave), usuario.id),
             )
             self._cn.commit()
