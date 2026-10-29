@@ -104,8 +104,7 @@ class GestionarSalud:
             meses *= 2
         preliminar = self.fuente_laboral.simulada
         return {"aplica": True, "estado": "REFERENCIA" if preliminar else "CALCULADO",
-                "meses_remunerados": meses, "antiguedad_anios": round(antiguedad_anios, 1),
-                "cargas_familia": cargas_familia,
+                "meses_remunerados": meses,
                 "preliminar": preliminar, "leyenda": (
                     "Preliminar: antigüedad y cargas de familia simuladas, sin conexión a Nexus"
                     if preliminar else "Datos laborales verificados en Nexus"),

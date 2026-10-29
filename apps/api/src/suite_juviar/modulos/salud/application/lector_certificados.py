@@ -12,10 +12,18 @@ from io import BytesIO
 from pathlib import Path
 
 
-def analizar_certificado(nombre: str, contenido: bytes) -> dict[str, object]:
-    clave = os.getenv("SJ_SALUD_IA_API_KEY", "").strip()
-    if clave and nombre.lower().endswith((".jpg", ".jpeg", ".png", ".webp")):
-        return _leer_con_deepseek(nombre, contenido, clave)
+def usaria_ia_externa(nombre: str) -> bool:
+    """Indica si este archivo se enviaría a DeepSeek (fuera de la empresa)."""
+    return bool(os.getenv("SJ_SALUD_IA_API_KEY", "").strip()) and nombre.lower().endswith(
+        (".jpg", ".jpeg", ".png", ".webp")
+    )
+
+
+def analizar_certificado(
+    nombre: str, contenido: bytes, *, permitir_ia_externa: bool = True,
+) -> dict[str, object]:
+    if permitir_ia_externa and usaria_ia_externa(nombre):
+        return _leer_con_deepseek(nombre, contenido, os.getenv("SJ_SALUD_IA_API_KEY", "").strip())
     texto = ""
     if nombre.lower().endswith(".pdf"):
         try:
@@ -59,6 +67,7 @@ def analizar_certificado(nombre: str, contenido: bytes) -> dict[str, object]:
 
 
 def _leer_con_deepseek(nombre: str, contenido: bytes, clave: str) -> dict[str, object]:
+    """Envía la imagen del certificado a DeepSeek: el dato de salud SALE de la empresa."""
     extension = Path(nombre).suffix.lower()
     mime = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}[extension]
     instrucciones = """Leé este certificado médico manuscrito en español. No inventes datos ilegibles.
@@ -124,7 +133,7 @@ El resumen debe ser breve y útil para novedades de liquidación de sueldos."""
 
 
 def _leer_imagen(contenido: bytes, extension: str) -> str:
-    """OCR local: el certificado no sale del equipo ni se envía a una API."""
+    """OCR local con tesseract: esta lectura no envía el archivo fuera del servidor."""
     ruta = None
     try:
         with tempfile.NamedTemporaryFile(suffix=extension, delete=False) as archivo:

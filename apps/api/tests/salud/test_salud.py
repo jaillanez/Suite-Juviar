@@ -147,3 +147,63 @@ def test_control_negativo_detecta_si_se_aflojan_permisos_de_rrhh(monkeypatch):
     monkeypatch.setitem(PERMISOS_POR_PERFIL, "RRHH", permisos_mutados)
     assert cliente.get("/catalogo", headers={"X-Perfil-Simulado": "RRHH"}).status_code == 200
     assert cliente.post("/certificados", json=cuerpo(), headers={"X-Perfil-Simulado": "RRHH"}).status_code == 200
+
+
+class _PersonasDePrueba:
+    def buscar_texto(self, texto):
+        from suite_juviar.modulos.legajo.domain.modelos import PersonaLegajo
+        return [PersonaLegajo("10", "Pérez, Ana", "ENAV", "Bodega", "Operaria")]
+
+
+def test_buscar_personas_exige_permiso_propio_y_devuelve_solo_lo_necesario(monkeypatch):
+    s = GestionarSalud(
+        CatalogoDiagnosticoSimulado(), SaludMemoria(),
+        AdjuntosSaludCifradosMemoria(b"0" * 32), FuenteLaboralSimulada(), _PersonasDePrueba(),
+    )
+    cliente = TestClient(crear_app(s), headers={"X-Perfil-Simulado": "MEDICO"})
+    respuesta = cliente.get("/personas", params={"q": "Pérez"})
+    assert respuesta.status_code == 200
+    assert respuesta.json() == [{
+        "legajo": "10", "nombre_completo": "Pérez, Ana",
+        "empresa": "ENAV", "sector": "Bodega", "puesto": "Operaria",
+    }]
+    sin_busqueda = PERMISOS_POR_PERFIL["MEDICO"] - {"salud.persona.buscar"}
+    monkeypatch.setitem(PERMISOS_POR_PERFIL, "MEDICO", sin_busqueda)
+    assert cliente.get("/personas", params={"q": "Pérez"}).status_code == 403
+
+
+def test_articulo_208_no_expone_antiguedad_ni_cargas_de_familia():
+    aviso = servicio().aviso_articulo_208("10")
+    assert "meses_remunerados" in aviso
+    assert "antiguedad_anios" not in aviso and "cargas_familia" not in aviso
+
+
+def test_ia_externa_se_registra_y_en_produccion_requiere_autorizacion(monkeypatch):
+    from suite_juviar.modulos.salud.application import lector_certificados
+
+    enviados = []
+    monkeypatch.setenv("SJ_SALUD_IA_API_KEY", "clave-de-prueba")
+    monkeypatch.setattr(
+        lector_certificados, "_leer_con_deepseek",
+        lambda nombre, contenido, clave: enviados.append(nombre) or {"motor": "deepseek"},
+    )
+    monkeypatch.setattr(lector_certificados, "_leer_imagen", lambda contenido, extension: "")
+    imagen = {"adjunto_nombre": "certificado.jpg",
+              "adjunto_base64": base64.b64encode(b"imagen").decode()}
+
+    s = servicio()
+    cliente = TestClient(crear_app(s), headers={"X-Perfil-Simulado": "MEDICO"})
+    assert cliente.post("/certificados/analizar", json=imagen).status_code == 200
+    assert enviados == ["certificado.jpg"]
+    assert s.repositorio.listar_auditoria()[-1].accion == "ENVIO_CERTIFICADO_A_IA_EXTERNA_DEEPSEEK"
+
+    s.catalogo.simulada = False
+    produccion = TestClient(crear_app(s, "produccion"), headers={"X-Perfil-Simulado": "MEDICO"})
+    assert produccion.post("/certificados/analizar", json=imagen).status_code == 200
+    assert enviados == ["certificado.jpg"]
+    assert s.repositorio.listar_auditoria()[-1].accion == "ANALISIS_CERTIFICADO"
+
+    monkeypatch.setenv("SJ_SALUD_IA_EXTERNA_AUTORIZADA", "si")
+    autorizada = TestClient(crear_app(s, "produccion"), headers={"X-Perfil-Simulado": "MEDICO"})
+    assert autorizada.post("/certificados/analizar", json=imagen).status_code == 200
+    assert enviados == ["certificado.jpg", "certificado.jpg"]
