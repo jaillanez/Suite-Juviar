@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Empresa, gruposMenu, nombres, puedeEntrar, Perfil, perfiles, Seccion } from "@/lib/acceso";
 import { api, ErrorApi } from "@/lib/api";
 import { UsuariosGestion } from "./usuarios-gestion";
+import { ResumenFila, TableroFila } from "./tablero-fila";
 import { ErrorVisible } from "./compartidos";
 import { EppGestion } from "./epp-gestion";
 import { SeleccionGestion } from "./seleccion-gestion";
@@ -87,8 +88,8 @@ function Encabezado({ titulo, descripcion }: { titulo: string; descripcion: stri
   return <header className="encabezado"><div><h1>{titulo}</h1><p>{descripcion}</p></div></header>;
 }
 
-function Inicio({ empresa, nombre }: { empresa: Empresa; nombre?: string }) {
-  return <><Encabezado titulo={`Buen día, ${nombre ? nombre.split(" ")[0] : empresa}`} descripcion="Estado general de las operaciones habilitadas para tu perfil." /><div className="metricas"><article><span>Empresa</span><strong>{empresa}</strong><small>Contexto aplicado a toda la sesión</small></article><article><span>Conexión</span><strong>Activa</strong><small>API interna disponible</small></article><article><span>Perfil</span><strong>Habilitado</strong><small>Permisos aplicados a la sesión</small></article></div></>;
+function Inicio({ empresa, nombre, perfil }: { empresa: Empresa; nombre?: string; perfil: Perfil }) {
+  return <><Encabezado titulo={`Buen día, ${nombre ? nombre.split(" ")[0] : empresa}`} descripcion="Estado general de las operaciones habilitadas para tu perfil." /><div className="metricas"><article><span>Empresa</span><strong>{empresa}</strong><small>Contexto aplicado a toda la sesión</small></article><article><span>Conexión</span><strong>Activa</strong><small>API interna disponible</small></article><article><span>Perfil</span><strong>Habilitado</strong><small>Permisos aplicados a la sesión</small></article></div>{puedeEntrar(perfil, "fila") && <ResumenFila />}</>;
 }
 
 function Epp() {
@@ -129,7 +130,7 @@ function Produccion({ area }: { area: "recepcion" | "fila" | "bot" }) {
     fila: ["Fila de camiones", "Llamados, confirmaciones y pantalla de espera del portón."],
     bot: ["Consultas de productores", "Estadísticas, reportes y simulador del bot."],
   } as const;
-  return <><Encabezado titulo={textos[area][0]} descripcion={textos[area][1]} /><ProduccionGestion area={area} /></>;
+  return <><Encabezado titulo={textos[area][0]} descripcion={textos[area][1]} />{area === "fila" && <TableroFila />}<ProduccionGestion area={area} /></>;
 }
 
 function Configuracion({ sesion, guardar }: { sesion: { empresa: Empresa; perfil: Perfil }; guardar: (empresa: Empresa, perfil: Perfil) => void }) {
@@ -162,7 +163,7 @@ function Pendiente({ seccion }: { seccion: Seccion }) { return <><Encabezado tit
 function Contenido({ seccion, sesion, guardar, actualizar }: { seccion: Seccion; sesion: SesionGestion; guardar: (empresa: Empresa, perfil: Perfil) => void; actualizar: (yo: Yo) => void }) {
   if (seccion === "usuarios") return <Usuarios />;
   if (seccion === "configuracion" && sesion.real) return <ConfiguracionReal sesion={sesion} actualizar={actualizar} />;
-  if (seccion === "inicio") return <Inicio empresa={sesion.empresa} nombre={sesion.nombre} />; if (seccion === "produccion") return <Produccion area="recepcion" />; if (seccion === "fila") return <Produccion area="fila" />; if (seccion === "bot") return <Produccion area="bot" />; if (seccion === "epp") return <Epp />; if (seccion === "analitica") return <Analitica />; if (seccion === "seleccion") return <Seleccion />; if (seccion === "capacitaciones") return <Capacitaciones />; if (seccion === "legajo") return <Legajo />; if (seccion === "salud") return <Salud />; if (seccion === "turnos") return <Turnos />; if (seccion === "contactos") return <Contactos />; if (seccion === "configuracion") return <Configuracion sesion={sesion} guardar={guardar} />; return <Pendiente seccion={seccion} />;
+  if (seccion === "inicio") return <Inicio empresa={sesion.empresa} nombre={sesion.nombre} perfil={sesion.perfil} />; if (seccion === "produccion") return <Produccion area="recepcion" />; if (seccion === "fila") return <Produccion area="fila" />; if (seccion === "bot") return <Produccion area="bot" />; if (seccion === "epp") return <Epp />; if (seccion === "analitica") return <Analitica />; if (seccion === "seleccion") return <Seleccion />; if (seccion === "capacitaciones") return <Capacitaciones />; if (seccion === "legajo") return <Legajo />; if (seccion === "salud") return <Salud />; if (seccion === "turnos") return <Turnos />; if (seccion === "contactos") return <Contactos />; if (seccion === "configuracion") return <Configuracion sesion={sesion} guardar={guardar} />; return <Pendiente seccion={seccion} />;
 }
 
 function AccesoDenegado({ perfil, seccion }: { perfil: Perfil; seccion: Seccion }) {

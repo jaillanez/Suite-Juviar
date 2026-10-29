@@ -20,7 +20,7 @@ PERMISOS_POR_PERFIL: dict[str, frozenset[str]] = {
     }),
     "CAMPO": frozenset({"suite.acceder", "recepcion.romaneo.crear"}),
     "BASCULA": frozenset({"suite.acceder", "recepcion.romaneo.crear"}),
-    "BODEGA": frozenset({"suite.acceder", "fila.contactos.gestionar"}),
+    "BODEGA": frozenset({"suite.acceder", "fila.contactos.gestionar", "fila.tablero.leer"}),
     "RRHH": frozenset({
         "suite.acceder", "epp.catalogo.leer", "epp.entrega.leer", "epp.stock.leer",
         "seleccion.gestionar", "capacitacion.gestionar", "legajo.leer", "legajo.adjuntos.gestionar",
