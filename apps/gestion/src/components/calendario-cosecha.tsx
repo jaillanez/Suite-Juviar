@@ -58,7 +58,7 @@ export function CalendarioCosecha() {
       form.reset(); setProductor(null); setBusqueda(""); await cargar();
     } catch (x) { setErrorVentana(mensaje(x)); } finally { setGuardando(false); }
   }
-  async function cancelar(t: Turno) { setErrorVentana(""); try { await api(`turnos-bodega/${t.id}/cancelar`, { method: "POST" }); await cargar(); } catch (x) { setErrorVentana(mensaje(x)); } }
+  async function cancelar(t: Turno) { setErrorVentana(""); try { await api(`turnos-bodega/${t.id}/cancelar?sede=${sede}`, { method: "POST" }); await cargar(); } catch (x) { setErrorVentana(mensaje(x)); } }
 
   return <>
     {error && <ErrorVisible mensaje={error} />}

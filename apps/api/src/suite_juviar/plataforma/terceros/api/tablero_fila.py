@@ -273,6 +273,7 @@ def anotar_turno(entrada: TurnoEntrada, sesion: GestionaTurnos):
 
 
 @turnos.post("/{turno_id}/cancelar")
-def cancelar_turno(turno_id: int, sesion: GestionaTurnos):
-    return _escribir("SELECT * FROM fila.cancelar_turno(%(id)s, %(actor)s)",
-                     {"id": turno_id, "actor": sesion.actor})
+def cancelar_turno(turno_id: int, sesion: GestionaTurnos, sede: str):
+    _sede_valida(sede)
+    return _escribir("SELECT * FROM fila.cancelar_turno(%(id)s, %(sede)s, %(actor)s)",
+                     {"id": turno_id, "sede": sede, "actor": sesion.actor})
