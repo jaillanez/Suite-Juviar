@@ -834,6 +834,16 @@ th button {
 .fila-elegible:focus-visible { outline: 3px solid #72a8d5; outline-offset: -3px; }
 .modal-ancho { width: min(760px, 100%); max-height: calc(100vh - 40px); overflow: auto; display: grid; gap: 14px; }
 .modal-ancho h2, .modal-ancho h3 { margin: 0; }
+.modal-chica { width: min(460px, 100%); }
+.modal-amplia { width: min(1180px, 100%); }
+.modal-ancho .visor { margin-top: 0; height: min(620px, 70vh); }
+.modal-ancho .tabla-contenedor { min-width: 0; }
+.formulario-ventana { display: grid; gap: 14px; }
+.modal-ancho > .titulo-fila:first-child { flex-wrap: nowrap; align-items: flex-start; gap: 12px; margin-bottom: 0; }
+.modal-ancho > .titulo-fila:first-child h2 { min-width: 0; overflow-wrap: anywhere; }
+.modal-ancho > .titulo-fila:first-child button { flex: none; }
+@media (max-width: 600px) { .modal-fondo { padding: 10px; } .modal { padding: 18px; } }
+@media (max-width: 900px) { .ficha-doble { grid-template-columns: 1fr; } .visor-original { height: 70vh; } }
 .ficha { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 20px; margin: 0; }
 .ficha dt { font-size: .8rem; color: var(--muted); }
 .ficha dd { margin: 2px 0 0; font-weight: 600; }
@@ -865,3 +875,5 @@ th button {
 .empresas-usuario input { min-height: 0; width: 18px; height: 18px; }
 .selector-empresa select { font-weight: 750; min-height: 38px; }
 .solo-lectores { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.form-grid label:has(> input[type="checkbox"]) { display: flex; align-items: center; gap: 8px; }
+.form-grid input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; }
