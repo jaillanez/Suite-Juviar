@@ -74,14 +74,44 @@ class CatalogoYAML:
     def _cargar_cambios_matriz(self) -> None:
         if not self._ruta_cambios or not self._ruta_cambios.exists():
             return
-        datos = json.loads(self._ruta_cambios.read_text(encoding="utf-8"))
+        try:
+            datos = json.loads(self._ruta_cambios.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            # Archivo dañado: se aparta para revisarlo y se sigue con la matriz base.
+            self._ruta_cambios.replace(self._ruta_cambios.with_suffix(".danado"))
+            return
+        editados = set()
         for puesto, requisitos in (datos.get("puestos") or {}).items():
-            self._puestos[puesto] = [RequisitoEPP(**r) for r in requisitos]
+            validos = []
+            for r in requisitos if isinstance(requisitos, list) else []:
+                if (isinstance(r, dict) and r.get("codigo") in self._elementos
+                        and r.get("frecuencia") in FRECUENCIAS
+                        and r.get("temporada") in TEMPORADAS):
+                    validos.append(RequisitoEPP(
+                        codigo=str(r["codigo"]), cantidad=max(1, int(r.get("cantidad") or 1)),
+                        frecuencia=r["frecuencia"], temporada=r["temporada"],
+                        obligatorio=bool(r.get("obligatorio", True)),
+                        fundamento=str(r.get("fundamento") or "")[:500], origen="PUESTO",
+                    ))
+            self._puestos[str(puesto)] = validos
+            editados.add(str(puesto))
+        self._editados = editados
         self._historial_matriz = list(datos.get("historial") or [])
-        if datos.get("estado"):
-            self._estado_matriz = datos["estado"]
-        self._validacion_matriz = datos.get("validacion")
-        self._editados = set((datos.get("puestos") or {}).keys())
+        validacion = datos.get("validacion")
+        # La firma de HyS sólo vale para la matriz exacta que firmó.
+        if isinstance(validacion, dict) and validacion.get("huella") == self._huella():
+            self._estado_matriz = "VALIDADA_HYS"
+            self._validacion_matriz = validacion
+        elif editados:
+            self._estado_matriz = "PROPUESTA_SIN_VALIDAR"
+            self._validacion_matriz = None
+
+    def _huella(self) -> str:
+        import hashlib
+
+        contenido = {p: [asdict(r) for r in self._puestos.get(p, [])] for p in sorted(self._puestos)}
+        base = self._ruta_matriz.read_bytes()
+        return hashlib.sha256(base + json.dumps(contenido, sort_keys=True).encode()).hexdigest()
 
     def _guardar_cambios_matriz(self) -> None:
         if not self._ruta_cambios:
@@ -341,7 +371,8 @@ class CatalogoYAML:
     def validar_matriz(self, actor: str) -> dict[str, str]:
         self._estado_matriz = "VALIDADA_HYS"
         self._validacion_matriz = {
-            "firmada_por": actor, "firmada_en": datetime.now(UTC).isoformat()
+            "firmada_por": actor, "firmada_en": datetime.now(UTC).isoformat(),
+            "huella": self._huella(),
         }
         self._guardar_cambios_matriz()
         return self._validacion_matriz

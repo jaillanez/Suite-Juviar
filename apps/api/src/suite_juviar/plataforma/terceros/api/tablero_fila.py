@@ -12,10 +12,12 @@ from typing import Annotated, Any
 from zoneinfo import ZoneInfo
 
 import psycopg
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from psycopg.rows import dict_row
+from pydantic import BaseModel, Field
 
 from suite_juviar.plataforma.identidad.api.dependencias import exigir_permiso
+from suite_juviar.plataforma.identidad.domain.sesion import Sesion
 
 ZONA = ZoneInfo("America/Argentina/San_Juan")
 ACTIVOS = ("pendiente", "en_espera", "llamado", "en_bascula")
@@ -163,3 +165,114 @@ def camiones_en_fila(_: PuedeRecibir, sede: str = "chimbas"):
         {"sede": sede},
     )
     return [{**f, "productor": f["razonsocial"] or f["productor_texto"]} for f in filas]
+
+
+# --- Calendario de turnos de la bodega -------------------------------------------------
+# Lectura con consultas; escritura sólo con las funciones de infra/029, que aplican las
+# reglas de cupo de la fila dentro de la base.
+turnos = APIRouter(prefix="/turnos-bodega", tags=["turnos de cosecha"])
+GestionaTurnos = Annotated[Sesion, Depends(exigir_permiso("fila.turnos.gestionar"))]
+
+
+class CapacidadEntrada(BaseModel):
+    sede: str
+    fecha: date | None = None
+    kg_dia: int = Field(ge=0, le=10_000_000)
+
+
+class TurnoEntrada(BaseModel):
+    sede: str
+    fecha: date
+    cuit: str = Field(pattern=r"^\d{11}$")
+    codigo: str | None = Field(default=None, max_length=60)
+    camiones: int = Field(ge=1, le=50)
+    kg_por_camion: int = Field(ge=1000, le=40000)
+    organica: bool = False
+
+
+def _escribir(consulta: str, parametros: dict[str, Any]) -> dict[str, Any]:
+    if not _dsn:
+        raise HTTPException(503, "Los datos de la fila no están conectados.")
+    try:
+        with psycopg.connect(_dsn, row_factory=dict_row, connect_timeout=5) as cn:
+            fila = cn.execute(consulta, parametros).fetchone()
+    except psycopg.errors.RaiseException as exc:
+        raise HTTPException(409, exc.diag.message_primary or "No se pudo guardar.") from exc
+    except psycopg.Error as exc:
+        raise HTTPException(503, "No se pudo guardar en la fila.") from exc
+    return dict(fila) if fila else {}
+
+
+def _sede_valida(sede: str) -> str:
+    if sede not in sedes():
+        raise HTTPException(404, "Sede inexistente.")
+    return sede
+
+
+@turnos.get("/productores")
+def productores_turnos(_: GestionaTurnos, q: str = ""):
+    return buscar_productores(None, q)
+
+
+@turnos.get("/mes")
+def mes_turnos(_: GestionaTurnos, sede: str, mes: str = Query(pattern=r"^\d{4}-\d{2}$")):
+    _sede_valida(sede)
+    inicio = date.fromisoformat(f"{mes}-01")
+    fin = date(inicio.year + (inicio.month == 12), inicio.month % 12 + 1, 1)
+    capacidades = _leer("SELECT fecha, kg_dia FROM fila.capacidad WHERE sede = %(sede)s", {"sede": sede})
+    por_defecto = next((c["kg_dia"] for c in capacidades if c["fecha"] is None), None)
+    por_fecha = {c["fecha"]: c["kg_dia"] for c in capacidades if c["fecha"] is not None}
+    filas = _leer(
+        """SELECT t.id, t.fecha, t.clientecuit, t.clientecodigo, t.camiones, t.camiones_usados,
+                  t.kg_por_camion, t.declara_organica, t.estado, t.pedido_por, t.canal,
+                  p.razonsocial
+             FROM fila.turno t LEFT JOIN fila.productor p ON p.clientecuit = t.clientecuit
+            WHERE t.sede = %(sede)s AND t.fecha >= %(inicio)s AND t.fecha < %(fin)s
+            ORDER BY t.fecha, t.creado_en""",
+        {"sede": sede, "inicio": inicio, "fin": fin},
+    )
+    dias = []
+    dia = inicio
+    while dia < fin:
+        del_dia = [f for f in filas if f["fecha"] == dia]
+        dias.append({
+            "fecha": dia.isoformat(),
+            "capacidad_kg": por_fecha.get(dia, por_defecto),
+            "capacidad_propia": dia in por_fecha,
+            "reservado_kg": sum(f["camiones"] * f["kg_por_camion"] for f in del_dia if f["estado"] == "activo"),
+            "turnos": [{
+                "id": f["id"], "cuit": f["clientecuit"], "productor": f["razonsocial"] or f["clientecuit"],
+                "codigo": f["clientecodigo"], "camiones": f["camiones"], "camiones_usados": f["camiones_usados"],
+                "kg_por_camion": f["kg_por_camion"], "organica": f["declara_organica"], "estado": f["estado"],
+                "pedido_por": f["pedido_por"], "canal": f["canal"],
+            } for f in del_dia],
+        })
+        dia = date.fromordinal(dia.toordinal() + 1)
+    return {"sede": sede, "mes": mes, "capacidad_por_defecto_kg": por_defecto, "dias": dias}
+
+
+@turnos.put("/capacidad")
+def fijar_capacidad(entrada: CapacidadEntrada, sesion: GestionaTurnos):
+    _sede_valida(entrada.sede)
+    return _escribir(
+        "SELECT * FROM fila.fijar_capacidad(%(sede)s, %(fecha)s, %(kg)s, %(actor)s)",
+        {"sede": entrada.sede, "fecha": entrada.fecha, "kg": entrada.kg_dia, "actor": sesion.actor},
+    )
+
+
+@turnos.post("", status_code=201)
+def anotar_turno(entrada: TurnoEntrada, sesion: GestionaTurnos):
+    _sede_valida(entrada.sede)
+    return _escribir(
+        """SELECT * FROM fila.reservar_turno_bodega(%(sede)s, %(fecha)s, %(cuit)s, %(codigo)s,
+               %(camiones)s, %(kg)s, %(organica)s, %(actor)s)""",
+        {"sede": entrada.sede, "fecha": entrada.fecha, "cuit": entrada.cuit, "codigo": entrada.codigo,
+         "camiones": entrada.camiones, "kg": entrada.kg_por_camion, "organica": entrada.organica,
+         "actor": sesion.actor},
+    )
+
+
+@turnos.post("/{turno_id}/cancelar")
+def cancelar_turno(turno_id: int, sesion: GestionaTurnos):
+    return _escribir("SELECT * FROM fila.cancelar_turno(%(id)s, %(actor)s)",
+                     {"id": turno_id, "actor": sesion.actor})
