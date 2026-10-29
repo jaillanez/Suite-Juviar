@@ -961,3 +961,14 @@ th button {
 .barra-cupo span { display: block; height: 100%; background: var(--verde); }
 .turno-cancelado td { opacity: .5; text-decoration: line-through; }
 @media (max-width: 720px) { .calendario-celda { min-height: 64px; padding: 4px; } .calendario-turnos, .calendario-celda small { display: none; } }
+/* Simulador del bot */
+.simulador { display: grid; gap: 12px; }
+.chat { background: #efeae2; border-radius: 12px; padding: 14px; height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.chat-vacio { margin: auto; }
+.burbuja { max-width: 78%; padding: 8px 10px 4px; border-radius: 10px; box-shadow: 0 1px 1px #0000001a; display: grid; gap: 2px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.burbuja small { justify-self: end; font-size: .7rem; color: #667781; }
+.burbuja-bot { align-self: flex-start; background: #fff; }
+.burbuja-productor { align-self: flex-end; background: #d9fdd3; }
+.chat-envio { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.atajos { display: flex; flex-wrap: wrap; gap: 6px; }
+.atajos button { min-height: 32px; padding: 4px 10px; font-size: .85rem; }
