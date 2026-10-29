@@ -51,3 +51,9 @@ export function Ventana({ titulo, cerrar, children, tamano = "ancha" }: { titulo
   }, []);
   return <div className="modal-fondo" role="presentation" onMouseDown={cerrar}><div className={`modal modal-ancho${tamano === "ancha" ? "" : ` modal-${tamano}`}`} role="dialog" aria-modal="true" aria-labelledby={id} onMouseDown={(e) => e.stopPropagation()}><div className="titulo-fila"><h2 id={id}>{titulo}</h2><button onClick={cerrar} aria-label="Cerrar" autoFocus>✕</button></div>{children}</div></div>;
 }
+
+// Chrome no muestra PDF «data:» dentro de un iframe: se arma una dirección blob local.
+export function urlDeArchivo(base64: string, tipo: string): string {
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  return URL.createObjectURL(new Blob([bytes], { type: tipo }));
+}

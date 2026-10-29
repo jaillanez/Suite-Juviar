@@ -31,7 +31,9 @@ from ..infrastructure.sqlite import (
     OriginalesSQLite,
     busquedas_sqlite,
     consultas_ia_sqlite,
+    estados_cv_sqlite,
     fichas_ia_sqlite,
+    historial_estados_sqlite,
 )
 
 
@@ -54,6 +56,15 @@ class ConfirmacionEntrada(BaseModel):
 
 class PedidoEntrada(BaseModel):
     pedido: str = Field(min_length=5, max_length=1500)
+    incluir_marcados: bool = False
+
+
+ESTADOS_CV = {"DISPONIBLE", "CONTRATADO", "NO_CONVOCAR"}
+
+
+class EstadoEntrada(BaseModel):
+    estado: str
+    motivo: str = Field(default="", max_length=500)
 
 
 def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> APIRouter:
@@ -66,6 +77,11 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
     busquedas = busquedas_sqlite(ruta_base)
     fichas_ia = fichas_ia_sqlite(ruta_base)
     consultas_ia = consultas_ia_sqlite(ruta_base)
+    estados = estados_cv_sqlite(ruta_base)
+    historial_estados = historial_estados_sqlite(ruta_base)
+
+    def estado_de(cv_id: str) -> dict[str, object]:
+        return estados.get(cv_id) or {"estado": "DISPONIBLE"}
     texto_pdf = TextoPDF()
     # Mandar CV a DeepSeek saca datos personales de la empresa: en producción sólo con
     # autorización expresa en la configuración del servidor.
@@ -136,6 +152,7 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
                 "campos": list(extraccion.campos) if extraccion else [],
                 "campos_pendientes": list(extraccion.campos_pendientes) if extraccion else [],
                 "resultado": resultado,
+                "estado": estado_de(original.id),
             })
         if busqueda:
             por_id = {fila["id"]: fila for fila in filas}
@@ -160,6 +177,8 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
             "campos": list(extraccion.campos),
             "pendientes": list(extraccion.campos_pendientes),
             "confirmaciones": extracciones.confirmaciones(cv_id),
+            "estado": estado_de(cv_id),
+            "historial_estado": [h for h in historial_estados if h["cv_id"] == cv_id],
             "resultado": evaluar.ejecutar(busqueda, extraccion) if busqueda else None,
             "marca": "DATOS SIMULADOS — SIN VALIDEZ",
         }
@@ -220,7 +239,11 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
     def buscar_con_ia(entrada: PedidoEntrada, sesion: SesionActual):
         exigir_ia()
         disponibles = {o.id: o for o in originales.listar_originales()}
-        leidas = {cv_id: f for cv_id, f in fichas_ia.items() if cv_id in disponibles}
+        leidas = {
+            cv_id: f for cv_id, f in fichas_ia.items()
+            if cv_id in disponibles
+            and (entrada.incluir_marcados or estado_de(cv_id)["estado"] == "DISPONIBLE")
+        }
         try:
             candidatos = ia_deepseek.buscar_candidatos(entrada.pedido.strip(), leidas)
         except RuntimeError as exc:
@@ -229,15 +252,39 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
                              "pedido": entrada.pedido.strip(), "candidatos": len(candidatos)})
         return {
             "pedido": entrada.pedido.strip(),
-            "sin_leer": len(disponibles) - len(leidas),
+            "sin_leer": sum(1 for cv_id in disponibles if cv_id not in fichas_ia),
+            "marcados_excluidos": 0 if entrada.incluir_marcados else sum(
+                1 for cv_id in disponibles if estado_de(cv_id)["estado"] != "DISPONIBLE"
+            ),
             "candidatos": [
                 {**c, "nombre_archivo": disponibles[c["id"]].nombre_archivo,
                  "nombre": leidas[c["id"]].get("nombre_completo"),
                  "localidad": leidas[c["id"]].get("localidad"),
-                 "resumen": leidas[c["id"]].get("resumen")}
+                 "resumen": leidas[c["id"]].get("resumen"),
+                 "estado": estado_de(c["id"])}
                 for c in candidatos
             ],
         }
+
+    @app.put("/cvs/{cv_id}/estado")
+    def marcar_estado(cv_id: str, entrada: EstadoEntrada, sesion: SesionActual):
+        """Contratado o «no volver a convocar» con motivo laboral: sale de las búsquedas."""
+        if originales.obtener_original(cv_id) is None:
+            raise HTTPException(404, "CV inexistente")
+        estado = entrada.estado.upper()
+        if estado not in ESTADOS_CV:
+            raise HTTPException(400, "Estado inexistente.")
+        motivo = entrada.motivo.strip()
+        if estado == "NO_CONVOCAR" and len(motivo) < 10:
+            raise HTTPException(400, "Escribí un motivo laboral concreto (al menos 10 caracteres).")
+        if estado != "DISPONIBLE" and not motivo:
+            raise HTTPException(400, "Escribí el motivo o el puesto.")
+        anterior = estado_de(cv_id)
+        nuevo = {"estado": estado, "motivo": motivo, "por": sesion.actor,
+                 "en": datetime.now(UTC).isoformat()}
+        estados[cv_id] = nuevo
+        historial_estados.append({**nuevo, "cv_id": cv_id, "anterior": anterior["estado"]})
+        return nuevo
 
     @app.get("/cvs/{cv_id}/auditoria")
     def auditoria(cv_id: str):

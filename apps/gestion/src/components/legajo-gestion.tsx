@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { api } from "@/lib/api";
-import { ErrorVisible, Tabla, Vacio, Ventana } from "./compartidos";
+import { ErrorVisible, Tabla, Vacio, Ventana, urlDeArchivo } from "./compartidos";
 
 type Persona = Record<string, unknown> & { legajo: string; nombre_completo: string; empresa: string; sector: string; puesto: string };
 type Ficha = Persona & { formato: string; origen: string; solo_lectura: boolean; marca?: string };
@@ -22,7 +22,7 @@ export function LegajoGestion() {
   async function buscar(e: FormEvent<HTMLFormElement>) { e.preventDefault(); setError(""); const f = new FormData(e.currentTarget); const q = new URLSearchParams(); for (const clave of ["apellido", "legajo", "sector", "empresa"]) { const valor = String(f.get(clave) || "").trim(); if (valor) q.set(clave, valor); } try { setPersonas(await api(`legajo/personas?${q}`)); } catch (x) { informar(x); } }
   async function abrir(legajo: string) { setError(""); setErrorVentana(""); try { setFicha(await api(`legajo/personas/${legajo}`)); setAdjuntos(await api(`legajo/personas/${legajo}/adjuntos`)); setVisor(null); } catch (x) { informar(x); } }
   async function adjuntar(e: FormEvent<HTMLFormElement>) { e.preventDefault(); if (!ficha) return; setErrorVentana(""); const form = e.currentTarget; const archivo = (new FormData(form).get("archivo") as File); if (!archivo?.size) return; try { await api("legajo/adjuntos", { method: "POST", body: JSON.stringify({ legajo: ficha.legajo, nombre: archivo.name, contenido_base64: await base64(archivo) }) }); form.reset(); setAdjuntos(await api(`legajo/personas/${ficha.legajo}/adjuntos`)); } catch (x) { informarVentana(x); } }
-  async function ver(adjunto: Adjunto) { try { const dato = await api<{ nombre: string; contenido_base64: string }>(`legajo/adjuntos/${adjunto.id}`); setVisor({ nombre: dato.nombre, url: `data:application/pdf;base64,${dato.contenido_base64}` }); } catch (x) { informarVentana(x); } }
+  async function ver(adjunto: Adjunto) { try { const dato = await api<{ nombre: string; contenido_base64: string }>(`legajo/adjuntos/${adjunto.id}`); setVisor({ nombre: dato.nombre, url: urlDeArchivo(dato.contenido_base64, "application/pdf") }); } catch (x) { informarVentana(x); } }
   async function baja(e: FormEvent<HTMLFormElement>) { e.preventDefault(); const motivo = String(new FormData(e.currentTarget).get("motivo") || ""); if (!motivo.trim() || !ficha || !dandoBaja) return; try { await api(`legajo/adjuntos/${dandoBaja.id}/baja`, { method: "POST", body: JSON.stringify({ motivo }) }); setDandoBaja(null); setAdjuntos(await api(`legajo/personas/${ficha.legajo}/adjuntos`)); } catch (x) { informarVentana(x); } }
   function cerrarFicha() { setFicha(null); setAdjuntos([]); setVisor(null); setDandoBaja(null); setErrorVentana(""); }
   return <>{error && <ErrorVisible mensaje={error} />}<div className="rejilla">
