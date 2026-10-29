@@ -19,7 +19,11 @@ from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, ConfigDict, Field
 
-from suite_juviar.plataforma.identidad.api.dependencias import SesionActual, exigir_permiso
+from suite_juviar.plataforma.identidad.api.dependencias import (
+    SesionActual,
+    exigir_permiso,
+    identidad_es_simulada,
+)
 from suite_juviar.plataforma.identidad.domain.acceso import (
     ActorOperativo,
     PerfilAcceso,
@@ -167,7 +171,10 @@ def crear_router(contenedor: Contenedor | None = None) -> APIRouter:
         request: Request,
         x_legajo_usuario: str | None = Header(default=None, alias="X-Legajo-Usuario"),
     ) -> ActorOperativo:
-        if c.entorno != "prueba" and not _solicitud_es_exclusivamente_local(request):
+        # Con ingreso real (un servidor accesible) el legajo declarado nunca vale desde afuera.
+        if (c.entorno != "prueba" or not identidad_es_simulada()) and not _solicitud_es_exclusivamente_local(
+            request
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(

@@ -10,6 +10,7 @@ from suite_juviar.plataforma.identidad.api.dependencias import (
 )
 from suite_juviar.plataforma.identidad.api.ingreso import router, usuarios
 from suite_juviar.plataforma.identidad.application.ingreso import ServicioIngreso
+from suite_juviar.plataforma.identidad.domain.usuarios import IngresoInvalido
 from suite_juviar.plataforma.identidad.infrastructure.usuarios_sqlite import UsuariosSQLite
 
 CLAVE = "clave-larga-1"
@@ -145,3 +146,22 @@ def test_la_base_no_guarda_claves_ni_tokens_en_claro(entorno, tmp_path):
     token = cliente.cookies.get(dependencias.COOKIE_SESION)
     contenido = (tmp_path / "u.sqlite3").read_bytes()
     assert CLAVE.encode() not in contenido and token.encode() not in contenido
+
+
+def test_el_bloqueo_no_alcanza_a_quien_entra_desde_otro_equipo(entorno):
+    servicio, _ = entorno
+    alta(servicio, "rrhh@enav.com", "RRHH")
+    for _ in range(5):
+        with pytest.raises(IngresoInvalido):
+            servicio.ingresar("rrhh@enav.com", "equivocada-1", origen="10.0.0.9")
+    with pytest.raises(IngresoInvalido, match="15 minutos"):
+        servicio.ingresar("rrhh@enav.com", CLAVE, origen="10.0.0.9")
+    token, _ = servicio.ingresar("rrhh@enav.com", CLAVE, origen="10.0.0.7")
+    assert token
+
+
+def test_la_bitacora_no_guarda_texto_arbitrario_como_correo(entorno):
+    servicio, _ = entorno
+    with pytest.raises(IngresoInvalido):
+        servicio.ingresar("<script>" + "x" * 500, "algo", origen="10.0.0.9")
+    assert servicio.repositorio.eventos()[0]["actor"] == "(correo no válido)"

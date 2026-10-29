@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 
 from ..application.ingreso import DURACION_SESION
@@ -84,9 +84,12 @@ def estado() -> dict[str, bool]:
 
 
 @router.post("")
-def ingresar(entrada: IngresoEntrada, respuesta: Response):
+def ingresar(entrada: IngresoEntrada, respuesta: Response, request: Request):
+    origen = request.client.host if request.client else ""
     try:
-        token, _ = servicio_ingreso().ingresar(entrada.email, entrada.clave, entrada.empresa)
+        token, _ = servicio_ingreso().ingresar(
+            entrada.email, entrada.clave, entrada.empresa, origen=origen
+        )
     except IngresoInvalido as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(exc)) from exc
     _poner_cookie(respuesta, token)

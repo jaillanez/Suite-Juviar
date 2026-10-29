@@ -24,8 +24,10 @@ from ..domain.usuarios import (
 _N, _R, _P = 2**14, 8, 1
 EMPRESAS = frozenset({"ENAV", "JUBIAR"})
 DURACION_SESION = timedelta(hours=12)
-INTENTOS_PERMITIDOS = 5
+INTENTOS_PERMITIDOS = 5  # por correo y equipo de origen
+INTENTOS_POR_ORIGEN = 30  # por equipo de origen, sumando todos los correos
 ESPERA_TRAS_BLOQUEO = 15 * 60
+MAXIMO_CLAVES_VIGILADAS = 10_000
 
 
 def cifrar_clave(clave: str) -> str:
@@ -80,21 +82,45 @@ class ServicioIngreso:
         self._bloqueo_fallos = Lock()
 
     # --- ingreso -----------------------------------------------------------------
-    def _bloqueado(self, email: str) -> bool:
+    # Los intentos se cuentan por correo y equipo de origen: alguien de afuera no puede
+    # bloquearle la cuenta a otra persona que entra desde su propio equipo.
+    def _recientes(self, clave: str, ahora: float) -> int:
+        recientes = [t for t in self._fallos.get(clave, []) if ahora - t < ESPERA_TRAS_BLOQUEO]
+        if recientes:
+            self._fallos[clave] = recientes
+        else:
+            self._fallos.pop(clave, None)
+        return len(recientes)
+
+    def _bloqueado(self, email: str, origen: str) -> bool:
         ahora = time.monotonic()
         with self._bloqueo_fallos:
-            recientes = [t for t in self._fallos.get(email, []) if ahora - t < ESPERA_TRAS_BLOQUEO]
-            self._fallos[email] = recientes
-            return len(recientes) >= INTENTOS_PERMITIDOS
+            return (self._recientes(f"{origen}|{email}", ahora) >= INTENTOS_PERMITIDOS
+                    or self._recientes(origen, ahora) >= INTENTOS_POR_ORIGEN)
 
-    def _anotar_fallo(self, email: str) -> None:
+    def _anotar_fallo(self, email: str, origen: str) -> None:
+        ahora = time.monotonic()
         with self._bloqueo_fallos:
-            self._fallos.setdefault(email, []).append(time.monotonic())
+            if len(self._fallos) >= MAXIMO_CLAVES_VIGILADAS:
+                for clave in list(self._fallos):
+                    self._recientes(clave, ahora)
+            if len(self._fallos) < MAXIMO_CLAVES_VIGILADAS:
+                self._fallos.setdefault(f"{origen}|{email}", []).append(ahora)
+            self._fallos.setdefault(origen, []).append(ahora)
 
-    def ingresar(self, email: str, clave: str, empresa: str | None = None) -> tuple[str, Usuario]:
+    @staticmethod
+    def _para_registro(email: str) -> str:
+        """Lo escrito en el ingreso va a la bitácora solo si tiene forma de correo."""
+        try:
+            return _normalizar_email(email)[:120]
+        except DatosDeUsuarioInvalidos:
+            return "(correo no válido)"
+
+    def ingresar(self, email: str, clave: str, empresa: str | None = None,
+                 origen: str = "") -> tuple[str, Usuario]:
         email = email.strip().lower()
-        if self._bloqueado(email):
-            self.repositorio.registrar_evento(email, "INGRESO_BLOQUEADO")
+        if self._bloqueado(email, origen):
+            self.repositorio.registrar_evento(self._para_registro(email), "INGRESO_BLOQUEADO", origen)
             raise IngresoInvalido(
                 "Demasiados intentos fallidos. Esperá 15 minutos y volvé a intentar."
             )
@@ -102,12 +128,12 @@ class ServicioIngreso:
         guardada = encontrado[1] if encontrado else _CLAVE_FICTICIA
         valida = clave_coincide(clave, guardada)
         if not encontrado or not valida or not encontrado[0].activo:
-            self._anotar_fallo(email)
-            self.repositorio.registrar_evento(email, "INGRESO_FALLIDO")
+            self._anotar_fallo(email, origen)
+            self.repositorio.registrar_evento(self._para_registro(email), "INGRESO_FALLIDO", origen)
             raise IngresoInvalido("Correo o contraseña incorrectos.")
         usuario = encontrado[0]
         with self._bloqueo_fallos:
-            self._fallos.pop(email, None)
+            self._fallos.pop(f"{origen}|{email}", None)
         empresa_sesion = (empresa or usuario.empresa).upper()
         if empresa_sesion not in EMPRESAS:
             empresa_sesion = usuario.empresa
@@ -115,7 +141,7 @@ class ServicioIngreso:
         self.repositorio.guardar_sesion(
             token, SesionGuardada(usuario.id, empresa_sesion, datetime.now(UTC) + DURACION_SESION)
         )
-        self.repositorio.registrar_evento(usuario.email, "INGRESO")
+        self.repositorio.registrar_evento(usuario.email, "INGRESO", origen)
         return token, usuario
 
     def resolver(self, token: str) -> tuple[Usuario, SesionGuardada] | None:

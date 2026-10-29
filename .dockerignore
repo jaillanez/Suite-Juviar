@@ -12,3 +12,7 @@ var
 output
 Docs
 apps/api/datos
+**/.env
+**/.env.*
+**/*.pem
+**/*.key

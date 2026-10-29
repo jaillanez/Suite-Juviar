@@ -21,8 +21,9 @@ FROM python:3.14-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
-COPY apps/api /opt/gestion/api
-RUN pip install /opt/gestion/api && rm -rf /opt/gestion/api/tests
+COPY apps/api/pyproject.toml /opt/gestion/api/pyproject.toml
+COPY apps/api/src /opt/gestion/api/src
+RUN pip install /opt/gestion/api && rm -rf /opt/gestion/api
 COPY --from=pantallas /repo/apps/gestion/out /opt/gestion/pantallas
 RUN useradd --system --uid 10001 --home-dir /datos gestion
 USER gestion
@@ -37,5 +38,8 @@ ENV SJ_GESTION_ESTATICOS=/opt/gestion/pantallas \
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ingreso/estado',timeout=4)"
-CMD ["uvicorn", "suite_juviar.main:app", "--host", "0.0.0.0", "--port", "8000", \
-     "--proxy-headers", "--forwarded-allow-ips=*", "--no-access-log"]
+# La dirección real de quien entra solo se toma de las cabeceras que manda Caddy: la red
+# en la que se confía va en FORWARDED_ALLOW_IPS (/etc/suite/gestion.env). Sin esa
+# variable no se confía en nadie y todos los pedidos parecen venir de Caddy.
+ENV FORWARDED_ALLOW_IPS=127.0.0.1
+CMD ["uvicorn", "suite_juviar.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]
