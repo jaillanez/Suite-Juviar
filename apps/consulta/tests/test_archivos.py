@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from consulta_publica.bot.archivos import (
@@ -8,7 +8,7 @@ from consulta_publica.bot.archivos import (
     preparar,
 )
 
-AHORA = datetime(2026, 3, 17, 10, 0, tzinfo=timezone.utc)
+AHORA = datetime(2026, 3, 17, 10, 0, tzinfo=UTC)
 
 
 def test_el_enlace_lleva_token_largo_y_extension():
