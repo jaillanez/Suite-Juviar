@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 _TELEFONO = re.compile(r"^\d{8,20}$")
 _MAX_TEXTO = 1000
@@ -55,7 +55,7 @@ def extraer_mensajes(payload: object) -> list[MensajeEntrante]:
                         tipo=str(mensaje.get("type") or "desconocido")[:30],
                         texto=texto[:_MAX_TEXTO] if isinstance(texto, str) else None,
                         enviado_en=(
-                            datetime.fromtimestamp(int(marca), timezone.utc)
+                            datetime.fromtimestamp(int(marca), UTC)
                             if str(marca or "").isdigit()
                             else None
                         ),

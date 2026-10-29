@@ -14,6 +14,7 @@ from consulta_publica.lectura.repositorio_descargas import RepositorioDescargasP
 from . import transporte
 from .archivos import nombre_reporte, preparar
 from .chattigo import ErrorChattigo
+from .conversacion import ZONA
 from .conversacion import intencion as intencion_legacy
 from .conversacion import responder as responder_legacy
 from .dialogo import CADUCADO, ESTADISTICAS, responder
@@ -57,17 +58,28 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
         cuentas = bot.cuentas(pendiente.telefono)
         permisos = bot.permisos(pendiente.telefono)
         estado, caducada = bot.estado_y_caducidad(pendiente.telefono)
-        respuesta = responder(
-            "hola" if caducada else pendiente.texto,
-            cuentas,
-            estado,
-            hoy,
-            puede_ver_informes="ver_informes" in permisos,
-            puede_administrar="administrar_contactos" in permisos,
-        )
-        if caducada:
-            respuesta.texto = f"{CADUCADO}\n\n{respuesta.texto}"
-        bot.guardar_estado(pendiente.telefono, respuesta.estado)
+        try:
+            # El pedido de turno lee y reserva en la base desde el diálogo: si la base
+            # falla a mitad de camino, el mensaje se reintenta como cualquier envío.
+            respuesta = responder(
+                "hola" if caducada else pendiente.texto,
+                cuentas,
+                estado,
+                hoy,
+                puede_ver_informes="ver_informes" in permisos,
+                puede_administrar="administrar_contactos" in permisos,
+                puede_pedir_turnos="pedir_turnos" in permisos,
+                turnos=bot.turnos(pendiente.telefono) if hasattr(bot, "turnos") else None,
+                # Los turnos van siempre con la fecha real, aunque haya BOT_FECHA_SIMULADA.
+                hoy_turnos=datetime.now(ZONA).date(),
+            )
+            if caducada:
+                respuesta.texto = f"{CADUCADO}\n\n{respuesta.texto}"
+            bot.guardar_estado(pendiente.telefono, respuesta.estado)
+        except (psycopg.Error, OSError) as exc:
+            bot.reintentar(pendiente.id, str(exc), MAX_INTENTOS)
+            log.warning("diálogo falló (intento %s): %s", pendiente.intentos + 1, exc)
+            continue
         try:
             if respuesta.accion in {"estadisticas", "reporte"}:
                 entregas = consultas.entregas(
