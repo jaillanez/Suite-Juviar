@@ -44,8 +44,9 @@ SELECT v.sede, v.numero_dia, v.patente, v.productor_texto, v.estado, v.declara_o
        d.variedad AS variedad_bascula, d.neto, d.azucar
   FROM fila.viaje v
   LEFT JOIN consulta.descarga_publica d ON d.id_suite = v.descarga_id
- WHERE v.estado = ANY(%(activos)s)
-    OR (v.registrado_en AT TIME ZONE 'America/Argentina/San_Juan')::date = %(hoy)s
+ WHERE v.sede = ANY(%(sedes)s)
+   AND (v.estado = ANY(%(activos)s)
+        OR (v.registrado_en AT TIME ZONE 'America/Argentina/San_Juan')::date = %(hoy)s)
  ORDER BY v.sede, v.numero_dia NULLS LAST, v.registrado_en
 """
 
@@ -58,7 +59,8 @@ def armar_tablero(filas: list[dict[str, Any]], hoy: date, lista_sedes: list[str]
     """Agrupa los viajes por bodega, con los números del día. Sin base: se prueba suelto."""
     por_sede: dict[str, list[dict[str, Any]]] = {s: [] for s in lista_sedes}
     for fila in filas:
-        por_sede.setdefault(fila["sede"], []).append(fila)
+        if fila["sede"] in por_sede:  # sólo las bodegas configuradas
+            por_sede[fila["sede"]].append(fila)
     resultado = []
     for sede, viajes in por_sede.items():
         del_dia = [v for v in viajes if _del_dia(v["registrado_en"], hoy)]
@@ -98,7 +100,7 @@ def tablero(_: Autorizado):
     hoy = datetime.now(ZONA).date()
     try:
         with psycopg.connect(_dsn, row_factory=dict_row, connect_timeout=5) as cn:
-            filas = cn.execute(CONSULTA, {"activos": list(ACTIVOS), "hoy": hoy}).fetchall()
+            filas = cn.execute(CONSULTA, {"activos": list(ACTIVOS), "hoy": hoy, "sedes": sedes()}).fetchall()
     except psycopg.Error as exc:
         raise HTTPException(503, "No se pudo leer la fila de camiones.") from exc
     return armar_tablero([dict(f) for f in filas], hoy, sedes())

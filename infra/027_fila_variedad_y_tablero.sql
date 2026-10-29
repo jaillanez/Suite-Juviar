@@ -50,6 +50,10 @@ GRANT EXECUTE ON FUNCTION fila.registrar_llegada(uuid,text,text,text,text,text,t
 DO $$ BEGIN CREATE ROLE gestion_tablero LOGIN;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 GRANT USAGE ON SCHEMA fila, consulta TO gestion_tablero;
-GRANT SELECT ON fila.viaje TO gestion_tablero;
+-- Sólo las columnas que muestra el tablero: nunca el ticket ni los datos del chofer.
+GRANT SELECT (sede, numero_dia, patente, productor_texto, estado, declara_organica,
+              variedad_declarada, registrado_en, confirmado_en, llamado_en, en_bascula_en,
+              cerrado_en, descarga_id)
+    ON fila.viaje TO gestion_tablero;
 GRANT SELECT (sede, id_suite, variedad, neto, azucar, fecha, estado)
     ON consulta.descarga_publica TO gestion_tablero;
