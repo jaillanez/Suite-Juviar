@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 
 from fastapi import Depends, FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from suite_juviar.modulos.epp_analitica.api.app import tabla_de_errores as errores_analitica
 from suite_juviar.modulos.legajo.api.app import tabla_de_errores as errores_legajo
@@ -18,9 +19,16 @@ from suite_juviar.plataforma.db.dsn import dsn_psycopg
 from suite_juviar.plataforma.errores import registrar_manejadores
 from suite_juviar.plataforma.identidad.api import router as identidad_router
 from suite_juviar.plataforma.identidad.api.dependencias import (
+    PERMISOS_POR_PERFIL,
+    configurar_ingreso,
     exigir_identidad_configurada,
     exigir_permiso,
+    identidad_es_simulada,
 )
+from suite_juviar.plataforma.identidad.api.ingreso import router as ingreso_router
+from suite_juviar.plataforma.identidad.api.ingreso import usuarios as usuarios_router
+from suite_juviar.plataforma.identidad.application.ingreso import ServicioIngreso
+from suite_juviar.plataforma.identidad.infrastructure.usuarios_sqlite import UsuariosSQLite
 from suite_juviar.plataforma.terceros.api.contactos import configurar as configurar_contactos
 from suite_juviar.plataforma.terceros.api.contactos import router as contactos_router
 from suite_juviar.plataforma.terceros.api.guardias import configurar as configurar_guardias
@@ -42,6 +50,13 @@ registrar_manejadores(
 )
 
 app.include_router(identidad_router, prefix="/api/v1")
+if not identidad_es_simulada():
+    configurar_ingreso(ServicioIngreso(
+        UsuariosSQLite(os.getenv("SJ_USUARIOS_SQLITE_PATH", "datos/usuarios.sqlite3")),
+        frozenset(PERMISOS_POR_PERFIL),
+    ))
+app.include_router(ingreso_router, prefix="/api/v1")
+app.include_router(usuarios_router, prefix="/api/v1")
 app.include_router(recepcion_router, prefix="/api/v1")
 dsn_contactos = dsn_psycopg(obligatorio=False)
 if dsn_contactos:
@@ -66,3 +81,9 @@ for nombre, router in construir_routers(rrhh_epp).items():
 @app.get("/salud", dependencies=[Depends(exigir_permiso("suite.acceder"))])
 async def salud() -> dict[str, str]:
     return {"estado": "ok"}
+
+
+# En el servidor, la misma aplicación entrega las pantallas de Gestión ya compiladas.
+estaticos = os.getenv("SJ_GESTION_ESTATICOS", "").strip()
+if estaticos:
+    app.mount("/", StaticFiles(directory=estaticos, html=True), name="gestion")

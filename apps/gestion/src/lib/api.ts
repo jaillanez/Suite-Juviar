@@ -1,8 +1,17 @@
+// Servidor de demostración: sin avisos de «datos de prueba» en pantalla.
+export const ocultarMarcasPrueba = process.env.NEXT_PUBLIC_OCULTAR_MARCAS_PRUEBA === "1";
+
 export class ErrorApi extends Error {
   constructor(message: string, public estado: number) { super(message); }
 }
 
+// Con ingreso real la sesión viaja en una cookie que el navegador no deja leer.
+export function ingresoReal(): boolean {
+  return typeof window !== "undefined" && sessionStorage.getItem("gestion-modo") === "real";
+}
+
 function cabecerasSesion(): Record<string, string> {
+  if (ingresoReal()) return {};
   const guardada = typeof window === "undefined" ? null : sessionStorage.getItem("gestion-sesion");
   const sesion = guardada ? JSON.parse(guardada) as { perfil: string; empresa: string } : null;
   return sesion ? {
@@ -24,6 +33,10 @@ export async function api<T>(ruta: string, opciones?: RequestInit): Promise<T> {
     },
   });
   const cuerpo = await respuesta.json().catch(() => null);
+  if (respuesta.status === 401 && ingresoReal() && !ruta.replace(/^\//, "").startsWith("ingreso")) {
+    sessionStorage.removeItem("gestion-sesion");
+    window.location.assign("/");
+  }
   if (!respuesta.ok) {
     const mensaje = cuerpo?.detail ?? cuerpo?.error ?? "No pudimos completar la operación.";
     throw new ErrorApi(typeof mensaje === "string" ? mensaje : "Revisá los datos e intentá nuevamente.", respuesta.status);

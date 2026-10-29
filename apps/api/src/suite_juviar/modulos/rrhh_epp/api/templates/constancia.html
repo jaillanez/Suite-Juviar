@@ -27,7 +27,7 @@
 </head>
 <body>
 
-{% if modo_simulado or e.firma_trabajador.simulada %}
+{% if (modo_simulado or e.firma_trabajador.simulada) and not ocultar_marcas %}
 <div class="prueba">
   Documento de prueba. No tiene validez legal: falta la firma digital del empleador
   y el legajo no proviene de Nexus.

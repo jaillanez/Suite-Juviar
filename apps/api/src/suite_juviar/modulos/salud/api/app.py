@@ -10,6 +10,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from suite_juviar.plataforma.identidad.api.dependencias import SesionActual, exigir_permiso
+from suite_juviar.plataforma.presentacion import marca_prueba
 
 from ..application.lector_certificados import analizar_certificado, usaria_ia_externa
 from ..application.servicios import GestionarSalud
@@ -69,7 +70,8 @@ def crear_router(servicio: GestionarSalud, entorno: str = "prueba") -> APIRouter
 
     @app.get("/", response_class=HTMLResponse, dependencies=[Depends(leer)])
     def pantalla() -> str:
-        marca = f'<div class="simulada">{MARCA_SIMULADA}</div>' if servicio.catalogo.simulada else ""
+        aviso = marca_prueba(MARCA_SIMULADA, servicio.catalogo.simulada)
+        marca = f'<div class="simulada">{aviso}</div>' if aviso else ""
         return (
             "<style>.simulada{background:#b00020;color:white;padding:16px;font-weight:bold}"
             "@media print{.simulada{display:block}}</style>"

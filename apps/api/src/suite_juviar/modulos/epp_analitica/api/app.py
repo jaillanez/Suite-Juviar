@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.responses import Response
 
 from suite_juviar.plataforma.identidad.api.dependencias import exigir_permiso
+from suite_juviar.plataforma.presentacion import ocultar_marcas_prueba
 
 from ..application.servicios import AnalizarEPP
 from ..domain.modelos import (
@@ -46,12 +47,13 @@ def crear_router(servicio: AnalizarEPP, entorno: str = "prueba") -> APIRouter:
             "desde": desde.isoformat(),
             "hasta": hasta.isoformat(),
             "datos_simulados": servicio.datos_simulados,
-            "marca": MARCA_SIMULADA if servicio.datos_simulados else None,
+            "marca": None if ocultar_marcas_prueba() or not servicio.datos_simulados else MARCA_SIMULADA,
             "costo": None,
             "costo_leyenda": "Faltan precios reales de Compras",
             "exportacion": {
                 "habilitada": not servicio.datos_simulados,
-                "motivo": "Hay entregas contra ítems SIM-*" if servicio.datos_simulados else None,
+                "motivo": "Hay entregas contra ítems SIM-*"
+                if servicio.datos_simulados and not ocultar_marcas_prueba() else None,
             },
         }
 

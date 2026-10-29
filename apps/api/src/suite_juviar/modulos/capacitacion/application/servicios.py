@@ -6,6 +6,7 @@ from uuid import UUID, uuid5
 
 from suite_juviar.plataforma.firma.domain.entidades import MetodoFirmaElectronica
 from suite_juviar.plataforma.firma.domain.puertos import MotorDeFirma
+from suite_juviar.plataforma.presentacion import marca_prueba
 
 from ..domain.modelos import AlertaSupervisor, AnulacionAsistencia, Asistencia, Participante
 from ..domain.puertos import ConfiguracionAsistencia, RepositorioCapacitacion
@@ -238,8 +239,9 @@ class AnularAsistencia:
 
 
 def planilla_imprimible(tema: str, fecha: date) -> str:
+    marca = marca_prueba("DOCUMENTO DE PRUEBA - SIN VALIDEZ LEGAL")
     return (
-        "DOCUMENTO DE PRUEBA - SIN VALIDEZ LEGAL\n"
-        f"Tema: {tema}\nFecha: {fecha.isoformat()}\n"
+        (f"{marca}\n" if marca else "")
+        + f"Tema: {tema}\nFecha: {fecha.isoformat()}\n"
         "Legajo | Apellido y nombre | Presente | Firma\n"
     )

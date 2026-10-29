@@ -24,6 +24,7 @@ from suite_juviar.plataforma.identidad.domain.acceso import (
     ActorOperativo,
     PerfilAcceso,
 )
+from suite_juviar.plataforma.presentacion import ocultar_marcas_prueba
 
 from ..domain.modelos_mvp import (
     ElementoEPP,
@@ -660,7 +661,10 @@ def crear_router(contenedor: Contenedor | None = None) -> APIRouter:
         return PLANTILLAS.TemplateResponse(
             request=request,
             name="constancia.html",
-            context={"e": entrega, "modo_simulado": c.modo_simulado},
+            context={
+                "e": entrega, "modo_simulado": c.modo_simulado,
+                "ocultar_marcas": ocultar_marcas_prueba(),
+            },
         )
 
     @app.get("/bitacora", dependencies=[Depends(exigir_permiso("epp.entrega.leer"))])
