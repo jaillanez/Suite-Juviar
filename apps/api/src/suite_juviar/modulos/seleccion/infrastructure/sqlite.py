@@ -37,3 +37,11 @@ def fichas_ia_sqlite(ruta: str | Path):
 
 def consultas_ia_sqlite(ruta: str | Path):
     return ListaSQLite(BaseColeccionesSQLite(ruta), "seleccion.consultas_ia")
+
+
+def estados_cv_sqlite(ruta: str | Path):
+    return MapaSQLite(BaseColeccionesSQLite(ruta), "seleccion.estados_cv")
+
+
+def historial_estados_sqlite(ruta: str | Path):
+    return ListaSQLite(BaseColeccionesSQLite(ruta), "seleccion.estados_historial")

@@ -921,3 +921,11 @@ th button {
 .ficha-ia { border: 1px solid var(--borde); border-radius: 10px; padding: 12px 14px; background: #f7faf8; display: grid; gap: 8px; }
 .ficha-ia h3, .ficha-ia h4 { margin: 0; }
 @media (max-width: 720px) { .form-buscador { grid-template-columns: 1fr; } }
+.casilla { display: flex; align-items: center; gap: 8px; font-weight: 500; grid-column: 1 / -1; }
+.casilla input { width: 18px; height: 18px; min-height: 0; }
+.estado-cv-CONTRATADO { background: #e6eef6; color: #245e83; }
+.estado-cv-NO_CONVOCAR { background: #f6e3e1; color: #8a2c25; }
+.estado-cv-panel { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--borde); background: #fff; }
+.estado-cv-panel small { color: var(--muted); }
+.estado-cv-panel-CONTRATADO { background: #eef4fa; }
+.estado-cv-panel-NO_CONVOCAR { background: #fbefed; }

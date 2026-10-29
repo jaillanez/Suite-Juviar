@@ -53,3 +53,26 @@ def test_sin_clave_o_sin_permiso_no_se_usa_la_ia(monkeypatch):
     assert c.post(f"/cvs/{cv}/leer-ia", headers=RRHH).status_code == 503
     assert c.post("/ia/buscar", headers={"X-Perfil-Simulado": "MEDICO"},
                   json={"pedido": "Capataz de finca"}).status_code == 403
+
+
+def test_contratados_y_no_convocables_salen_de_las_busquedas(monkeypatch):
+    monkeypatch.setenv("SJ_IA_DEEPSEEK_API_KEY", "clave-de-prueba")
+    monkeypatch.setattr(ia_deepseek, "leer_cv", lambda nombre, contenido, texto: {"nombre_completo": nombre})
+    monkeypatch.setattr(ia_deepseek, "buscar_candidatos", lambda pedido, fichas: [
+        {"id": cv_id, "encaje": "ALTO", "motivos": [], "faltan": []} for cv_id in fichas])
+    c = cliente()
+    ids = [subir(c, f"{n}.png", n.encode()) for n in ("ana", "luis", "eva")]
+    for cv in ids:
+        c.post(f"/cvs/{cv}/leer-ia", headers=RRHH)
+    corto = c.put(f"/cvs/{ids[1]}/estado", headers=RRHH, json={"estado": "NO_CONVOCAR", "motivo": "x"})
+    assert corto.status_code == 400
+    assert c.put(f"/cvs/{ids[1]}/estado", headers=RRHH, json={
+        "estado": "NO_CONVOCAR", "motivo": "Abandonó el puesto en la cosecha 2025"}).status_code == 200
+    assert c.put(f"/cvs/{ids[2]}/estado", headers=RRHH, json={
+        "estado": "CONTRATADO", "motivo": "Administrativo de compras"}).status_code == 200
+    r = c.post("/ia/buscar", headers=RRHH, json={"pedido": "Administrativo"}).json()
+    assert [x["id"] for x in r["candidatos"]] == [ids[0]] and r["marcados_excluidos"] == 2
+    todos = c.post("/ia/buscar", headers=RRHH, json={"pedido": "Administrativo", "incluir_marcados": True}).json()
+    assert len(todos["candidatos"]) == 3
+    ficha = c.get(f"/cvs/{ids[1]}", headers=RRHH).json()
+    assert ficha["estado"]["estado"] == "NO_CONVOCAR" and ficha["historial_estado"][0]["anterior"] == "DISPONIBLE"
