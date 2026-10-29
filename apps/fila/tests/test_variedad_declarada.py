@@ -91,3 +91,19 @@ def test_guardia_muestra_y_edita_variedad():
     assert script.count("variedad:p.variedad") == 2
     assert 'class="tag uva"' in script and "esc(x.variedad_declarada)" in script
     assert "variedadGuardia.value=variedadPrevia||''" in script
+
+
+def test_las_paginas_rechazan_sedes_y_tickets_con_codigo():
+    import os
+    import sys
+    from pathlib import Path as Ruta
+
+    sys.path.insert(0, str(Ruta(__file__).resolve().parents[3]))
+    os.environ.setdefault("FILA_DSN_PUBLICO", "")
+    from fastapi.testclient import TestClient
+
+    from fila_app import main
+
+    cliente = TestClient(main.app)
+    for ruta in ("/r/x'<script>", "/guardia/a%3Cb", "/pantalla/A';alert(1)//", "/t/<img>"):
+        assert cliente.get(ruta).status_code == 422, ruta

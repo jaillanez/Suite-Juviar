@@ -9,7 +9,7 @@ from functools import lru_cache
 from typing import Annotated
 
 import psycopg
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Path, Request
 from fastapi.responses import HTMLResponse, Response
 from modulos.fila.cupo import SinCupo
 from modulos.fila.patente import PatenteInvalida
@@ -115,28 +115,34 @@ TurnosRepoDep = Annotated[RepositorioFila, Depends(repo_turnos)]
 Guardia = Annotated[Sesion, Depends(autenticar_guardia)]
 
 
+# Las páginas meten la sede y el ticket dentro del HTML y del JavaScript: sólo se aceptan
+# con forma de nombre de sede o de ticket, así una dirección armada no puede inyectar código.
+SedeEnRuta = Annotated[str, Path(pattern=r"^[a-z0-9][a-z0-9-]{1,29}$")]
+TicketEnRuta = Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{20,200}$")]
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"estado": "ok"}
 
 
 @app.get("/r/{sede}", response_class=HTMLResponse)
-def pagina_porton(sede: str) -> str:
+def pagina_porton(sede: SedeEnRuta) -> str:
     return porton(sede, variedades_sugeridas())
 
 
 @app.get("/t/{token}", response_class=HTMLResponse)
-def pagina_ticket(token: str) -> str:
+def pagina_ticket(token: TicketEnRuta) -> str:
     return ticket(token)
 
 
 @app.get("/guardia/{sede}", response_class=HTMLResponse)
-def pagina_guardia(sede: str) -> str:
+def pagina_guardia(sede: SedeEnRuta) -> str:
     return guardia(sede, variedades_sugeridas())
 
 
 @app.get("/pantalla/{sede}", response_class=HTMLResponse)
-def pagina_pantalla(sede: str) -> str:
+def pagina_pantalla(sede: SedeEnRuta) -> str:
     return pantalla(sede)
 
 
