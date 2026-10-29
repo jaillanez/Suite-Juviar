@@ -31,9 +31,11 @@ from suite_juviar.plataforma.identidad.application.ingreso import ServicioIngres
 from suite_juviar.plataforma.identidad.infrastructure.usuarios_sqlite import UsuariosSQLite
 from suite_juviar.plataforma.terceros.api.contactos import configurar as configurar_contactos
 from suite_juviar.plataforma.terceros.api.contactos import router as contactos_router
-from suite_juviar.plataforma.terceros.api.guardias import configurar as configurar_guardias
+from suite_juviar.plataforma.terceros.api.conversaciones_bot import (
+    router as conversaciones_bot_router,
+)
 from suite_juviar.plataforma.terceros.api.guardias import router as guardias_router
-from suite_juviar.plataforma.terceros.api.conversaciones_bot import router as conversaciones_bot_router
+from suite_juviar.plataforma.terceros.api.personal_bot import router as personal_bot_router
 from suite_juviar.plataforma.terceros.api.simulador_bot import router as simulador_bot_router
 from suite_juviar.plataforma.terceros.api.tablero_fila import configurar as configurar_tablero_fila
 from suite_juviar.plataforma.terceros.api.tablero_fila import recepcion as recepcion_datos_router
@@ -64,6 +66,8 @@ if not identidad_es_simulada():
 app.include_router(ingreso_router, prefix="/api/v1")
 app.include_router(usuarios_router, prefix="/api/v1")
 app.include_router(recepcion_router, prefix="/api/v1")
+# En el servidor de Gestión, SJ_DATABASE_URL usa el rol terceros_gestor (sólo contactos de
+# productores) por una red exclusiva con la base de la suite (infra/gestion/compose.yaml).
 dsn_contactos = dsn_psycopg(obligatorio=False)
 if dsn_contactos:
     configurar_contactos(
@@ -71,9 +75,6 @@ if dsn_contactos:
             ContactosPostgreSQL(dsn_contactos, os.getenv("RECEPCION_DSN_DMZ", "").strip())
         )
     )
-dsn_dmz = os.getenv("RECEPCION_DSN_DMZ", "").strip()
-if dsn_dmz:
-    configurar_guardias(dsn_dmz)
 app.include_router(contactos_router, prefix="/api/v1")
 app.include_router(guardias_router, prefix="/api/v1")
 configurar_tablero_fila(os.getenv("SJ_FILA_DSN_DMZ_LECTURA", "").strip())
@@ -82,6 +83,7 @@ app.include_router(recepcion_datos_router, prefix="/api/v1")
 app.include_router(turnos_bodega_router, prefix="/api/v1")
 app.include_router(simulador_bot_router, prefix="/api/v1")
 app.include_router(conversaciones_bot_router, prefix="/api/v1")
+app.include_router(personal_bot_router, prefix="/api/v1")
 rrhh_epp = construir_rrhh_epp()
 app.include_router(crear_rrhh_epp_router(rrhh_epp), prefix="/api/v1/rrhh-epp")
 for nombre, router in construir_routers(rrhh_epp).items():

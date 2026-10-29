@@ -26,6 +26,14 @@ from .repositorio import RepositorioBot
 log = logging.getLogger("bot.worker")
 MAX_INTENTOS = 5
 _seguir = True
+TIPOS_PERSONAL = {"personal": "Personal", "mando_medio": "Mando medio"}
+
+
+def saludo_personal(persona) -> str:
+    """Respuesta al personal mientras no haya consultas definidas para ese grupo."""
+    nombre = persona.nombre.split(",")[-1].strip().split(" ")[0].title() or persona.nombre
+    tipo = TIPOS_PERSONAL.get(persona.tipo, persona.tipo)
+    return f"Hola, {nombre} ({tipo}, {persona.empresa}).\nTodavía no hay consultas habilitadas para vos."
 
 
 def _max_respuestas_hora() -> int:
@@ -54,6 +62,20 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
     for pendiente in pendientes:
         if bot.respuestas_ultima_hora(pendiente.telefono) >= maximo_hora:
             bot.cerrar(pendiente.id, "ignorado", error="tope de respuestas por hora")
+            continue
+        # El personal de la empresa no entra al menú de productores (un celular es de uno o
+        # de otro, nunca de los dos: infra/034).
+        persona = bot.personal(pendiente.telefono) if hasattr(bot, "personal") else None
+        if persona is not None:
+            texto = saludo_personal(persona)
+            try:
+                wamid = salida.enviar_texto(pendiente.telefono, texto)
+            except (ErrorChattigo, transporte.ErrorTransporte, psycopg.Error, RuntimeError,
+                    ValueError, OSError) as exc:
+                bot.reintentar(pendiente.id, str(exc), MAX_INTENTOS)
+                log.warning("envío falló (intento %s): %s", pendiente.intentos + 1, exc)
+                continue
+            bot.cerrar(pendiente.id, "respondido", respuesta=texto, wamid_salida=wamid)
             continue
         cuentas = bot.cuentas(pendiente.telefono)
         permisos = bot.permisos(pendiente.telefono)

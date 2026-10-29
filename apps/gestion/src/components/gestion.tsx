@@ -18,6 +18,7 @@ import { TurnosGestion } from "./turnos-gestion";
 import { ContactosGestion } from "./contactos-gestion";
 import { ProduccionGestion } from "./produccion-gestion";
 import { BotonWhatsapp } from "./simulador-bot";
+import { PersonalBot } from "./personal-bot";
 
 const VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.1.0";
 const COMMIT = process.env.NEXT_PUBLIC_GIT_COMMIT ?? "local";
@@ -35,6 +36,7 @@ function Icono({ nombre }: { nombre: Seccion }) {
     salud: "M12 21s-8-4.5-8-11a4 4 0 017-2.6L12 9l1-1.6A4 4 0 0120 10c0 6.5-8 11-8 11z M9 13h6 M12 10v6",
     turnos: "M12 22a10 10 0 110-20 10 10 0 010 20z M12 6v6l4 2",
     contactos: "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2 M9 11a4 4 0 100-8 4 4 0 000 8z M19 8v6 M22 11h-6",
+    personal: "M4 6h16v13H4z M9 13a2 2 0 100-4 2 2 0 000 4z M6 17c.6-1.6 1.7-2.4 3-2.4s2.4.8 3 2.4 M14 10h4 M14 14h3 M9 6V4h6v2",
     cosecha: "M4 5h16v15H4z M4 9h16 M8 3v4 M16 3v4 M8 13h2 M14 13h2 M8 17h2",
     usuarios: "M12 12a4 4 0 100-8 4 4 0 000 8z M4 21v-1a6 6 0 0112 0v1 M17 11l2 2 4-4",
     configuracion: "M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z M19.4 15a1.7 1.7 0 00.34 1.88l.06.06-2 3.46-.08-.02a1.7 1.7 0 00-1.8.27l-.4.23a1.7 1.7 0 00-.86 1.68V22h-4v-.1a1.7 1.7 0 00-.86-1.68l-.4-.23a1.7 1.7 0 00-1.8-.27l-.08.02-2-3.46.06-.06A1.7 1.7 0 004.6 15v-.46a1.7 1.7 0 00-1.2-1.61l-.08-.03v-4l.08-.03a1.7 1.7 0 001.2-1.61V6.8l2-3.46.08.02a1.7 1.7 0 001.8-.27l.4-.23A1.7 1.7 0 009.74 1.2V1h4v.1a1.7 1.7 0 00.86 1.68l.4.23a1.7 1.7 0 001.8.27l.08-.02 2 3.46-.06.06a1.7 1.7 0 00-.34 1.88v.46a1.7 1.7 0 001.2 1.61l.08.03v4l-.08.03A1.7 1.7 0 0019.4 15z",
@@ -127,6 +129,10 @@ function Contactos() {
   return <><Encabezado titulo="Contactos de productores" descripcion="Permisos, reemplazos e historial con trazabilidad completa." /><ContactosGestion /></>;
 }
 
+function Personal() {
+  return <><Encabezado titulo="Personal en el bot" descripcion="Celulares del personal y de los mandos medios de Juviar-ENAV que el bot reconoce." /><PersonalBot /></>;
+}
+
 function Produccion({ area }: { area: "recepcion" | "fila" | "bot" }) {
   const textos = {
     recepcion: ["Recepción", "Ingreso de camiones y apertura de romaneos."],
@@ -167,7 +173,7 @@ function Contenido({ seccion, sesion, guardar, actualizar }: { seccion: Seccion;
   if (seccion === "usuarios") return <Usuarios />;
   if (seccion === "cosecha") return <><Encabezado titulo="Turnos de cosecha" descripcion="Cuántos kilos recibe cada bodega por día y qué productores vienen. Tocá un día para anotar." /><CalendarioCosecha /></>;
   if (seccion === "configuracion" && sesion.real) return <ConfiguracionReal sesion={sesion} actualizar={actualizar} />;
-  if (seccion === "inicio") return <Inicio empresa={sesion.empresa} nombre={sesion.nombre} perfil={sesion.perfil} />; if (seccion === "produccion") return <Produccion area="recepcion" />; if (seccion === "fila") return <Produccion area="fila" />; if (seccion === "bot") return <Produccion area="bot" />; if (seccion === "epp") return <Epp />; if (seccion === "analitica") return <Analitica />; if (seccion === "seleccion") return <Seleccion />; if (seccion === "capacitaciones") return <Capacitaciones />; if (seccion === "legajo") return <Legajo />; if (seccion === "salud") return <Salud />; if (seccion === "turnos") return <Turnos />; if (seccion === "contactos") return <Contactos />; if (seccion === "configuracion") return <Configuracion sesion={sesion} guardar={guardar} />; return <Pendiente seccion={seccion} />;
+  if (seccion === "inicio") return <Inicio empresa={sesion.empresa} nombre={sesion.nombre} perfil={sesion.perfil} />; if (seccion === "produccion") return <Produccion area="recepcion" />; if (seccion === "fila") return <Produccion area="fila" />; if (seccion === "bot") return <Produccion area="bot" />; if (seccion === "epp") return <Epp />; if (seccion === "analitica") return <Analitica />; if (seccion === "seleccion") return <Seleccion />; if (seccion === "capacitaciones") return <Capacitaciones />; if (seccion === "legajo") return <Legajo />; if (seccion === "salud") return <Salud />; if (seccion === "turnos") return <Turnos />; if (seccion === "contactos") return <Contactos />; if (seccion === "personal") return <Personal />; if (seccion === "configuracion") return <Configuracion sesion={sesion} guardar={guardar} />; return <Pendiente seccion={seccion} />;
 }
 
 function AccesoDenegado({ perfil, seccion }: { perfil: Perfil; seccion: Seccion }) {

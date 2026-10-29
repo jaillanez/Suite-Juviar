@@ -6,8 +6,9 @@ import { ErrorVisible, Tabla, Vacio, Ventana } from "./compartidos";
 
 type Mensaje = { id: string; de: "persona" | "bot" | "aviso"; texto: string; hora: string };
 type Telefono = { telefono: string };
-type Conversacion = Record<string, unknown> & { telefono: string; nombre: string | null; mensajes: number; ultimo_en: string; ultimo_texto: string };
+type Conversacion = Record<string, unknown> & { telefono: string; nombre: string | null; quien: "productor" | "personal" | "mando_medio" | null; mensajes: number; ultimo_en: string; ultimo_texto: string };
 
+const QUIEN = { productor: "Productor", personal: "Personal", mando_medio: "Mando medio" } as const;
 const hora = (valor?: string) => (valor ? new Date(valor) : new Date()).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
 const momento = (valor: string) => new Date(valor).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
@@ -109,6 +110,7 @@ export function ConversacionesBot() {
     {error && <ErrorVisible mensaje={error} />}
     {lista === null ? <p className="ayuda">Cargando…</p> : lista.length ? <Tabla etiqueta="Conversaciones con el bot" filas={lista} porPagina={15} alElegir={setAbierta} columnas={[
       { clave: "nombre", titulo: "Quién", valor: (c) => c.nombre ?? "Sin registrar" },
+      { clave: "quien", titulo: "Tipo", valor: (c) => (c.quien ? QUIEN[c.quien] : "—") },
       { clave: "telefono", titulo: "Teléfono", valor: (c) => `+${c.telefono}` },
       { clave: "ultimo_texto", titulo: "Último mensaje", valor: (c) => c.ultimo_texto.length > 60 ? `${c.ultimo_texto.slice(0, 60)}…` : c.ultimo_texto },
       { clave: "mensajes", titulo: "Mensajes" },

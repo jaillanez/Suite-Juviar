@@ -174,3 +174,22 @@ def test_si_no_se_guarda_la_sesion_no_se_reintenta_el_mensaje(monkeypatch):
     bot, salida = BotQueNoGuardaSesion(TurnosQueAnotan()), Salida()
     procesar_una_vez(bot, Consultas(), salida)
     assert bot.reintentos == [] and "— 150 t libres" in salida.textos[0]
+
+
+class BotConPersonal(Bot):
+    def personal(self, _):
+        from consulta_publica.bot.repositorio import Personal
+
+        return Personal("PEREZ, JUAN CARLOS", "ENAV", "mando_medio")
+
+    def cuentas(self, _):
+        raise AssertionError("al personal no se le buscan cuentas de productor")
+
+
+def test_personal_recibe_saludo_con_nombre_y_no_entra_al_menu(monkeypatch):
+    monkeypatch.setenv("BOT_PUBLIC_BASE_URL", "https://juviar-bot.duckdns.org")
+    monkeypatch.setattr("consulta_publica.bot.transporte.fecha_hoy", lambda: date(2026, 3, 17))
+    bot, salida = BotConPersonal(), Salida()
+    assert procesar_una_vez(bot, Consultas(), salida) == 1
+    assert salida.textos == ["Hola, Juan (Mando medio, ENAV).\nTodavía no hay consultas habilitadas para vos."]
+    assert bot.cierres[0][0][1] == "respondido"

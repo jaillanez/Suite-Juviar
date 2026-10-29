@@ -42,7 +42,7 @@ PERMISOS_POR_PERFIL: dict[str, frozenset[str]] = {
     "SUPERVISOR": frozenset({"suite.acceder", "capacitacion.leer", "turnos.cronograma.leer", "turnos.cronograma.editar"}),
 }
 PERMISOS_POR_PERFIL["SUPERADMIN"] = frozenset().union(
-    *PERMISOS_POR_PERFIL.values(), {"identidad.usuarios.gestionar"}
+    *PERMISOS_POR_PERFIL.values(), {"identidad.usuarios.gestionar", "bot.personal.gestionar"}
 )
 
 PERFIL_LEGAJO_SIMULADO = {"1210": "DEPOSITO", "1501": "CAMPO", "1601": "BASCULA"}

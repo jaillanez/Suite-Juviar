@@ -37,6 +37,15 @@ class RepositorioWebhook:
 
 
 @dataclass(frozen=True)
+class Personal:
+    """Empleado de Juviar-ENAV registrado con su celular (infra/034)."""
+
+    nombre: str
+    empresa: str
+    tipo: str
+
+
+@dataclass(frozen=True)
 class Pendiente:
     id: int
     telefono: str
@@ -80,6 +89,15 @@ class RepositorioBot:
                 (telefono,),
             ).fetchall()
         return [fila["clientecuit"] for fila in filas]
+
+    def personal(self, telefono: str) -> Personal | None:
+        with self._conexion() as conexion:
+            fila = conexion.execute(
+                """SELECT nombre, empresa, tipo FROM consulta.telefono_personal
+                   WHERE telefono = %s AND activo""",
+                (telefono,),
+            ).fetchone()
+        return Personal(**fila) if fila else None
 
     def cuentas(self, telefono: str) -> list[Cuenta]:
         with self._conexion() as conexion:
