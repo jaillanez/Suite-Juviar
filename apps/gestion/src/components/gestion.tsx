@@ -17,6 +17,7 @@ import { SaludGestion } from "./salud-gestion";
 import { TurnosGestion } from "./turnos-gestion";
 import { ContactosGestion } from "./contactos-gestion";
 import { ProduccionGestion } from "./produccion-gestion";
+import { BotonWhatsapp } from "./simulador-bot";
 
 const VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.1.0";
 const COMMIT = process.env.NEXT_PUBLIC_GIT_COMMIT ?? "local";
@@ -91,7 +92,7 @@ function Encabezado({ titulo, descripcion }: { titulo: string; descripcion: stri
 }
 
 function Inicio({ empresa, nombre, perfil }: { empresa: Empresa; nombre?: string; perfil: Perfil }) {
-  return <><Encabezado titulo={`Buen día, ${nombre ? nombre.split(" ")[0] : empresa}`} descripcion="Estado general de las operaciones habilitadas para tu perfil." /><div className="metricas"><article><span>Empresa</span><strong>{empresa}</strong><small>Contexto aplicado a toda la sesión</small></article><article><span>Conexión</span><strong>Activa</strong><small>API interna disponible</small></article><article><span>Perfil</span><strong>Habilitado</strong><small>Permisos aplicados a la sesión</small></article></div>{puedeEntrar(perfil, "fila") && <ResumenFila />}</>;
+  return <><Encabezado titulo={`Buen día, ${nombre ? nombre.split(" ")[0] : empresa}`} descripcion="Estado general de las operaciones habilitadas para tu perfil." /><div className="metricas"><article><span>Empresa</span><strong>{empresa}</strong><small>Contexto aplicado a toda la sesión</small></article><article><span>Conexión</span><strong>Activa</strong><small>API interna disponible</small></article><article><span>Perfil</span><strong>Habilitado</strong><small>Permisos aplicados a la sesión</small></article></div>{puedeEntrar(perfil, "fila") && <ResumenFila />}{puedeEntrar(perfil, "bot") && <BotonWhatsapp />}</>;
 }
 
 function Epp() {
@@ -130,7 +131,7 @@ function Produccion({ area }: { area: "recepcion" | "fila" | "bot" }) {
   const textos = {
     recepcion: ["Recepción", "Ingreso de camiones y apertura de romaneos."],
     fila: ["Fila de camiones", "Llamados, confirmaciones y pantalla de espera del portón."],
-    bot: ["Consultas de productores", "Estadísticas, reportes y simulador del bot."],
+    bot: ["Conversaciones del bot", "Lo que la gente le escribe al bot de WhatsApp y lo que el bot le responde."],
   } as const;
   return <><Encabezado titulo={textos[area][0]} descripcion={textos[area][1]} />{area === "fila" && <TableroFila />}<ProduccionGestion area={area} /></>;
 }

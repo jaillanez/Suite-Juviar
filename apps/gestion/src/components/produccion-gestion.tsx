@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api, ocultarMarcasPrueba } from "@/lib/api";
 import { ErrorVisible } from "./compartidos";
-import { SimuladorBot } from "./simulador-bot";
+import { ConversacionesBot } from "./simulador-bot";
 
 type Romaneo = { id: string; numero: number; estado: string };
 type Productor = { cuit: string; razon_social: string; codigos: string[]; ultima_entrega: string | null };
@@ -101,7 +101,7 @@ export function ProduccionGestion({ area = "recepcion" }: { area?: AreaProduccio
       <p className="ayuda">La consola se abre en el servicio DMZ y mantiene sus propias credenciales. Gestión nunca recibe el token del guardia.</p>
     </section>}
 
-    {area === "bot" && <SimuladorBot />}
+    {area === "bot" && <ConversacionesBot />}
     {area === "bot" && <section className="tarjeta produccion-acceso">
       <div><h2>Bot de productores</h2><p>Probá consultas por cuenta, estadísticas de cosecha, reportes PDF y administración de contactos.</p></div>
       <div className="acciones-produccion">

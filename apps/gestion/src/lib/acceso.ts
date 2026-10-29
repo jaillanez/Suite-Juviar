@@ -22,7 +22,7 @@ export const perfiles: Record<Perfil, { nombre: string; secciones: Seccion[] }> 
 export const nombres: Record<Seccion, string> = {
   inicio: "Resumen", epp: "EPP", analitica: "Analítica", seleccion: "Selección",
   capacitaciones: "Capacitaciones", legajo: "Legajos", salud: "Salud", turnos: "Turnos",
-  produccion: "Recepción", fila: "Fila de camiones", bot: "Consultas de productores",
+  produccion: "Recepción", fila: "Fila de camiones", bot: "Conversaciones del bot",
   contactos: "Contactos", configuracion: "Empresa y perfil", usuarios: "Usuarios", cosecha: "Turnos de cosecha",
 };
 
