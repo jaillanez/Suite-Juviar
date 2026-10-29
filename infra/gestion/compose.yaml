@@ -14,9 +14,10 @@ services:
     security_opt:
       - no-new-privileges:true
     cap_drop: [ALL]
-    # edge: entrada por Caddy. tablero: red interna exclusiva con la base DMZ (rol gestion_tablero),
-    # sin la base principal de la suite.
-    networks: [edge, tablero]
+    # edge: entrada por Caddy. tablero: red interna exclusiva con la base DMZ (rol gestion_tablero).
+    # contactos: red interna exclusiva con la base de la suite, donde Gestión entra sólo con el
+    # rol terceros_gestor (contactos de productores).
+    networks: [edge, tablero, contactos]
 networks:
   edge:
     external: true
@@ -24,3 +25,6 @@ networks:
   tablero:
     external: true
     name: suite-juviar-tablero
+  contactos:
+    external: true
+    name: suite-juviar-contactos

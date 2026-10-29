@@ -8,6 +8,9 @@ from pydantic import BaseModel, Field
 from suite_juviar.plataforma.identidad.api.dependencias import SesionActual, exigir_permiso
 from suite_juviar.plataforma.terceros.application.contactos import GestionarContactos
 from suite_juviar.plataforma.terceros.telefono import TelefonoInvalido
+from suite_juviar.plataforma.terceros.telefono import normalizar as normalizar_telefono
+
+from . import tablero_fila
 
 router = APIRouter(prefix="/contactos", tags=["contactos"])
 _servicio: GestionarContactos | None = None
@@ -26,6 +29,24 @@ def servicio() -> GestionarContactos:
 
 Servicio = Annotated[GestionarContactos, Depends(servicio)]
 Autorizado = Annotated[object, Depends(exigir_permiso("fila.contactos.gestionar"))]
+
+
+def _exigir_que_no_sea_personal(telefono: str) -> None:
+    """Un celular es de productor o de empleado, nunca de los dos (infra/034).
+
+    La base DMZ lo vuelve a controlar al publicar; acá se avisa en el momento de cargarlo.
+    """
+    try:
+        normalizado = normalizar_telefono(telefono)
+    except TelefonoInvalido as exc:
+        raise HTTPException(422, str(exc)) from exc
+    if not tablero_fila._dsn:
+        return
+    if tablero_fila._leer(
+        "SELECT 1 FROM consulta.telefono_personal WHERE telefono = %(t)s AND activo",
+        {"t": normalizado},
+    ):
+        raise HTTPException(409, "Ese celular ya está cargado como personal de la empresa.")
 
 
 class CambioTareas(BaseModel):
@@ -60,6 +81,7 @@ def alta(
     _: Autorizado,
     gestor: Servicio,
 ):
+    _exigir_que_no_sea_personal(datos.telefono)
     try:
         gestor.alta(clientecuit, datos.telefono, datos.tareas, sesion.actor, datos.motivo)
     except TelefonoInvalido as exc:
@@ -71,6 +93,11 @@ def alta(
 @router.get("/pendientes/lista")
 def pendientes(_: Autorizado, gestor: Servicio):
     return gestor.pendientes()
+
+
+@router.get("/productores/lista")
+def productores(_: Autorizado, gestor: Servicio):
+    return gestor.productores()
 
 
 @router.get("/productores/buscar")
@@ -87,6 +114,7 @@ def resolver_pendiente(
     _: Autorizado,
     gestor: Servicio,
 ):
+    _exigir_que_no_sea_personal(datos.telefono)
     try:
         gestor.repo.resolver_pendiente(
             pendiente_id,
@@ -156,6 +184,7 @@ def reemplazar(
     _: Autorizado,
     gestor: Servicio,
 ):
+    _exigir_que_no_sea_personal(datos.nuevo)
     try:
         gestor.reemplazar(clientecuit, datos.anterior, datos.nuevo, sesion.actor, datos.motivo)
     except ValueError as exc:

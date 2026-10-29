@@ -49,6 +49,21 @@ class ContactosPostgreSQL:
         if not administradores:
             raise ValueError("no se puede dejar al productor sin administrador")
 
+    def productores(self) -> list[dict]:
+        """Todos los productores publicados, con cuántos contactos activos tiene cada uno."""
+        with self.conectar() as cn:
+            return [
+                dict(f)
+                for f in cn.execute(
+                    """SELECT p.clientecuit,p.razonsocial,p.codigos,p.ultima_entrega,
+                              count(c.telefono) FILTER (WHERE c.activo) AS contactos
+                       FROM terceros.productor_publicacion p
+                       LEFT JOIN terceros.contacto_whatsapp c USING (clientecuit)
+                       GROUP BY p.clientecuit,p.razonsocial,p.codigos,p.ultima_entrega
+                       ORDER BY p.razonsocial"""
+                ).fetchall()
+            ]
+
     def listar(self, clientecuit: str) -> list[dict]:
         with self.conectar() as cn:
             return [

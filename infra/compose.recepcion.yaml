@@ -19,6 +19,11 @@ services:
       retries: 20
     mem_limit: 768m
     cpus: 0.75
+    # contactos: red exclusiva con Gestión (rol terceros_gestor). Sin la base DMZ.
+    networks:
+      default: {}
+      contactos:
+        aliases: [suite-db-contactos]
 
   dmz-db:
     image: postgres:17-alpine
@@ -45,6 +50,10 @@ services:
         aliases: [dmz-db-tablero]
 
 networks:
+  # Se crea una vez: docker network create --internal suite-juviar-contactos
+  contactos:
+    external: true
+    name: suite-juviar-contactos
   # Se crea una vez: docker network create --internal suite-juviar-tablero
   tablero:
     external: true

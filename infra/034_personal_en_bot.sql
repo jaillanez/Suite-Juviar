@@ -40,6 +40,9 @@ BEGIN
     IF NOT NEW.activo THEN
         RETURN NEW;
     END IF;
+    -- Las dos tablas se escriben por caminos distintos (Gestión y el publicador): se
+    -- serializa por número para que dos altas simultáneas no pasen ambas el control.
+    PERFORM pg_advisory_xact_lock(hashtext('celular:' || NEW.telefono));
     IF TG_TABLE_NAME = 'telefono_personal' AND EXISTS (
         SELECT 1 FROM consulta.telefono_productor WHERE telefono = NEW.telefono AND activo
     ) THEN

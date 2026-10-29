@@ -34,7 +34,6 @@ from suite_juviar.plataforma.terceros.api.contactos import router as contactos_r
 from suite_juviar.plataforma.terceros.api.conversaciones_bot import (
     router as conversaciones_bot_router,
 )
-from suite_juviar.plataforma.terceros.api.guardias import configurar as configurar_guardias
 from suite_juviar.plataforma.terceros.api.guardias import router as guardias_router
 from suite_juviar.plataforma.terceros.api.personal_bot import router as personal_bot_router
 from suite_juviar.plataforma.terceros.api.simulador_bot import router as simulador_bot_router
@@ -67,16 +66,15 @@ if not identidad_es_simulada():
 app.include_router(ingreso_router, prefix="/api/v1")
 app.include_router(usuarios_router, prefix="/api/v1")
 app.include_router(recepcion_router, prefix="/api/v1")
-dsn_contactos = dsn_psycopg(obligatorio=False)
+# En el servidor, Gestión entra a la base de la suite sólo con el rol terceros_gestor
+# (contactos de productores), por una red exclusiva: SJ_GESTION_CONTACTOS_DSN.
+dsn_contactos = os.getenv("SJ_GESTION_CONTACTOS_DSN", "").strip() or dsn_psycopg(obligatorio=False)
 if dsn_contactos:
     configurar_contactos(
         GestionarContactos(
             ContactosPostgreSQL(dsn_contactos, os.getenv("RECEPCION_DSN_DMZ", "").strip())
         )
     )
-dsn_dmz = os.getenv("RECEPCION_DSN_DMZ", "").strip()
-if dsn_dmz:
-    configurar_guardias(dsn_dmz)
 app.include_router(contactos_router, prefix="/api/v1")
 app.include_router(guardias_router, prefix="/api/v1")
 configurar_tablero_fila(os.getenv("SJ_FILA_DSN_DMZ_LECTURA", "").strip())

@@ -13,11 +13,12 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Path, Query
 
 from suite_juviar.plataforma.identidad.api.dependencias import exigir_permiso
+from suite_juviar.plataforma.identidad.domain.sesion import Sesion
 
 from .tablero_fila import _leer
 
 router = APIRouter(prefix="/conversaciones-bot", tags=["bot"])
-Autorizado = Annotated[object, Depends(exigir_permiso("bot.conversaciones.leer"))]
+Autorizado = Annotated[Sesion, Depends(exigir_permiso("bot.conversaciones.leer"))]
 
 LISTADO = """
 WITH ultimas AS (
@@ -33,11 +34,14 @@ SELECT u.telefono, u.mensajes, u.ultimo_en,
          (SELECT string_agg(DISTINCT p.razonsocial, ' · ')
             FROM consulta.telefono_productor t JOIN fila.productor p ON p.clientecuit = t.clientecuit
            WHERE t.telefono = u.telefono AND t.activo),
-         (SELECT e.nombre FROM consulta.telefono_personal e
+         -- El nombre del personal sólo lo ve quien administra el personal del bot.
+         (SELECT CASE WHEN %(ve_personal)s THEN e.nombre ELSE 'Personal de la empresa' END
+            FROM consulta.telefono_personal e
            WHERE e.telefono = u.telefono AND e.activo)) AS nombre,
        CASE WHEN EXISTS (SELECT 1 FROM consulta.telefono_personal e
                           WHERE e.telefono = u.telefono AND e.activo)
-            THEN (SELECT e.tipo FROM consulta.telefono_personal e WHERE e.telefono = u.telefono)
+            THEN (SELECT CASE WHEN %(ve_personal)s THEN e.tipo ELSE 'personal' END
+                    FROM consulta.telefono_personal e WHERE e.telefono = u.telefono)
             WHEN EXISTS (SELECT 1 FROM consulta.telefono_productor t
                           WHERE t.telefono = u.telefono AND t.activo)
             THEN 'productor' END AS quien
@@ -73,8 +77,8 @@ def armar_chat(filas: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 @router.get("")
-def conversaciones(_: Autorizado, dias: int = Query(30, ge=1, le=365)):
-    return _leer(LISTADO, {"dias": dias})
+def conversaciones(sesion: Autorizado, dias: int = Query(30, ge=1, le=365)):
+    return _leer(LISTADO, {"dias": dias, "ve_personal": sesion.puede("bot.personal.gestionar")})
 
 
 @router.get("/{telefono}")

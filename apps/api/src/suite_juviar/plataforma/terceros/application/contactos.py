@@ -19,6 +19,7 @@ class Contactos(Protocol):
     def pendientes(self) -> list[dict]: ...
     def descartar_pendiente(self, pendiente_id: int, actor: str, nota: str) -> None: ...
     def buscar_productores(self, consulta: str) -> list[dict]: ...
+    def productores(self) -> list[dict]: ...
 
 
 class GestionarContactos:
@@ -60,6 +61,9 @@ class GestionarContactos:
 
     def buscar_productores(self, consulta: str) -> list[dict]:
         return self.repo.buscar_productores(consulta)
+
+    def productores(self) -> list[dict]:
+        return self.repo.productores()
 
     def dar_baja(self, clientecuit: str, telefono: str, actor: str, motivo: str) -> None:
         actuales = {
