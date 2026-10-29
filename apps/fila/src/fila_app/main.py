@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hmac
+import logging
 import os
+import time
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import Annotated
@@ -24,6 +26,10 @@ from .modelos import (
 )
 from .repositorio import RepositorioFila, RepositorioPublico
 from .web import MANIFEST, SERVICE_WORKER, guardia, pagina, pantalla, porton, ticket
+
+log = logging.getLogger("fila.web")
+SEGUNDOS_CACHE_VARIEDADES = 900
+_cache_variedades: tuple[float, list[str]] | None = None
 
 
 @lru_cache
@@ -48,6 +54,31 @@ def repo_turnos() -> RepositorioFila:
     if not dsn:
         raise RuntimeError("Falta FILA_DSN_TURNOS")
     return RepositorioFila(dsn)
+
+
+def variedades_sugeridas() -> list[str]:
+    """Sugerencias para el portón desde las descargas reales.
+
+    fila_publico no lee consulta.descarga_publica; quien sí puede es fila_worker
+    (022), cuyo DSN ya está en el mismo fila.env. Se consulta poco (caché) y, si
+    falla o falta el DSN, el formulario queda con texto libre sin sugerencias.
+    """
+    global _cache_variedades
+    if _cache_variedades is not None:
+        momento, lista = _cache_variedades
+        if time.monotonic() - momento < SEGUNDOS_CACHE_VARIEDADES:
+            return lista
+    dsn = os.environ.get("FILA_DSN_WORKER", "").strip()
+    ahora = time.monotonic()
+    lista = []
+    if dsn:
+        try:
+            lista = RepositorioFila(dsn).variedades_sugeridas()
+        except psycopg.Error:
+            log.warning("no se pudieron leer las variedades sugeridas", exc_info=True)
+            ahora -= SEGUNDOS_CACHE_VARIEDADES - 60  # reintenta en un minuto
+    _cache_variedades = (ahora, lista)
+    return lista
 
 
 def _token_valido(recibido: str | None, variable: str) -> bool:
@@ -91,7 +122,7 @@ def health() -> dict[str, str]:
 
 @app.get("/r/{sede}", response_class=HTMLResponse)
 def pagina_porton(sede: str) -> str:
-    return porton(sede)
+    return porton(sede, variedades_sugeridas())
 
 
 @app.get("/t/{token}", response_class=HTMLResponse)
@@ -101,7 +132,7 @@ def pagina_ticket(token: str) -> str:
 
 @app.get("/guardia/{sede}", response_class=HTMLResponse)
 def pagina_guardia(sede: str) -> str:
-    return guardia(sede)
+    return guardia(sede, variedades_sugeridas())
 
 
 @app.get("/pantalla/{sede}", response_class=HTMLResponse)
@@ -225,7 +256,12 @@ def confirmar(
         if not sede or not sesion.puede_operar(sede):
             raise HTTPException(403, "la sesión no corresponde a esta sede")
     try:
-        return repositorio.confirmar(viaje_id, actor=sesion.actor, **datos.model_dump())
+        return repositorio.confirmar(
+            viaje_id,
+            actor=sesion.actor,
+            cambiar_variedad="variedad" in datos.model_fields_set,
+            **datos.model_dump(),
+        )
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
 
@@ -275,7 +311,12 @@ def datos_pantalla(
     if not _token_valido(token, "FILA_PANTALLA_TOKEN"):
         raise HTTPException(404)
     tablero = repositorio.tablero(sede)
-    return {"llamados": tablero["llamados"]}
+    return {
+        "llamados": [
+            {k: x[k] for k in ("id", "numero_dia", "patente", "llamado_en")}
+            for x in tablero["llamados"]
+        ]
+    }
 
 
 @app.post("/api/turnos", status_code=201)

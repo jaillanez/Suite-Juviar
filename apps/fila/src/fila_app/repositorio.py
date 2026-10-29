@@ -162,6 +162,15 @@ class RepositorioFila:
             ).fetchall()
         return [dict(f) for f in filas]
 
+    def variedades_sugeridas(self) -> list[str]:
+        """Variedades reales ya pesadas; sólo para sugerir en el formulario del portón."""
+        with self.conexion() as cn:
+            filas = cn.execute(
+                """SELECT DISTINCT variedad FROM consulta.descarga_publica
+                   WHERE variedad IS NOT NULL ORDER BY 1 LIMIT 80"""
+            ).fetchall()
+        return [f["variedad"].strip() for f in filas if f["variedad"].strip()]
+
     def expirar(self) -> int:
         with self.conexion() as cn:
             filas = cn.execute(
@@ -188,6 +197,7 @@ class RepositorioFila:
         telefono: str | None,
         id_cliente: UUID,
         ip: str,
+        variedad: str | None = None,
     ) -> dict[str, Any]:
         patente = normalizar(patente)
         ticket = secrets.token_urlsafe(32)
@@ -202,11 +212,12 @@ class RepositorioFila:
                 raise PermissionError("límite de cinco registros por hora")
             fila = cn.execute(
                 """INSERT INTO fila.viaje
-                       (id_cliente,ticket,productor_texto,sede,patente,chofer_tel,origen,estado)
-                   VALUES (%s,%s,%s,%s,%s,%s,'qr','pendiente')
+                       (id_cliente,ticket,productor_texto,sede,patente,chofer_tel,origen,estado,
+                        variedad_declarada)
+                   VALUES (%s,%s,%s,%s,%s,%s,'qr','pendiente',%s)
                    ON CONFLICT (id_cliente) DO UPDATE SET id_cliente=EXCLUDED.id_cliente
                    RETURNING id,ticket,estado,patente""",
-                (id_cliente, ticket, productor.strip(), sede, patente, telefono),
+                (id_cliente, ticket, productor.strip(), sede, patente, telefono, variedad),
             ).fetchone()
             cn.execute(
                 """INSERT INTO fila.evento(id_cliente,viaje_id,tipo,actor,detalle)
@@ -272,7 +283,8 @@ class RepositorioFila:
         self.expirar()
         with self.conexion() as cn:
             pendientes = cn.execute(
-                """SELECT id,patente,productor_texto,registrado_en FROM fila.viaje
+                """SELECT id,patente,productor_texto,variedad_declarada,registrado_en
+                   FROM fila.viaje
                    WHERE sede=%s AND estado='pendiente' ORDER BY registrado_en""",
                 (sede,),
             ).fetchall()
@@ -280,8 +292,9 @@ class RepositorioFila:
             por_id = {
                 f["id"]: dict(f)
                 for f in cn.execute(
-                    """SELECT id,numero_dia,patente,confirmado_en,clientecuit,
-                              declara_organica,(turno_id IS NOT NULL) con_turno
+                    """SELECT id,numero_dia,patente,productor_texto,variedad_declarada,
+                              confirmado_en,clientecuit,declara_organica,
+                              (turno_id IS NOT NULL) con_turno
                        FROM fila.viaje WHERE sede=%s AND estado='en_espera'""",
                     (sede,),
                 ).fetchall()
@@ -292,7 +305,8 @@ class RepositorioFila:
                 dato["grupo"] = grupo(elemento, certificados)
                 espera.append(dato)
             llamados = cn.execute(
-                """SELECT id,numero_dia,patente,llamado_en FROM fila.viaje
+                """SELECT id,numero_dia,patente,productor_texto,variedad_declarada,llamado_en
+                   FROM fila.viaje
                    WHERE sede=%s AND estado='llamado' ORDER BY llamado_en""",
                 (sede,),
             ).fetchall()
@@ -312,7 +326,10 @@ class RepositorioFila:
         actor: str,
         id_cliente: UUID,
         momento_cliente: datetime,
+        variedad: str | None = None,
+        cambiar_variedad: bool = False,
     ) -> dict[str, Any]:
+        """Con cambiar_variedad=False se conserva la variedad que declaró el chofer."""
         momento_cliente = _validar_momento(momento_cliente)
         with self.conexion() as cn:
             if cn.execute("SELECT 1 FROM fila.evento WHERE id_cliente=%s", (id_cliente,)).fetchone():
@@ -343,11 +360,18 @@ class RepositorioFila:
                    WHERE sede=%s AND fecha_operativa=%s""",
                 (viaje["sede"], fecha),
             ).fetchone()["n"]
+            detalle: dict[str, Any] = {"turno": bool(turno)}
+            if cambiar_variedad and variedad != viaje.get("variedad_declarada"):
+                detalle["variedad_declarada"] = {
+                    "antes": viaje.get("variedad_declarada"),
+                    "despues": variedad,
+                }
             actualizado = cn.execute(
                 """UPDATE fila.viaje SET estado='en_espera',clientecuit=%s,
                           clientecodigo=%s,declara_organica=%s,turno_id=%s,
                           confirmado_en=%s,confirmado_por=%s,fecha_operativa=%s,numero_dia=%s,
-                          productor_revision_manual=%s
+                          productor_revision_manual=%s,
+                          variedad_declarada=CASE WHEN %s THEN %s ELSE variedad_declarada END
                    WHERE id=%s RETURNING *""",
                 (
                     clientecuit,
@@ -359,6 +383,8 @@ class RepositorioFila:
                     fecha,
                     numero,
                     productor_revision_manual,
+                    cambiar_variedad,
+                    variedad,
                     viaje_id,
                 ),
             ).fetchone()
@@ -366,7 +392,7 @@ class RepositorioFila:
                 """INSERT INTO fila.evento
                        (id_cliente,viaje_id,tipo,actor,momento_cliente,detalle)
                    VALUES (%s,%s,'confirmado',%s,%s,%s)""",
-                (id_cliente, viaje_id, actor, momento_cliente, Jsonb({"turno": bool(turno)})),
+                (id_cliente, viaje_id, actor, momento_cliente, Jsonb(detalle)),
             )
         return dict(actualizado)
 
@@ -426,9 +452,10 @@ class RepositorioFila:
                 """INSERT INTO fila.viaje
                    (id_cliente,ticket,productor_texto,sede,patente,chofer_tel,clientecuit,
                     clientecodigo,declara_organica,turno_id,origen,estado,fecha_operativa,
-                    numero_dia,confirmado_en,confirmado_por,productor_revision_manual)
+                    numero_dia,confirmado_en,confirmado_por,productor_revision_manual,
+                    variedad_declarada)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'guardia','en_espera',
-                           %s,%s,%s,%s,%s) RETURNING *""",
+                           %s,%s,%s,%s,%s,%s) RETURNING *""",
                 (
                     datos["id_cliente"],
                     secrets.token_urlsafe(32),
@@ -445,6 +472,7 @@ class RepositorioFila:
                     momento,
                     actor,
                     datos.get("productor_revision_manual", False),
+                    datos.get("variedad"),
                 ),
             ).fetchone()
             cn.execute(
@@ -657,12 +685,13 @@ class RepositorioPublico:
         telefono: str | None,
         id_cliente: UUID,
         ip: str,
+        variedad: str | None = None,
     ) -> dict[str, Any]:
         patente = normalizar(patente)
         with self.conexion() as cn:
             try:
                 fila = cn.execute(
-                    "SELECT * FROM fila.registrar_llegada(%s,%s,%s,%s,%s,%s,%s)",
+                    "SELECT * FROM fila.registrar_llegada(%s,%s,%s,%s,%s,%s,%s,%s::text)",
                     (
                         id_cliente,
                         secrets.token_urlsafe(32),
@@ -671,6 +700,7 @@ class RepositorioPublico:
                         patente,
                         telefono,
                         ip,
+                        variedad,
                     ),
                 ).fetchone()
             except psycopg.errors.RaiseException as exc:
