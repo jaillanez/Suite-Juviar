@@ -55,6 +55,7 @@ function sesionDesde(yo: Yo): SesionGestion {
 function IngresoReal({ entrar }: { entrar: (yo: Yo) => void }) {
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [verClave, setVerClave] = useState(false);
   async function enviar(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); setError(""); setEnviando(true);
     const f = new FormData(e.currentTarget);
@@ -63,7 +64,7 @@ function IngresoReal({ entrar }: { entrar: (yo: Yo) => void }) {
     finally { setEnviando(false); }
   }
   return <main className="ingreso"><section className="ingreso-marca"><span className="isotipo">SJ</span><p>Suite Juviar</p><h1>Gestión interna, en un solo lugar.</h1><p className="bajada">Operaciones de personas, seguridad y producción con trazabilidad.</p></section>
-    <form className="tarjeta ingreso-form" onSubmit={enviar}><h2>Ingresar a Gestión</h2>{error && <ErrorVisible mensaje={error} />}<label>Correo<input name="email" type="email" required autoComplete="username" autoFocus /></label><label>Contraseña<input name="clave" type="password" required autoComplete="current-password" /></label><button className="primario" disabled={enviando}>{enviando ? "Ingresando…" : "Ingresar"}</button><p className="ayuda">¿No tenés usuario o te olvidaste la contraseña? Pedíselo al administrador del sistema.</p></form></main>;
+    <form className="tarjeta ingreso-form" onSubmit={enviar}><h2>Ingresar a Gestión</h2>{error && <ErrorVisible mensaje={error} />}<label>Correo<input name="email" type="email" required autoComplete="username" autoFocus /></label><label>Contraseña<span className="con-ojo"><input name="clave" type={verClave ? "text" : "password"} required autoComplete="current-password" /><button type="button" className="ojo" aria-label={verClave ? "Ocultar contraseña" : "Mostrar contraseña"} aria-pressed={verClave} onClick={() => setVerClave(!verClave)}><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></span></label><button className="primario" disabled={enviando}>{enviando ? "Ingresando…" : "Ingresar"}</button><p className="ayuda">¿No tenés usuario o te olvidaste la contraseña? Pedíselo al administrador del sistema.</p></form></main>;
 }
 
 function FormularioClave({ listo, titulo }: { listo: (yo: Yo) => void; titulo: string }) {

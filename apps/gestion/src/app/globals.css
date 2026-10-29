@@ -127,6 +127,14 @@ button:hover {
   font-weight: 700;
   text-decoration: none;
 }
+.boton.primario {
+  background: var(--verde);
+  border-color: var(--verde);
+  color: #fff;
+}
+.boton.primario:hover {
+  background: var(--verde2);
+}
 .peligro {
   background: var(--rojo);
   color: #fff;
@@ -201,6 +209,24 @@ button:hover {
   height: 64px;
   font-size: 1.25rem;
 }
+.con-ojo { position: relative; display: grid; }
+.con-ojo input { padding-right: 48px; }
+.con-ojo .ojo {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  bottom: 2px;
+  width: 42px;
+  min-height: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+.con-ojo .ojo:hover { background: transparent; color: var(--tinta); }
+.con-ojo .ojo[aria-pressed="true"] { color: var(--verde); }
 label {
   display: grid;
   gap: 6px;

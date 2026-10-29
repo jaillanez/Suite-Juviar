@@ -11,7 +11,10 @@ form,.panel{background:var(--card);padding:clamp(18px,4vw,32px);border-radius:16
 label{display:block;font-weight:750;margin:18px 0 7px}input,select,button{width:100%;min-height:58px;
 font:inherit;border-radius:12px;border:2px solid #bdc5bd;padding:12px 14px;background:#fff}input:focus,select:focus,
 button:focus-visible{outline:4px solid #86b99b;outline-offset:2px}button{margin-top:22px;border:0;background:var(--green);
-color:white;font-weight:850;cursor:pointer}button.secondary{background:#e4e8e3;color:var(--ink)}button.danger{background:var(--red)}
+color:white;font-weight:850;cursor:pointer}button.secondary{background:#e4e8e3;color:var(--ink)}
+.con-ojo{position:relative}.con-ojo input{padding-right:64px}.con-ojo .ojo{position:absolute;
+right:4px;top:4px;bottom:4px;width:52px;min-height:0;margin:0;padding:0;display:grid;place-items:center;background:transparent;
+color:var(--muted)}.con-ojo .ojo[aria-pressed=true]{color:var(--green)}button.danger{background:var(--red)}
 .status{text-align:center;min-height:70vh;display:grid;place-content:center}.status strong{font-size:clamp(4rem,18vw,9rem);
 line-height:.9}.llamado{background:#0b7d43;color:#fff}.list{display:grid;gap:10px}.row{display:grid;grid-template-columns:1fr auto;
 gap:10px;align-items:center;background:var(--card);padding:16px;border-radius:14px}.row button{width:auto;margin:0}.tag{font-size:.8rem;
@@ -78,7 +81,7 @@ def guardia(sede: str) -> str:
     cuerpo = f"""<div id="offline" class="offline oculto">Sin conexión — <span>0</span> acciones por enviar</div>
 <main id="ingreso"><p class="muted">Guardia · {sede.title()}</p><h1>Ingresar</h1>
 <form id="formIngreso"><label>Usuario<input id="usuario" autocomplete="username" required></label>
-<label>Clave<input id="clave" type="password" autocomplete="current-password" required></label>
+<label for="clave">Clave</label><div class="con-ojo"><input id="clave" type="password" autocomplete="current-password" required><button type="button" class="ojo" aria-label="Mostrar clave" aria-pressed="false" onclick="const c=document.getElementById('clave');const ver=c.type==='password';c.type=ver?'text':'password';this.setAttribute('aria-pressed',ver);this.setAttribute('aria-label',ver?'Ocultar clave':'Mostrar clave')"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
 <button>Entrar</button><p id="errorIngreso" role="alert"></p></form></main>
 <main id="aplicacion" class="oculto"><p class="muted">Guardia · {sede.title()}</p><h1>Fila del portón</h1>
 <button id="altaDirecta" class="secondary">+ Camión sin celular</button><h2>Por confirmar</h2><div id="pendientes" class="list"></div>
