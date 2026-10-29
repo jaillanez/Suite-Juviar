@@ -197,7 +197,7 @@ def responder(
             return _menu(elegida or cuentas[0], ctx)
         return _pedir_cuenta(cuentas)
 
-    if estado.paso == TURNO_CUENTA:
+    if estado.paso == TURNO_CUENTA and cuentas_turno:
         indice = _opcion_elegida(t, [c.como_opcion() for c in cuentas_turno])
         if indice is None:
             return _pedir_cuenta_turno(cuentas_turno)
@@ -301,6 +301,8 @@ def _iniciar_turno(elegida: Cuenta, ctx: _Contexto) -> Respuesta:
 
 
 def _pedir_cuenta_turno(cuentas_turno: list[Cuenta]) -> Respuesta:
+    if not cuentas_turno:
+        return Respuesta(texto="Este número no tiene permiso para pedir turnos.")
     return Respuesta(
         texto="¿Para qué cuenta es el turno?",
         opciones=[c.como_opcion() for c in cuentas_turno],

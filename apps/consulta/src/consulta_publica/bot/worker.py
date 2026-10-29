@@ -75,11 +75,16 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
             )
             if caducada:
                 respuesta.texto = f"{CADUCADO}\n\n{respuesta.texto}"
-            bot.guardar_estado(pendiente.telefono, respuesta.estado)
-        except (psycopg.Error, OSError) as exc:
+        except Exception as exc:  # noqa: BLE001 - un mensaje con problemas no frena a los demás
             bot.reintentar(pendiente.id, str(exc), MAX_INTENTOS)
             log.warning("diálogo falló (intento %s): %s", pendiente.intentos + 1, exc)
             continue
+        # A partir de acá el diálogo ya pudo haber reservado un turno: nunca se reintenta el
+        # mensaje (eso lo reservaría de nuevo). Si no se guarda la sesión, se sigue igual.
+        try:
+            bot.guardar_estado(pendiente.telefono, respuesta.estado)
+        except (psycopg.Error, OSError) as exc:
+            log.warning("no se pudo guardar la sesión de %s: %s", pendiente.id, exc)
         try:
             if respuesta.accion in {"estadisticas", "reporte"}:
                 entregas = consultas.entregas(

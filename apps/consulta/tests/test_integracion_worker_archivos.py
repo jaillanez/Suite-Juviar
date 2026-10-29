@@ -160,3 +160,17 @@ def test_falla_de_la_base_en_el_dialogo_se_reintenta(monkeypatch):
     bot, salida = BotConTurnos(TurnosQueAnotan(falla=psycopg.OperationalError("caída"))), Salida()
     procesar_una_vez(bot, Consultas(), salida)
     assert len(bot.reintentos) == 1 and not salida.textos and not bot.estados
+
+
+class BotQueNoGuardaSesion(BotConTurnos):
+    def guardar_estado(self, _, estado):
+        raise psycopg.OperationalError("no se pudo guardar")
+
+
+def test_si_no_se_guarda_la_sesion_no_se_reintenta_el_mensaje(monkeypatch):
+    # Reintentar después de que el diálogo respondió podría reservar dos veces el mismo turno.
+    monkeypatch.setenv("BOT_PUBLIC_BASE_URL", "https://juviar-bot.duckdns.org")
+    monkeypatch.setattr("consulta_publica.bot.transporte.fecha_hoy", lambda: date(2026, 3, 17))
+    bot, salida = BotQueNoGuardaSesion(TurnosQueAnotan()), Salida()
+    procesar_una_vez(bot, Consultas(), salida)
+    assert bot.reintentos == [] and "— 150 t libres" in salida.textos[0]

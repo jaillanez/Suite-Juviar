@@ -384,3 +384,12 @@ def test_mis_turnos_solo_de_cuentas_habilitadas():
     turnos = TurnosFalsos()
     r("mis turnos", cuentas=(JUAN, SOLO_INFORMES, FINCA), turnos=turnos)
     assert turnos.consultas_proximos == [(["20-1", "30-7"], HOY)]
+
+
+def test_paso_de_cuenta_sin_cuentas_habilitadas_no_rompe():
+    from consulta_publica.bot.dialogo import TURNO_CUENTA, Cuenta, Estado, responder
+
+    cuenta = Cuenta("20-1", "G00001", "PRODUCTOR", frozenset({"ver_informes"}))
+    respuesta = responder("1", [cuenta], Estado(TURNO_CUENTA, "20-1"), date(2026, 10, 29),
+                          puede_ver_informes=True, puede_pedir_turnos=False)
+    assert respuesta.texto
