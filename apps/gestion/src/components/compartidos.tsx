@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 
 export function ErrorVisible({ mensaje }: { mensaje: string }) {
   return <div className="aviso-error" role="alert"><strong>No se pudo completar.</strong><span>{mensaje}</span></div>;
@@ -36,11 +36,18 @@ export function Confirmacion({ abierto, titulo, detalle, confirmar, cancelar }: 
   return <div className="modal-fondo" role="presentation" onMouseDown={cancelar}><div className="modal" role="alertdialog" aria-modal="true" aria-labelledby="modal-titulo" onMouseDown={(e) => e.stopPropagation()}><h2 id="modal-titulo">{titulo}</h2><p>{detalle}</p><div className="acciones"><button onClick={cancelar}>Cancelar</button><button className="peligro" onClick={confirmar}>Confirmar</button></div></div></div>;
 }
 
-export function Ventana({ titulo, cerrar, children }: { titulo: string; cerrar: () => void; children: ReactNode }) {
+// Pila de ventanas abiertas: Escape cierra sólo la de arriba cuando hay una encima de otra.
+const ventanasAbiertas: symbol[] = [];
+
+export function Ventana({ titulo, cerrar, children, tamano = "ancha" }: { titulo: string; cerrar: () => void; children: ReactNode; tamano?: "chica" | "ancha" | "amplia" }) {
+  const alCerrar = useRef(cerrar);
+  useEffect(() => { alCerrar.current = cerrar; }, [cerrar]);
+  const id = useId();
   useEffect(() => {
-    const tecla = (e: KeyboardEvent) => { if (e.key === "Escape") cerrar(); };
+    const propia = Symbol("ventana"); ventanasAbiertas.push(propia);
+    const tecla = (e: KeyboardEvent) => { if (e.key === "Escape" && ventanasAbiertas.at(-1) === propia) alCerrar.current(); };
     document.addEventListener("keydown", tecla);
-    return () => document.removeEventListener("keydown", tecla);
-  }, [cerrar]);
-  return <div className="modal-fondo" role="presentation" onMouseDown={cerrar}><div className="modal modal-ancho" role="dialog" aria-modal="true" aria-labelledby="ventana-titulo" onMouseDown={(e) => e.stopPropagation()}><div className="titulo-fila"><h2 id="ventana-titulo">{titulo}</h2><button onClick={cerrar} aria-label="Cerrar" autoFocus>✕</button></div>{children}</div></div>;
+    return () => { document.removeEventListener("keydown", tecla); ventanasAbiertas.splice(ventanasAbiertas.indexOf(propia), 1); };
+  }, []);
+  return <div className="modal-fondo" role="presentation" onMouseDown={cerrar}><div className={`modal modal-ancho${tamano === "ancha" ? "" : ` modal-${tamano}`}`} role="dialog" aria-modal="true" aria-labelledby={id} onMouseDown={(e) => e.stopPropagation()}><div className="titulo-fila"><h2 id={id}>{titulo}</h2><button onClick={cerrar} aria-label="Cerrar" autoFocus>✕</button></div>{children}</div></div>;
 }
