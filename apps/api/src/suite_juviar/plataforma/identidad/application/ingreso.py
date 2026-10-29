@@ -134,9 +134,9 @@ class ServicioIngreso:
         usuario = encontrado[0]
         with self._bloqueo_fallos:
             self._fallos.pop(f"{origen}|{email}", None)
-        empresa_sesion = (empresa or usuario.empresa).upper()
-        if empresa_sesion not in EMPRESAS:
-            empresa_sesion = usuario.empresa
+        empresa_sesion = (empresa or "").upper()
+        if empresa_sesion not in usuario.empresas:
+            empresa_sesion = usuario.empresas[0]
         token = secrets.token_urlsafe(32)
         self.repositorio.guardar_sesion(
             token, SesionGuardada(usuario.id, empresa_sesion, datetime.now(UTC) + DURACION_SESION)
@@ -165,8 +165,11 @@ class ServicioIngreso:
 
     def cambiar_empresa(self, token: str, empresa: str) -> None:
         empresa = empresa.upper()
-        if empresa not in EMPRESAS:
-            raise DatosDeUsuarioInvalidos("Empresa inexistente.")
+        resuelto = self.resolver(token)
+        if resuelto is None:
+            raise IngresoInvalido("La sesión venció. Volvé a ingresar.")
+        if empresa not in resuelto[0].empresas:
+            raise DatosDeUsuarioInvalidos("No tenés acceso a esa empresa.")
         self.repositorio.cambiar_empresa_sesion(token, empresa)
 
     def cambiar_clave_propia(self, token: str, actual: str, nueva: str) -> None:
@@ -185,22 +188,26 @@ class ServicioIngreso:
         self.repositorio.registrar_evento(usuario.email, "CAMBIO_CLAVE")
 
     # --- administración ----------------------------------------------------------
-    def _validar_perfil_empresa(self, perfil: str, empresa: str) -> tuple[str, str]:
-        perfil, empresa = perfil.upper(), empresa.upper()
+    def _validar_perfil_empresas(self, perfil: str, empresas: list[str] | tuple[str, ...]
+                                 ) -> tuple[str, tuple[str, ...]]:
+        perfil = perfil.upper()
         if perfil not in self.perfiles_validos:
             raise DatosDeUsuarioInvalidos("Perfil inexistente.")
-        if empresa not in EMPRESAS:
+        elegidas = {e.strip().upper() for e in empresas if e.strip()}
+        if not elegidas:
+            raise DatosDeUsuarioInvalidos("Elegí al menos una empresa.")
+        if not elegidas <= EMPRESAS:
             raise DatosDeUsuarioInvalidos("Empresa inexistente.")
-        return perfil, empresa
+        return perfil, tuple(e for e in ("ENAV", "JUBIAR") if e in elegidas)
 
-    def crear_usuario(self, actor: str, email: str, nombre: str, perfil: str, empresa: str,
-                      clave_inicial: str) -> Usuario:
-        perfil, empresa = self._validar_perfil_empresa(perfil, empresa)
+    def crear_usuario(self, actor: str, email: str, nombre: str, perfil: str,
+                      empresas: list[str] | tuple[str, ...], clave_inicial: str) -> Usuario:
+        perfil, elegidas = self._validar_perfil_empresas(perfil, empresas)
         if not nombre.strip():
             raise DatosDeUsuarioInvalidos("El nombre es obligatorio.")
         validar_clave(clave_inicial)
         usuario = Usuario(
-            str(uuid4()), _normalizar_email(email), nombre.strip(), perfil, empresa,
+            str(uuid4()), _normalizar_email(email), nombre.strip(), perfil, elegidas,
             activo=True, debe_cambiar_clave=True, creado_en=datetime.now(UTC),
         )
         try:
@@ -211,18 +218,18 @@ class ServicioIngreso:
         return usuario
 
     def modificar_usuario(self, actor: str, usuario_id: str, *, nombre: str, perfil: str,
-                          empresa: str, activo: bool) -> Usuario:
+                          empresas: list[str] | tuple[str, ...], activo: bool) -> Usuario:
         usuario = self.repositorio.obtener(usuario_id)
         if usuario is None:
             raise LookupError("Usuario inexistente.")
-        perfil, empresa = self._validar_perfil_empresa(perfil, empresa)
+        perfil, elegidas = self._validar_perfil_empresas(perfil, empresas)
         if not nombre.strip():
             raise DatosDeUsuarioInvalidos("El nombre es obligatorio.")
         if usuario.email == actor and (not activo or perfil != usuario.perfil):
             raise DatosDeUsuarioInvalidos("No podés desactivarte ni cambiar tu propio perfil.")
-        nuevo = replace(usuario, nombre=nombre.strip(), perfil=perfil, empresa=empresa, activo=activo)
+        nuevo = replace(usuario, nombre=nombre.strip(), perfil=perfil, empresas=elegidas, activo=activo)
         self.repositorio.actualizar(nuevo)
-        if not activo or perfil != usuario.perfil:
+        if not activo or perfil != usuario.perfil or not set(elegidas) >= set(usuario.empresas):
             self.repositorio.borrar_sesiones_de(usuario.id)
         self.repositorio.registrar_evento(
             actor, "MODIFICACION_USUARIO",

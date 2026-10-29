@@ -46,11 +46,11 @@ function Ingreso({ entrar }: { entrar: (empresa: Empresa, perfil: Perfil) => voi
     <form className="tarjeta ingreso-form" onSubmit={(e) => { e.preventDefault(); entrar(empresa, perfil); }}><h2>Ingresar a Gestión</h2><label>Empresa<select value={empresa} onChange={(e) => setEmpresa(e.target.value as Empresa)}><option>ENAV</option><option>JUBIAR</option></select></label><label>Perfil<select value={perfil} onChange={(e) => setPerfil(e.target.value as Perfil)}>{Object.entries(perfiles).map(([id, p]) => <option key={id} value={id}>{p.nombre}</option>)}</select></label><button className="primario">Continuar</button></form></main>;
 }
 
-type SesionGestion = { empresa: Empresa; perfil: Perfil; real?: boolean; nombre?: string; email?: string };
-type Yo = { nombre: string; email: string; perfil: Perfil; empresa_sesion: Empresa; debe_cambiar_clave: boolean };
+type SesionGestion = { empresa: Empresa; perfil: Perfil; real?: boolean; nombre?: string; email?: string; empresas?: Empresa[] };
+type Yo = { nombre: string; email: string; perfil: Perfil; empresas: Empresa[]; empresa_sesion: Empresa; debe_cambiar_clave: boolean };
 
 function sesionDesde(yo: Yo): SesionGestion {
-  return { empresa: yo.empresa_sesion, perfil: yo.perfil, real: true, nombre: yo.nombre, email: yo.email };
+  return { empresa: yo.empresa_sesion, perfil: yo.perfil, real: true, nombre: yo.nombre, email: yo.email, empresas: yo.empresas };
 }
 
 function IngresoReal({ entrar }: { entrar: (yo: Yo) => void }) {
@@ -150,7 +150,7 @@ function ConfiguracionReal({ sesion, actualizar }: { sesion: SesionGestion; actu
   }
   return <><Encabezado titulo="Mi cuenta" descripcion="Tus datos de acceso y la empresa con la que estás trabajando." />{error && <ErrorVisible mensaje={error} />}{aviso && <div className="aviso-exito" role="status">{aviso}</div>}
     <section className="tarjeta"><h2>{sesion.nombre}</h2><p>{sesion.email} · {perfiles[sesion.perfil].nombre}</p><p className="ayuda">El perfil lo asigna el administrador del sistema.</p></section>
-    <section className="tarjeta configuracion"><label>Empresa<select value={empresa} onChange={(e) => setEmpresa(e.target.value as Empresa)}><option>ENAV</option><option>JUBIAR</option></select></label><button className="primario" onClick={aplicar}>Aplicar cambios</button></section>
+    {(sesion.empresas?.length ?? 0) > 1 ? <section className="tarjeta configuracion"><label>Empresa en la que trabajás<select value={empresa} onChange={(e) => setEmpresa(e.target.value as Empresa)}>{sesion.empresas?.map((e) => <option key={e}>{e}</option>)}</select></label><button className="primario" onClick={aplicar}>Aplicar cambios</button></section> : <section className="tarjeta"><p>Empresa: <strong>{sesion.empresa}</strong></p></section>}
     <FormularioClave titulo="Cambiar contraseña" listo={(yo) => { actualizar(yo); setAviso("Contraseña cambiada."); }} /></>;
 }
 
@@ -211,5 +211,5 @@ export default function Gestion({ seccionSolicitada }: { seccionSolicitada: Secc
   const valida = Object.hasOwn(nombres, seccionSolicitada) ? seccionSolicitada : "inicio";
   const permitido = puedeEntrar(sesion.perfil, valida);
   const permitidas = new Set(perfiles[sesion.perfil].secciones);
-  return <div className="aplicacion"><aside><div className="marca"><span className="isotipo">SJ</span><div><strong>Suite Juviar</strong><small>Gestión interna</small></div></div><nav aria-label="Secciones">{gruposMenu.map((grupo) => { const secciones = grupo.secciones.filter((s) => permitidas.has(s)); if (!secciones.length) return null; return <GrupoMenu key={`${grupo.nombre}-${valida}`} nombre={grupo.nombre} secciones={secciones} activa={valida} />; })}</nav><Link className="perfil-actual" href="/configuracion"><span>{sesion.nombre ?? perfiles[sesion.perfil].nombre}</span><small>{sesion.real ? perfiles[sesion.perfil].nombre : "Cambiar configuración"}</small></Link></aside><div className="principal-contenedor"><header className="barra"><div><span className="pulso" /> API interna</div><strong>{sesion.empresa}</strong><button className="salir" onClick={salir}>Salir</button></header><main>{permitido ? <Contenido key={`${sesion.perfil}-${valida}`} seccion={valida} sesion={sesion} guardar={entrar} actualizar={aplicar} /> : <AccesoDenegado perfil={sesion.perfil} seccion={valida} />}</main><footer>Suite Juviar Gestión v{VERSION} · commit {COMMIT}</footer></div></div>;
+  return <div className="aplicacion"><aside><div className="marca"><span className="isotipo">SJ</span><div><strong>Suite Juviar</strong><small>Gestión interna</small></div></div><nav aria-label="Secciones">{gruposMenu.map((grupo) => { const secciones = grupo.secciones.filter((s) => permitidas.has(s)); if (!secciones.length) return null; return <GrupoMenu key={`${grupo.nombre}-${valida}`} nombre={grupo.nombre} secciones={secciones} activa={valida} />; })}</nav><Link className="perfil-actual" href="/configuracion"><span>{sesion.nombre ?? perfiles[sesion.perfil].nombre}</span><small>{sesion.real ? perfiles[sesion.perfil].nombre : "Cambiar configuración"}</small></Link></aside><div className="principal-contenedor"><header className="barra"><div><span className="pulso" /> API interna</div>{sesion.real && (sesion.empresas?.length ?? 0) > 1 ? <label className="selector-empresa"><span className="solo-lectores">Empresa</span><select value={sesion.empresa} onChange={(e) => api<Yo>("ingreso/empresa", { method: "PUT", body: JSON.stringify({ empresa: e.target.value }) }).then(aplicar).catch(() => null)}>{sesion.empresas?.map((e) => <option key={e}>{e}</option>)}</select></label> : <strong>{sesion.empresa}</strong>}<button className="salir" onClick={salir}>Salir</button></header><main>{permitido ? <Contenido key={`${sesion.perfil}-${valida}`} seccion={valida} sesion={sesion} guardar={entrar} actualizar={aplicar} /> : <AccesoDenegado perfil={sesion.perfil} seccion={valida} />}</main><footer>Suite Juviar Gestión v{VERSION} · commit {COMMIT}</footer></div></div>;
 }

@@ -3,9 +3,9 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Perfil, perfiles } from "@/lib/acceso";
 import { api } from "@/lib/api";
-import { ErrorVisible, Tabla } from "./compartidos";
+import { ErrorVisible, Tabla, Ventana } from "./compartidos";
 
-type Usuario = { id: string; email: string; nombre: string; perfil: Perfil; empresa: string; activo: boolean; debe_cambiar_clave: boolean; creado_en: string };
+type Usuario = { id: string; email: string; nombre: string; perfil: Perfil; empresas: string[]; activo: boolean; debe_cambiar_clave: boolean; creado_en: string };
 type Acceso = { momento: string; actor: string; accion: string; detalle: string };
 
 const acciones: Record<string, string> = {
@@ -18,6 +18,14 @@ function fecha(valor: string) {
   return new Date(valor).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" });
 }
 
+const EMPRESAS = ["ENAV", "JUBIAR"];
+
+function SelectorEmpresas({ valor }: { valor: string[] }) {
+  return <fieldset className="empresas-usuario"><legend>Empresas a las que tiene acceso</legend>{EMPRESAS.map(e => <label key={e}><input type="checkbox" name="empresas" value={e} defaultChecked={valor.includes(e)} /> {e}</label>)}</fieldset>;
+}
+
+function empresasElegidas(f: FormData) { return f.getAll("empresas").map(String); }
+
 function SelectorPerfil({ valor, cambiar }: { valor: Perfil; cambiar: (p: Perfil) => void }) {
   return <select value={valor} onChange={(e) => cambiar(e.target.value as Perfil)}>{Object.entries(perfiles).map(([id, p]) => <option key={id} value={id}>{p.nombre}</option>)}</select>;
 }
@@ -29,6 +37,8 @@ export function UsuariosGestion() {
   const [aviso, setAviso] = useState("");
   const [perfilNuevo, setPerfilNuevo] = useState<Perfil>("RRHH");
   const [editando, setEditando] = useState<Usuario | null>(null);
+  const [creando, setCreando] = useState(false);
+  const [errorVentana, setErrorVentana] = useState("");
 
   async function refrescar() {
     setUsuarios(await api<Usuario[]>("usuarios"));
@@ -38,69 +48,72 @@ export function UsuariosGestion() {
   useEffect(() => { refrescar().catch(informar); }, []);
 
   async function crear(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault(); setError(""); setAviso("");
-    const form = e.currentTarget; const f = new FormData(form);
+    e.preventDefault(); setError(""); setAviso(""); setErrorVentana("");
+    const f = new FormData(e.currentTarget);
+    if (!empresasElegidas(f).length) { setErrorVentana("Elegí al menos una empresa."); return; }
     try {
       const creado = await api<Usuario>("usuarios", { method: "POST", body: JSON.stringify({
-        nombre: f.get("nombre"), email: f.get("email"), perfil: perfilNuevo, empresa: f.get("empresa"), clave_inicial: f.get("clave"),
+        nombre: f.get("nombre"), email: f.get("email"), perfil: perfilNuevo, empresas: empresasElegidas(f), clave_inicial: f.get("clave"),
       }) });
-      form.reset(); setPerfilNuevo("RRHH");
+      setCreando(false); setPerfilNuevo("RRHH");
       setAviso(`Usuario creado. Pasale a ${creado.nombre} su correo y la contraseña inicial: la va a cambiar en su primer ingreso.`);
       await refrescar();
-    } catch (x) { informar(x); }
+    } catch (x) { setErrorVentana(x instanceof Error ? x.message : "No pudimos crear el usuario."); }
   }
 
   async function guardar(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault(); if (!editando) return; setError(""); setAviso("");
+    e.preventDefault(); if (!editando) return; setError(""); setAviso(""); setErrorVentana("");
     const f = new FormData(e.currentTarget);
+    if (!empresasElegidas(f).length) { setErrorVentana("Elegí al menos una empresa."); return; }
     try {
       await api(`usuarios/${editando.id}`, { method: "PUT", body: JSON.stringify({
-        nombre: f.get("nombre"), perfil: editando.perfil, empresa: f.get("empresa"), activo: f.get("activo") === "si",
+        nombre: f.get("nombre"), perfil: editando.perfil, empresas: empresasElegidas(f), activo: f.get("activo") === "si",
       }) });
       const clave = String(f.get("clave") || "");
       if (clave) await api(`usuarios/${editando.id}/clave`, { method: "POST", body: JSON.stringify({ clave_temporal: clave }) });
       setAviso(clave ? "Cambios guardados. La persona va a tener que elegir una contraseña nueva al entrar." : "Cambios guardados.");
       setEditando(null); await refrescar();
-    } catch (x) { informar(x); }
+    } catch (x) { setErrorVentana(x instanceof Error ? x.message : "No pudimos guardar los cambios."); }
   }
 
   return <>
     {error && <ErrorVisible mensaje={error} />}
     {aviso && <div className="aviso-exito" role="status">{aviso}</div>}
-    <section className="tarjeta">
-      <h2>Nuevo usuario</h2>
+    {creando && <Ventana titulo="Nuevo usuario" cerrar={() => { setCreando(false); setErrorVentana(""); }}>
       <p className="ayuda">Cada persona entra con su correo y su contraseña. El perfil define qué secciones ve.</p>
+      {errorVentana && <ErrorVisible mensaje={errorVentana} />}
       <form className="form-grid" onSubmit={crear}>
         <label>Nombre y apellido<input name="nombre" required maxLength={120} /></label>
         <label>Correo<input name="email" type="email" required autoComplete="off" /></label>
         <label>Perfil<SelectorPerfil valor={perfilNuevo} cambiar={setPerfilNuevo} /></label>
-        <label>Empresa<select name="empresa" defaultValue="ENAV"><option>ENAV</option><option>JUBIAR</option></select></label>
+        <SelectorEmpresas valor={["ENAV"]} />
         <label>Contraseña inicial<input name="clave" type="text" required minLength={10} autoComplete="off" placeholder="Al menos 10 caracteres" /></label>
-        <div className="acciones"><button className="primario">Crear usuario</button></div>
+        <div className="acciones"><button type="button" onClick={() => setCreando(false)}>Cancelar</button><button className="primario">Crear usuario</button></div>
       </form>
-    </section>
+    </Ventana>}
 
-    {editando && <section className="tarjeta">
-      <h2>Modificar a {editando.nombre}</h2>
+    {editando && <Ventana titulo={`Modificar a ${editando.nombre}`} cerrar={() => { setEditando(null); setErrorVentana(""); }}>
+      <p className="ayuda">{editando.email}</p>
+      {errorVentana && <ErrorVisible mensaje={errorVentana} />}
       <form className="form-grid" onSubmit={guardar} key={editando.id}>
         <label>Nombre y apellido<input name="nombre" defaultValue={editando.nombre} required maxLength={120} /></label>
         <label>Perfil<SelectorPerfil valor={editando.perfil} cambiar={(p) => setEditando({ ...editando, perfil: p })} /></label>
-        <label>Empresa<select name="empresa" defaultValue={editando.empresa}><option>ENAV</option><option>JUBIAR</option></select></label>
+        <SelectorEmpresas valor={editando.empresas} />
         <label>Estado<select name="activo" defaultValue={editando.activo ? "si" : "no"}><option value="si">Activo</option><option value="no">Sin acceso</option></select></label>
         <label>Contraseña nueva (opcional)<input name="clave" type="text" minLength={10} autoComplete="off" placeholder="Dejala vacía para no cambiarla" /></label>
         <div className="acciones"><button type="button" onClick={() => setEditando(null)}>Cancelar</button><button className="primario">Guardar cambios</button></div>
       </form>
-    </section>}
+    </Ventana>}
 
     <section className="tarjeta">
-      <h2>Usuarios</h2>
-      <Tabla etiqueta="Usuarios" filas={usuarios} columnas={[
+      <div className="titulo-fila"><h2>Usuarios</h2><button className="primario" onClick={() => { setCreando(true); setAviso(""); setError(""); setErrorVentana(""); }}>Nuevo usuario</button></div>
+      <p className="ayuda">Tocá una persona para modificarla.</p>
+      <Tabla etiqueta="Usuarios" filas={usuarios} alElegir={(u) => { setEditando(u); setAviso(""); setError(""); setErrorVentana(""); }} columnas={[
         { clave: "nombre", titulo: "Nombre" },
         { clave: "email", titulo: "Correo" },
         { clave: "perfil", titulo: "Perfil", valor: (u) => perfiles[u.perfil]?.nombre ?? u.perfil },
-        { clave: "empresa", titulo: "Empresa" },
+        { clave: "empresas", titulo: "Empresas", valor: (u) => u.empresas.join(" y ") },
         { clave: "activo", titulo: "Estado", valor: (u) => !u.activo ? "Sin acceso" : u.debe_cambiar_clave ? "Falta su primer ingreso" : "Activo" },
-        { clave: "id", titulo: "", valor: (u) => <button onClick={() => { setEditando(u); setAviso(""); setError(""); }}>Modificar</button> },
       ]} />
     </section>
 

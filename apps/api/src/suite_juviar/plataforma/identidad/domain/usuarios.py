@@ -1,4 +1,4 @@
-"""Usuarios de Gestión: quién entra, con qué perfil y para qué empresa.
+"""Usuarios de Gestión: quién entra, con qué perfil y a qué empresas.
 
 No son empleados (eso es Nexus): son cuentas de acceso a la aplicación interna.
 """
@@ -17,7 +17,7 @@ class Usuario:
     email: str
     nombre: str
     perfil: str
-    empresa: str
+    empresas: tuple[str, ...]  # ENAV, JUBIAR o las dos; el selector elige en cuál trabaja
     activo: bool
     debe_cambiar_clave: bool
     creado_en: datetime

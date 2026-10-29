@@ -40,14 +40,14 @@ class UsuarioEntrada(BaseModel):
     email: str = Field(min_length=3, max_length=200)
     nombre: str = Field(min_length=1, max_length=120)
     perfil: str
-    empresa: str
+    empresas: list[str] = Field(min_length=1, max_length=2)
     clave_inicial: str = Field(min_length=1, max_length=200)
 
 
 class UsuarioCambios(BaseModel):
     nombre: str = Field(min_length=1, max_length=120)
     perfil: str
-    empresa: str
+    empresas: list[str] = Field(min_length=1, max_length=2)
     activo: bool
 
 
@@ -58,7 +58,7 @@ class ClaveTemporalEntrada(BaseModel):
 def _publico(usuario: Usuario) -> dict[str, object]:
     return {
         "id": usuario.id, "email": usuario.email, "nombre": usuario.nombre,
-        "perfil": usuario.perfil, "empresa": usuario.empresa, "activo": usuario.activo,
+        "perfil": usuario.perfil, "empresas": list(usuario.empresas), "activo": usuario.activo,
         "debe_cambiar_clave": usuario.debe_cambiar_clave,
         "creado_en": usuario.creado_en.isoformat(),
     }
@@ -131,6 +131,8 @@ def cambiar_empresa(entrada: EmpresaEntrada, sesion: SesionActual, token: Token 
     del sesion  # exige una sesión válida y con la contraseña ya cambiada
     try:
         servicio_ingreso().cambiar_empresa(token or "", entrada.empresa)
+    except IngresoInvalido as exc:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, str(exc)) from exc
     except DatosDeUsuarioInvalidos as exc:
         raise _datos_invalidos(exc) from exc
     return yo(token)
@@ -152,7 +154,7 @@ def listar_usuarios():
 def crear_usuario(entrada: UsuarioEntrada, sesion: SesionActual):
     try:
         usuario = servicio_ingreso().crear_usuario(
-            sesion.actor, entrada.email, entrada.nombre, entrada.perfil, entrada.empresa,
+            sesion.actor, entrada.email, entrada.nombre, entrada.perfil, entrada.empresas,
             entrada.clave_inicial,
         )
     except DatosDeUsuarioInvalidos as exc:
@@ -165,7 +167,7 @@ def modificar_usuario(usuario_id: str, entrada: UsuarioCambios, sesion: SesionAc
     try:
         usuario = servicio_ingreso().modificar_usuario(
             sesion.actor, usuario_id, nombre=entrada.nombre, perfil=entrada.perfil,
-            empresa=entrada.empresa, activo=entrada.activo,
+            empresas=entrada.empresas, activo=entrada.activo,
         )
     except LookupError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
