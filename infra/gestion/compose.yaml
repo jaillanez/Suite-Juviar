@@ -14,8 +14,12 @@ services:
     security_opt:
       - no-new-privileges:true
     cap_drop: [ALL]
-    networks: [edge]
+    # edge: entrada por Caddy. fila-dmz: lectura del tablero de la fila (rol gestion_tablero).
+    networks: [edge, fila-dmz]
 networks:
   edge:
     external: true
     name: suite-turnos_edge
+  fila-dmz:
+    external: true
+    name: suite-juviar-recepcion_default
