@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
@@ -192,3 +194,11 @@ def test_un_usuario_puede_tener_las_dos_empresas_y_cambiar_entre_ellas(entorno):
     assert admin.put(f"/api/v1/usuarios/{solo_enav.id}", json=cambios).status_code == 200
     cambio = persona.put("/api/v1/ingreso/empresa", json={"empresa": "JUBIAR"})
     assert cambio.status_code == 200 and cambio.json()["empresa_sesion"] == "JUBIAR"
+
+
+def test_si_le_quitan_la_empresa_la_sesion_pasa_a_una_que_le_queda(entorno):
+    servicio, _ = entorno
+    usuario = servicio.crear_usuario("test", "dos@enav.com", "Dos", "RRHH", ["ENAV", "JUBIAR"], CLAVE)
+    token, _ = servicio.ingresar("dos@enav.com", CLAVE, "JUBIAR")
+    servicio.repositorio.actualizar(replace(usuario, empresas=("ENAV",)))
+    assert servicio.resolver(token)[1].empresa == "ENAV"

@@ -875,3 +875,5 @@ th button {
 .empresas-usuario input { min-height: 0; width: 18px; height: 18px; }
 .selector-empresa select { font-weight: 750; min-height: 38px; }
 .solo-lectores { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.form-grid label:has(> input[type="checkbox"]) { display: flex; align-items: center; gap: 8px; }
+.form-grid input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; }

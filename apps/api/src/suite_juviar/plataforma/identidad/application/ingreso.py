@@ -155,6 +155,10 @@ class ServicioIngreso:
         if usuario is None or not usuario.activo:
             self.repositorio.borrar_sesion(token)
             return None
+        if sesion.empresa not in usuario.empresas:
+            # Le quitaron esa empresa: la sesión sigue sólo en una de las que le quedan.
+            sesion = replace(sesion, empresa=usuario.empresas[0])
+            self.repositorio.cambiar_empresa_sesion(token, sesion.empresa)
         return usuario, sesion
 
     def salir(self, token: str) -> None:
