@@ -40,6 +40,7 @@ from suite_juviar.modulos.turnos.infrastructure.sqlite import (
     ExportadorArchivoLocal,
     FuenteFichadasSQLite,
 )
+from suite_juviar.plataforma.terceros.api.personal_bot import configurar as configurar_personal_bot
 
 
 def construir_routers(rrhh):
@@ -58,6 +59,7 @@ def construir_routers(rrhh):
         fuente_legajos,
         AdjuntosCifradosSQLite(clave_adjuntos, ruta_modulos),
     )
+    configurar_personal_bot(legajo.buscar, legajo.legajos.obtener)
     salud = GestionarSalud(
         CatalogoDiagnosticoSQLite(ruta_modulos), SaludSQLite(ruta_modulos),
         AdjuntosSaludCifradosSQLite(clave_adjuntos, ruta_modulos), FuenteLaboralSimulada(),

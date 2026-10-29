@@ -1,8 +1,8 @@
 """Conversaciones que la gente tuvo con el bot de WhatsApp, en sólo lectura.
 
 Lee la cola del bot (consulta.bot_entrada): cada mensaje recibido con la respuesta que el
-bot mandó. El nombre sale de los contactos registrados (consulta.telefono_productor) y del
-padrón de la fila. Nada se escribe desde acá.
+bot mandó. El nombre sale de los contactos de productores (consulta.telefono_productor y
+el padrón de la fila) o del personal cargado (consulta.telefono_personal). Nada se escribe desde acá.
 """
 
 from __future__ import annotations
@@ -29,9 +29,18 @@ WITH ultimas AS (
 SELECT u.telefono, u.mensajes, u.ultimo_en,
        (SELECT coalesce(e.texto, '[' || e.tipo || ']') FROM consulta.bot_entrada e
          WHERE e.telefono = u.telefono ORDER BY e.recibido_en DESC, e.id DESC LIMIT 1) AS ultimo_texto,
-       (SELECT string_agg(DISTINCT p.razonsocial, ' · ')
-          FROM consulta.telefono_productor t JOIN fila.productor p ON p.clientecuit = t.clientecuit
-         WHERE t.telefono = u.telefono AND t.activo) AS nombre
+       coalesce(
+         (SELECT string_agg(DISTINCT p.razonsocial, ' · ')
+            FROM consulta.telefono_productor t JOIN fila.productor p ON p.clientecuit = t.clientecuit
+           WHERE t.telefono = u.telefono AND t.activo),
+         (SELECT e.nombre FROM consulta.telefono_personal e
+           WHERE e.telefono = u.telefono AND e.activo)) AS nombre,
+       CASE WHEN EXISTS (SELECT 1 FROM consulta.telefono_personal e
+                          WHERE e.telefono = u.telefono AND e.activo)
+            THEN (SELECT e.tipo FROM consulta.telefono_personal e WHERE e.telefono = u.telefono)
+            WHEN EXISTS (SELECT 1 FROM consulta.telefono_productor t
+                          WHERE t.telefono = u.telefono AND t.activo)
+            THEN 'productor' END AS quien
   FROM ultimas u
  ORDER BY u.ultimo_en DESC
  LIMIT 200

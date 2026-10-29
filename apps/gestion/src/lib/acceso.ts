@@ -1,10 +1,10 @@
 export type Empresa = "ENAV" | "JUBIAR";
 export type Perfil = "SUPERADMIN" | "RRHH" | "MEDICO" | "HYS" | "COMPRAS" | "SUPERVISOR" | "BODEGA" | "CAMPO" | "BASCULA";
-export type Seccion = "inicio" | "produccion" | "fila" | "bot" | "epp" | "analitica" | "seleccion" | "capacitaciones" | "legajo" | "salud" | "turnos" | "contactos" | "configuracion" | "usuarios" | "cosecha";
+export type Seccion = "inicio" | "produccion" | "fila" | "bot" | "epp" | "analitica" | "seleccion" | "capacitaciones" | "legajo" | "salud" | "turnos" | "contactos" | "configuracion" | "usuarios" | "cosecha" | "personal";
 
 export const todasLasSecciones: Seccion[] = [
   "inicio", "epp", "analitica", "seleccion", "capacitaciones", "legajo",
-  "salud", "turnos", "produccion", "fila", "cosecha", "bot", "contactos", "configuracion", "usuarios",
+  "salud", "turnos", "produccion", "fila", "cosecha", "bot", "contactos", "personal", "configuracion", "usuarios",
 ];
 
 export const perfiles: Record<Perfil, { nombre: string; secciones: Seccion[] }> = {
@@ -23,14 +23,14 @@ export const nombres: Record<Seccion, string> = {
   inicio: "Resumen", epp: "EPP", analitica: "Analítica", seleccion: "Selección",
   capacitaciones: "Capacitaciones", legajo: "Legajos", salud: "Salud", turnos: "Turnos",
   produccion: "Recepción", fila: "Fila de camiones", bot: "Conversaciones del bot",
-  contactos: "Contactos", configuracion: "Empresa y perfil", usuarios: "Usuarios", cosecha: "Turnos de cosecha",
+  contactos: "Contactos", configuracion: "Empresa y perfil", usuarios: "Usuarios", cosecha: "Turnos de cosecha", personal: "Personal en el bot",
 };
 
 export const gruposMenu: { nombre: string; secciones: Seccion[] }[] = [
   { nombre: "General", secciones: ["inicio"] },
   { nombre: "RRHH", secciones: ["epp", "analitica", "seleccion", "capacitaciones", "legajo", "salud", "turnos"] },
   { nombre: "Producción", secciones: ["produccion", "fila", "cosecha"] },
-  { nombre: "Bot", secciones: ["bot", "contactos"] },
+  { nombre: "Bot", secciones: ["bot", "contactos", "personal"] },
   { nombre: "Configuración", secciones: ["configuracion", "usuarios"] },
 ];
 
