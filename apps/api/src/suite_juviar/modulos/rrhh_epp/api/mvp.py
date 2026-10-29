@@ -8,6 +8,7 @@ autenticada hasta que ``plataforma/identidad`` esté operativo.
 
 import os
 from base64 import b64decode
+from dataclasses import asdict
 from datetime import date, datetime
 from ipaddress import ip_address
 from pathlib import Path
@@ -487,6 +488,28 @@ def crear_router(contenedor: Contenedor | None = None) -> APIRouter:
             {"codigo": codigo, "nombre": nombre}
             for codigo, nombre in sorted(sectores.items(), key=lambda item: item[1])
         ]
+
+    @app.get("/matriz/resumen", dependencies=[Depends(exigir_permiso("epp.catalogo.leer"))])
+    def resumen_matriz():
+        """Cada combinación de sector y puesto con personal activo y lo que le corresponde."""
+        grupos: dict[tuple[str, str], dict[str, object]] = {}
+        for persona in c.legajos.listar_activos():
+            if not persona.puesto_codigo:
+                continue
+            clave = (persona.sector_codigo, persona.puesto_codigo)
+            grupo = grupos.setdefault(clave, {
+                "sector_codigo": persona.sector_codigo, "sector": persona.sector,
+                "puesto_codigo": persona.puesto_codigo, "puesto": persona.puesto, "personas": 0,
+            })
+            grupo["personas"] = int(grupo["personas"]) + 1
+        salida = []
+        for (sector, puesto), grupo in sorted(grupos.items(), key=lambda g: (str(g[1]["sector"]), str(g[1]["puesto"]))):
+            requisitos = []
+            for r in c.catalogo.requisitos_de(sector, puesto):
+                elemento = c.catalogo.obtener_elemento(r.codigo)
+                requisitos.append({**asdict(r), "elemento": elemento.producto if elemento else r.codigo})
+            salida.append({**grupo, "requisitos": requisitos})
+        return salida
 
     @app.get("/matriz/puestos/{puesto}", dependencies=[Depends(exigir_permiso("epp.catalogo.leer"))])
     def matriz_puesto(puesto: str):

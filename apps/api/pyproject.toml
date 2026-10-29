@@ -20,6 +20,7 @@ dependencies = [
     "reportlab>=4.4,<5",
     "pypdf>=6,<7",
     "openpyxl>=3.1,<4",
+    "pypdfium2>=4.30,<6",  # páginas de PDF escaneados como imagen para la IA
 ]
 
 [project.optional-dependencies]

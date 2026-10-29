@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from base64 import b64decode, b64encode
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -23,8 +24,15 @@ from ..domain.modelos import (
     OrigenCV,
     PerfilBusqueda,
 )
+from ..infrastructure import ia_deepseek
 from ..infrastructure.extraccion_pdf import CamposPorReglasProvisorias, TextoPDF
-from ..infrastructure.sqlite import ExtraccionesSQLite, OriginalesSQLite, busquedas_sqlite
+from ..infrastructure.sqlite import (
+    ExtraccionesSQLite,
+    OriginalesSQLite,
+    busquedas_sqlite,
+    consultas_ia_sqlite,
+    fichas_ia_sqlite,
+)
 
 
 class BusquedaEntrada(BaseModel):
@@ -44,6 +52,10 @@ class ConfirmacionEntrada(BaseModel):
     valor: str = Field(min_length=1)
 
 
+class PedidoEntrada(BaseModel):
+    pedido: str = Field(min_length=5, max_length=1500)
+
+
 def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> APIRouter:
     exigir_identidad_configurada(entorno)
     app = APIRouter(dependencies=[Depends(exigir_permiso("seleccion.gestionar"))])
@@ -52,6 +64,20 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
     extraer = ExtraerDatosCV(originales, extracciones, TextoPDF(), CamposPorReglasProvisorias())
     evaluar = EvaluarBusqueda(perfiles)
     busquedas = busquedas_sqlite(ruta_base)
+    fichas_ia = fichas_ia_sqlite(ruta_base)
+    consultas_ia = consultas_ia_sqlite(ruta_base)
+    texto_pdf = TextoPDF()
+    # Mandar CV a DeepSeek saca datos personales de la empresa: en producción sólo con
+    # autorización expresa en la configuración del servidor.
+    ia_permitida = entorno.lower() not in {"produccion", "production", "prod"} or (
+        os.getenv("SJ_IA_EXTERNA_AUTORIZADA", "").strip().lower() in {"1", "true", "si"}
+    )
+
+    def exigir_ia() -> None:
+        if not ia_permitida:
+            raise HTTPException(409, "La lectura con IA externa no está autorizada en este servidor.")
+        if not ia_deepseek.disponible():
+            raise HTTPException(503, "Falta configurar la clave de DeepSeek en el servidor.")
 
     @app.get("/estado")
     def estado():
@@ -165,6 +191,53 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
         extracciones.auditar_original(ConsultaOriginal(cv_id, sesion.actor, datetime.now(UTC)))
         return {"nombre": cv.nombre_archivo, "contenido_base64": b64encode(cv.contenido).decode(),
                 "marca": "DATOS SIMULADOS — SIN VALIDEZ"}
+
+    @app.get("/ia/estado")
+    def estado_ia():
+        total = len(originales.listar_originales())
+        leidos = sum(1 for o in originales.listar_originales() if o.id in fichas_ia)
+        return {"disponible": ia_permitida and ia_deepseek.disponible(), "total": total, "leidos": leidos}
+
+    @app.get("/ia/fichas")
+    def fichas():
+        return {cv_id: ficha for cv_id, ficha in fichas_ia.items()}
+
+    @app.post("/cvs/{cv_id}/leer-ia")
+    def leer_con_ia(cv_id: str, sesion: SesionActual):
+        exigir_ia()
+        cv = originales.obtener_original(cv_id)
+        if cv is None:
+            raise HTTPException(404, "CV inexistente")
+        try:
+            ficha = ia_deepseek.leer_cv(cv.nombre_archivo, cv.contenido, texto_pdf.extraer_texto(cv.contenido))
+        except RuntimeError as exc:
+            raise HTTPException(502, str(exc)) from exc
+        ficha = {**ficha, "leido_por": sesion.actor, "leido_en": datetime.now(UTC).isoformat()}
+        fichas_ia[cv_id] = ficha
+        return ficha
+
+    @app.post("/ia/buscar")
+    def buscar_con_ia(entrada: PedidoEntrada, sesion: SesionActual):
+        exigir_ia()
+        disponibles = {o.id: o for o in originales.listar_originales()}
+        leidas = {cv_id: f for cv_id, f in fichas_ia.items() if cv_id in disponibles}
+        try:
+            candidatos = ia_deepseek.buscar_candidatos(entrada.pedido.strip(), leidas)
+        except RuntimeError as exc:
+            raise HTTPException(502, str(exc)) from exc
+        consultas_ia.append({"actor": sesion.actor, "momento": datetime.now(UTC).isoformat(),
+                             "pedido": entrada.pedido.strip(), "candidatos": len(candidatos)})
+        return {
+            "pedido": entrada.pedido.strip(),
+            "sin_leer": len(disponibles) - len(leidas),
+            "candidatos": [
+                {**c, "nombre_archivo": disponibles[c["id"]].nombre_archivo,
+                 "nombre": leidas[c["id"]].get("nombre_completo"),
+                 "localidad": leidas[c["id"]].get("localidad"),
+                 "resumen": leidas[c["id"]].get("resumen")}
+                for c in candidatos
+            ],
+        }
 
     @app.get("/cvs/{cv_id}/auditoria")
     def auditoria(cv_id: str):

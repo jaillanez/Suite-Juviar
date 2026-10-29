@@ -29,3 +29,11 @@ class ExtraccionesSQLite(ExtraccionesEnMemoria):
 
 def busquedas_sqlite(ruta: str | Path):
     return MapaSQLite(BaseColeccionesSQLite(ruta), "seleccion.busquedas")
+
+
+def fichas_ia_sqlite(ruta: str | Path):
+    return MapaSQLite(BaseColeccionesSQLite(ruta), "seleccion.fichas_ia")
+
+
+def consultas_ia_sqlite(ruta: str | Path):
+    return ListaSQLite(BaseColeccionesSQLite(ruta), "seleccion.consultas_ia")
