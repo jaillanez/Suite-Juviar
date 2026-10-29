@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from suite_juviar.plataforma.identidad.api.dependencias import SesionActual, exigir_permiso
+from suite_juviar.plataforma.presentacion import marca_prueba
 
 from ..application.servicios import GestionarLegajo
 from ..domain.modelos import MARCA_SIMULADA, FuenteSimuladaEnProduccion
@@ -45,7 +46,7 @@ def crear_router(servicio: GestionarLegajo, entorno: str = "prueba") -> APIRoute
         if datos is None:
             raise HTTPException(404, "Legajo inexistente")
         return {**datos, "fuente_simulada": servicio.legajos.simulada,
-                "marca": MARCA_SIMULADA if servicio.legajos.simulada else None}
+                "marca": marca_prueba(MARCA_SIMULADA, servicio.legajos.simulada)}
 
     @app.get("/personas/{legajo}/formato", response_class=HTMLResponse,
              dependencies=[Depends(exigir_permiso("legajo.leer"))])
@@ -53,7 +54,8 @@ def crear_router(servicio: GestionarLegajo, entorno: str = "prueba") -> APIRoute
         datos = servicio.ficha(legajo)
         if datos is None:
             raise HTTPException(404, "Legajo inexistente")
-        marca = f'<div class="simulada">{MARCA_SIMULADA}</div>' if servicio.legajos.simulada else ""
+        aviso = marca_prueba(MARCA_SIMULADA, servicio.legajos.simulada)
+        marca = f'<div class="simulada">{aviso}</div>' if aviso else ""
         titulo = "Ficha de personal ENAV" if datos["formato"] == "FICHA_ENAV" else "Ficha de personal Jubiar"
         return (
             "<style>.simulada{background:#b00020;color:#fff;padding:16px;font-weight:bold}"
@@ -88,7 +90,7 @@ def crear_router(servicio: GestionarLegajo, entorno: str = "prueba") -> APIRoute
             "id": adjunto.id,
             "nombre": adjunto.nombre,
             "contenido_base64": b64encode(adjunto.contenido).decode(),
-            "marca": MARCA_SIMULADA if servicio.legajos.simulada else "DATOS REALES",
+            "marca": marca_prueba(MARCA_SIMULADA, servicio.legajos.simulada) or "DATOS REALES",
         }
 
     @app.post("/adjuntos/{adjunto_id}/baja",

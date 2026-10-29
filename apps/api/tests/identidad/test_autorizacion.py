@@ -52,7 +52,8 @@ def test_superadministrador_reune_todos_los_permisos():
         for perfil, permisos in PERMISOS_POR_PERFIL.items()
         if perfil != "SUPERADMIN"
     ))
-    assert PERMISOS_POR_PERFIL["SUPERADMIN"] == permisos_operativos
+    # Además de todo lo operativo, sólo el superadministrador administra usuarios.
+    assert PERMISOS_POR_PERFIL["SUPERADMIN"] == permisos_operativos | {"identidad.usuarios.gestionar"}
     sesion = resolver_sesion(
         perfil="SUPERADMIN", actor="administrador", empresa="ENAV",
         legajo_declarado=None,

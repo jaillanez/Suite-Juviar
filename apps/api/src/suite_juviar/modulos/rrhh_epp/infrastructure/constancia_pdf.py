@@ -24,6 +24,8 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from suite_juviar.plataforma.presentacion import ocultar_marcas_prueba
+
 from ..domain.modelos_mvp import DocumentoConstancia, Entrega, SolicitudConstancia
 
 
@@ -53,7 +55,7 @@ class GeneradorConstanciaPDFSimulada:
             "titulo_epp", parent=centro, fontSize=13, leading=15, spaceAfter=4 * mm
         )
         alerta = ParagraphStyle("alerta_epp", parent=centro, textColor=colors.white)
-        historia: list[object] = [
+        aviso: list[object] = [] if ocultar_marcas_prueba() else [
             Table(
                 [
                     [
@@ -72,6 +74,9 @@ class GeneradorConstanciaPDFSimulada:
                 ),
             ),
             Spacer(1, 3 * mm),
+        ]
+        historia: list[object] = [
+            *aviso,
             Paragraph("<b>ENTREGA DE ROPA DE TRABAJO Y EPP</b>", titulo),
             Paragraph(
                 f"RD 062/11 - Comprobante {entrega.id} - Versión {solicitud.version} - "
@@ -226,9 +231,12 @@ class GeneradorConstanciaPDFSimulada:
                 return imagen
             except (binascii.Error, OSError, UnidentifiedImageError, ValueError):
                 return Paragraph(
-                    "Firma del trabajador: evidencia simulada inválida",
+                    "Firma del trabajador: sin imagen legible" if ocultar_marcas_prueba()
+                    else "Firma del trabajador: evidencia simulada inválida",
                     getSampleStyleSheet()["BodyText"],
                 )
         return Paragraph(
-            "Firma del trabajador: evidencia simulada conservada", getSampleStyleSheet()["BodyText"]
+            "Firma del trabajador: registrada" if ocultar_marcas_prueba()
+            else "Firma del trabajador: evidencia simulada conservada",
+            getSampleStyleSheet()["BodyText"],
         )

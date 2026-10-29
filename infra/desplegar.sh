@@ -15,6 +15,10 @@
 # versión que estaba antes. /opt/suite-juviar queda solo como copia de Git y entorno de
 # Python: si alguien editó archivos a mano ahí, el script se niega a seguir.
 #
+# Gestión (pantallas internas con usuario y contraseña) corre aparte, en un contenedor de
+# Docker que se arma con la misma versión. Solo se toca si está instalada, es decir, si
+# existe /etc/suite/gestion.env.
+#
 # Como root solo se cambian enlaces, archivos de systemd y permisos. Todo lo que ejecuta
 # código de /opt/suite-juviar (git, pip, python) corre como el usuario «suite», que es
 # dueño de esa carpeta: así nadie que pueda escribir ahí consigue ejecutar como root.
@@ -54,6 +58,10 @@ declare -A MODULO=(
 # La consulta pública no tiene ruta de salud: alcanza con que la aplicación conteste.
 declare -A URL=([consulta-publica]=http://172.18.0.1:8021/ [fila-web]=http://172.18.0.1:8022/health)
 declare -A ESPERADO=([consulta-publica]='^[234][0-9][0-9]$' [fila-web]='^200$')
+
+GESTION_ENV=/etc/suite/gestion.env
+GESTION_IMAGEN=suite-juviar-gestion
+GESTION_CONTENEDOR=suite-juviar-gestion
 
 paso() { printf '\n==> %s\n' "$*"; }
 falla() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
@@ -135,9 +143,57 @@ cambiar_a() {  # $1 = carpeta de la versión nueva
   falla "la versión $(basename "$nueva") no arrancó; quedó funcionando $(basename "$previa"). Revisá: journalctl -u <servicio> -n 50"
 }
 
+gestion_instalada() { [[ -f $GESTION_ENV ]]; }
+gestion_version() { docker inspect -f '{{.Config.Image}}' "$GESTION_CONTENEDOR" 2>/dev/null | sed 's/.*://'; }
+
+construir_gestion() {  # $1 = carpeta de la versión, $2 = commit corto
+  gestion_instalada || return 0
+  [[ -f $1/infra/gestion/Dockerfile ]] || falla "la versión $2 no trae infra/gestion/Dockerfile."
+  docker image inspect "$GESTION_IMAGEN:$2" >/dev/null 2>&1 && return 0
+  paso "Armando Gestión $2 (tarda unos minutos)"
+  docker build -q -f "$1/infra/gestion/Dockerfile" --build-arg "COMMIT=$2" \
+    -t "$GESTION_IMAGEN:$2" "$1" >/dev/null || falla "Gestión $2 no se pudo armar. No se cambió nada en marcha."
+}
+
+poner_gestion() {  # $1 = carpeta con el compose, $2 = versión de la imagen
+  VERSION=$2 docker compose -f "$1/infra/gestion/compose.yaml" up -d >/dev/null 2>&1
+}
+
+gestion_responde() {
+  local intento
+  for intento in $(seq 1 30); do
+    docker exec "$GESTION_CONTENEDOR" python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ingreso/estado',timeout=3)" \
+      >/dev/null 2>&1 && return 0
+    sleep 2
+  done
+  return 1
+}
+
+cambiar_gestion() {  # $1 = carpeta de la versión, $2 = commit corto
+  gestion_instalada || return 0
+  local previa
+  previa=$(gestion_version)
+  [[ $previa == "$2" ]] && return 0
+  paso "Cambiando Gestión a $2"
+  if poner_gestion "$1" "$2" && gestion_responde; then
+    echo "  gestión: bien"
+    return 0
+  fi
+  if [[ -n $previa ]] && docker image inspect "$GESTION_IMAGEN:$previa" >/dev/null 2>&1; then
+    paso "Gestión no respondió: volviendo a $previa"
+    poner_gestion "$1" "$previa" && gestion_responde || true
+    falla "Gestión $2 no arrancó; quedó funcionando $previa. Revisá: docker logs $GESTION_CONTENEDOR"
+  fi
+  falla "Gestión $2 no arrancó. Revisá: docker logs $GESTION_CONTENEDOR"
+}
+
 if [[ ${1:-} == --volver ]]; then
   [[ -L $ANTERIOR ]] || falla "no hay versión anterior registrada."
-  cambiar_a "$(readlink -f "$ANTERIOR")"
+  VUELTA=$(readlink -f "$ANTERIOR")
+  cambiar_a "$VUELTA"
+  if gestion_instalada && docker image inspect "$GESTION_IMAGEN:$(basename "$VUELTA")" >/dev/null 2>&1; then
+    cambiar_gestion "$VUELTA" "$(basename "$VUELTA")"
+  fi
   paso "Listo: quedó funcionando $(basename "$(readlink -f "$ACTUAL")")."
   exit 0
 fi
@@ -224,7 +280,10 @@ for linea in "${SERVICIOS[@]}"; do
   echo "  $svc: bien"
 done
 
+construir_gestion "$NUEVA" "$CORTO"
+
 cambiar_a "$NUEVA"
+cambiar_gestion "$NUEVA" "$CORTO"
 
 paso "Dejando la copia de Git en la misma versión"
 "${GIT[@]}" checkout -q -f --detach "$SHA"
@@ -236,6 +295,7 @@ mapfile -t VIEJAS < <(find "$RELEASES" -mindepth 1 -maxdepth 1 -type d ! -name '
 for vieja in "${VIEJAS[@]}"; do
   [[ " ${mantener[*]} " == *" $vieja "* ]] && continue
   rm -rf -- "$vieja" && echo "  borrada $(basename "$vieja")"
+  docker image rm -f "$GESTION_IMAGEN:$(basename "$vieja")" >/dev/null 2>&1 || true
 done
 
 paso "Listo: quedó funcionando $CORTO."

@@ -1,0 +1,21 @@
+# Gestión en el servidor. La versión la elige infra/desplegar.sh (variable VERSION).
+name: suite-juviar-gestion
+services:
+  gestion:
+    image: suite-juviar-gestion:${VERSION:?falta VERSION}
+    container_name: suite-juviar-gestion
+    restart: unless-stopped
+    env_file: /etc/suite/gestion.env
+    volumes:
+      - /var/lib/suite-juviar/gestion:/datos
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    networks: [edge]
+networks:
+  edge:
+    external: true
+    name: suite-turnos_edge

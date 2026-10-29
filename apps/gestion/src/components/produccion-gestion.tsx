@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { api } from "@/lib/api";
+import { api, ocultarMarcasPrueba } from "@/lib/api";
 import { ErrorVisible } from "./compartidos";
 
 type Romaneo = { id: string; numero: number; estado: string };
@@ -79,7 +79,7 @@ export function ProduccionGestion({ area = "recepcion" }: { area?: AreaProduccio
     {area === "bot" && <section className="tarjeta produccion-acceso">
       <div><h2>Bot de productores</h2><p>Probá consultas por cuenta, estadísticas de cosecha, reportes PDF y administración de contactos.</p></div>
       <div className="acciones-produccion">
-        <a className="boton primario" href={BOT_URL} target="_blank" rel="noreferrer">Abrir simulador del bot</a>
+        {!ocultarMarcasPrueba && <a className="boton primario" href={BOT_URL} target="_blank" rel="noreferrer">Abrir simulador del bot</a>}
         <a className="boton" href="/contactos">Administrar contactos</a>
       </div>
       <p className="ayuda">Los reportes públicos se generan en la DMZ con datos mínimos publicados desde la red interna.</p>

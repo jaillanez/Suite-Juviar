@@ -6,8 +6,9 @@ import os
 from collections.abc import Callable
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Cookie, Depends, Header, HTTPException, status
 
+from ..application.ingreso import ServicioIngreso
 from ..domain.sesion import Sesion
 
 DUENO_CATALOGO_PERMISOS = "RRHH junto con Sistemas"
@@ -38,10 +39,25 @@ PERMISOS_POR_PERFIL: dict[str, frozenset[str]] = {
     "SUPERVISOR": frozenset({"suite.acceder", "capacitacion.leer", "turnos.cronograma.leer", "turnos.cronograma.editar"}),
 }
 PERMISOS_POR_PERFIL["SUPERADMIN"] = frozenset().union(
-    *PERMISOS_POR_PERFIL.values()
+    *PERMISOS_POR_PERFIL.values(), {"identidad.usuarios.gestionar"}
 )
 
 PERFIL_LEGAJO_SIMULADO = {"1210": "DEPOSITO", "1501": "CAMPO", "1601": "BASCULA"}
+
+
+COOKIE_SESION = "sj_sesion"
+_ingreso: ServicioIngreso | None = None
+
+
+def configurar_ingreso(servicio: ServicioIngreso | None) -> None:
+    global _ingreso
+    _ingreso = servicio
+
+
+def servicio_ingreso() -> ServicioIngreso:
+    if _ingreso is None:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "El ingreso no está configurado.")
+    return _ingreso
 
 
 def identidad_es_simulada() -> bool:
@@ -58,10 +74,22 @@ def resolver_sesion(
     actor: Annotated[str | None, Header(alias="X-Actor-Simulado")] = None,
     empresa: Annotated[str, Header(alias="X-Empresa-Simulada")] = "ENAV",
     legajo_declarado: Annotated[str | None, Header(alias="X-Legajo-Usuario")] = None,
+    token: Annotated[str | None, Cookie(alias=COOKIE_SESION)] = None,
 ) -> Sesion:
-    """Será el único cuerpo reemplazado al conectar el autenticador real."""
+    """Con identidad real, la sesión sale de la cookie de ingreso; las cabeceras se ignoran."""
     if not identidad_es_simulada():
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Falta una sesión autenticada.")
+        resuelto = servicio_ingreso().resolver(token) if token else None
+        if resuelto is None:
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Falta una sesión autenticada.")
+        usuario, guardada = resuelto
+        if usuario.debe_cambiar_clave:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "Antes de seguir, cambiá tu contraseña.")
+        return Sesion(
+            actor=usuario.email,
+            empresa=guardada.empresa,
+            permisos=PERMISOS_POR_PERFIL.get(usuario.perfil, frozenset()),
+            identidad_simulada=False,
+        )
     perfil_resuelto = (
         perfil
         or PERFIL_LEGAJO_SIMULADO.get(legajo_declarado or "")

@@ -1,10 +1,10 @@
 export type Empresa = "ENAV" | "JUBIAR";
 export type Perfil = "SUPERADMIN" | "RRHH" | "MEDICO" | "HYS" | "COMPRAS" | "SUPERVISOR" | "BODEGA" | "CAMPO" | "BASCULA";
-export type Seccion = "inicio" | "produccion" | "fila" | "bot" | "epp" | "analitica" | "seleccion" | "capacitaciones" | "legajo" | "salud" | "turnos" | "contactos" | "configuracion";
+export type Seccion = "inicio" | "produccion" | "fila" | "bot" | "epp" | "analitica" | "seleccion" | "capacitaciones" | "legajo" | "salud" | "turnos" | "contactos" | "configuracion" | "usuarios";
 
 export const todasLasSecciones: Seccion[] = [
   "inicio", "epp", "analitica", "seleccion", "capacitaciones", "legajo",
-  "salud", "turnos", "produccion", "fila", "bot", "contactos", "configuracion",
+  "salud", "turnos", "produccion", "fila", "bot", "contactos", "configuracion", "usuarios",
 ];
 
 export const perfiles: Record<Perfil, { nombre: string; secciones: Seccion[] }> = {
@@ -23,7 +23,7 @@ export const nombres: Record<Seccion, string> = {
   inicio: "Resumen", epp: "EPP", analitica: "Analítica", seleccion: "Selección",
   capacitaciones: "Capacitaciones", legajo: "Legajos", salud: "Salud", turnos: "Turnos",
   produccion: "Recepción", fila: "Fila de camiones", bot: "Consultas de productores",
-  contactos: "Contactos", configuracion: "Empresa y perfil",
+  contactos: "Contactos", configuracion: "Empresa y perfil", usuarios: "Usuarios",
 };
 
 export const gruposMenu: { nombre: string; secciones: Seccion[] }[] = [
@@ -31,7 +31,7 @@ export const gruposMenu: { nombre: string; secciones: Seccion[] }[] = [
   { nombre: "RRHH", secciones: ["epp", "analitica", "seleccion", "capacitaciones", "legajo", "salud", "turnos"] },
   { nombre: "Producción", secciones: ["produccion", "fila"] },
   { nombre: "Bot", secciones: ["bot", "contactos"] },
-  { nombre: "Configuración", secciones: ["configuracion"] },
+  { nombre: "Configuración", secciones: ["configuracion", "usuarios"] },
 ];
 
 export function puedeEntrar(perfil: Perfil, seccion: Seccion): boolean {
