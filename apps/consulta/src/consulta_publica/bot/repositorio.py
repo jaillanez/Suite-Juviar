@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 from .archivos import Archivo
 from .dialogo import MINUTOS_SESION, Cuenta, Estado
 from .meta import MensajeEntrante
+from .turnos import KG_POR_DEFECTO, Borrador, TurnoRechazado, TurnoVigente
 
 
 class RepositorioWebhook:
@@ -82,7 +84,7 @@ class RepositorioBot:
     def cuentas(self, telefono: str) -> list[Cuenta]:
         with self._conexion() as conexion:
             filas = conexion.execute(
-                """SELECT p.clientecuit,p.razonsocial,p.codigos
+                """SELECT p.clientecuit,p.razonsocial,p.codigos,t.tareas
                    FROM consulta.telefono_productor t
                    JOIN fila.productor p USING(clientecuit)
                    WHERE t.telefono=%s AND t.activo
@@ -90,7 +92,12 @@ class RepositorioBot:
                 (telefono,),
             ).fetchall()
         return [
-            Cuenta(f["clientecuit"], (f["codigos"] or [f["clientecuit"]])[0], f["razonsocial"])
+            Cuenta(
+                f["clientecuit"],
+                (f["codigos"] or [f["clientecuit"]])[0],
+                f["razonsocial"],
+                frozenset(f["tareas"] or ()),
+            )
             for f in filas
         ]
 
@@ -112,24 +119,43 @@ class RepositorioBot:
         ahora = ahora or datetime.now(UTC)
         with self._conexion() as conexion:
             fila = conexion.execute(
-                "SELECT paso,clientecuit,pedido,actualizado FROM consulta.bot_sesion WHERE telefono=%s",
+                """SELECT paso,clientecuit,pedido,turno,actualizado
+                   FROM consulta.bot_sesion WHERE telefono=%s""",
                 (telefono,),
             ).fetchone()
         if not fila:
             return Estado(), False
         if fila["actualizado"] < ahora - timedelta(minutes=MINUTOS_SESION):
             return Estado(), True
-        return Estado(fila["paso"], fila["clientecuit"], fila["pedido"]), False
+        return (
+            Estado(
+                fila["paso"],
+                fila["clientecuit"],
+                fila["pedido"],
+                Borrador.desde_dict(fila["turno"]),
+            ),
+            False,
+        )
 
     def guardar_estado(self, telefono: str, estado: Estado) -> None:
         with self._conexion() as conexion:
             conexion.execute(
-                """INSERT INTO consulta.bot_sesion(telefono,paso,clientecuit,pedido)
-                   VALUES (%s,%s,%s,%s)
+                """INSERT INTO consulta.bot_sesion(telefono,paso,clientecuit,pedido,turno)
+                   VALUES (%s,%s,%s,%s,%s)
                    ON CONFLICT(telefono) DO UPDATE SET paso=EXCLUDED.paso,
-                     clientecuit=EXCLUDED.clientecuit,pedido=EXCLUDED.pedido,actualizado=now()""",
-                (telefono, estado.paso, estado.cuenta, estado.pedido),
+                     clientecuit=EXCLUDED.clientecuit,pedido=EXCLUDED.pedido,
+                     turno=EXCLUDED.turno,actualizado=now()""",
+                (
+                    telefono,
+                    estado.paso,
+                    estado.cuenta,
+                    estado.pedido,
+                    Jsonb(estado.turno.a_dict()) if estado.turno else None,
+                ),
             )
+
+    def turnos(self, telefono: str) -> TurnosBot:
+        return TurnosBot(self._dsn, telefono)
 
     def guardar_archivo(self, archivo: Archivo, telefono: str) -> None:
         with self._conexion() as conexion:
@@ -201,6 +227,117 @@ class RepositorioBot:
                    VALUES ('bot-whatsapp', %s, %s, %s)""",
                 (clientecuit, recurso, filas),
             )
+
+
+class TurnosBot:
+    """Lecturas de cupo y reserva de turnos para un teléfono.
+
+    La reserva pasa por ``fila.reservar_turno_whatsapp``: la base fija el canal y
+    deja el teléfono como actor, y aplica las mismas reglas que Gestión.
+    """
+
+    def __init__(self, dsn: str, telefono: str) -> None:
+        self._dsn = dsn
+        self._telefono = telefono
+
+    def _conexion(self) -> psycopg.Connection:
+        return psycopg.connect(self._dsn, row_factory=dict_row, autocommit=True)
+
+    def libres(self, sede: str, desde: date, hasta: date) -> dict[date, int]:
+        with self._conexion() as conexion:
+            filas = conexion.execute(
+                """SELECT d.dia,
+                          COALESCE(c.kg_dia, g.kg_dia) AS capacidad,
+                          (SELECT COALESCE(sum(t.camiones::bigint * t.kg_por_camion), 0)
+                             FROM fila.turno t
+                            WHERE t.sede = %(sede)s AND t.fecha = d.dia
+                              AND t.estado = 'activo') AS reservado
+                   FROM generate_series(%(desde)s::date, %(hasta)s::date,
+                                        interval '1 day') AS s(momento)
+                   CROSS JOIN LATERAL (SELECT s.momento::date AS dia) d
+                   LEFT JOIN fila.capacidad c ON c.sede = %(sede)s AND c.fecha = d.dia
+                   LEFT JOIN fila.capacidad g ON g.sede = %(sede)s AND g.fecha IS NULL
+                   ORDER BY d.dia""",
+                {"sede": sede, "desde": desde, "hasta": hasta},
+            ).fetchall()
+        return {
+            f["dia"]: max(int(f["capacidad"]) - int(f["reservado"]), 0)
+            for f in filas
+            if f["capacidad"] is not None
+        }
+
+    def tiene_organico(self, clientecuit: str, fecha: date) -> bool:
+        with self._conexion() as conexion:
+            fila = conexion.execute(
+                """SELECT 1 FROM fila.productor_organico
+                   WHERE clientecuit=%s AND (vence IS NULL OR vence >= %s)""",
+                (clientecuit, fecha),
+            ).fetchone()
+        return fila is not None
+
+    def kg_estimado(self, clientecuit: str) -> int:
+        """Promedio de los últimos netos, redondeado a la centena (como la fila)."""
+        with self._conexion() as conexion:
+            fila = conexion.execute(
+                """SELECT round(avg(neto), -2)::integer AS kg FROM (
+                       SELECT neto FROM consulta.descarga_publica
+                       WHERE clientecuit=%s AND estado='descargado' AND neto > 0
+                       ORDER BY fecha DESC NULLS LAST LIMIT 30) ultimas""",
+                (clientecuit,),
+            ).fetchone()
+        return fila["kg"] or KG_POR_DEFECTO
+
+    def proximos(self, clientecuits: list[str], desde: date) -> list[TurnoVigente]:
+        if not clientecuits:
+            return []
+        with self._conexion() as conexion:
+            filas = conexion.execute(
+                """SELECT id,sede,fecha,clientecuit,clientecodigo,camiones,camiones_usados,
+                          kg_por_camion,declara_organica
+                   FROM fila.turno
+                   WHERE clientecuit = ANY(%s) AND fecha >= %s AND estado='activo'
+                   ORDER BY fecha,sede,id LIMIT 20""",
+                (clientecuits, desde),
+            ).fetchall()
+        return [_turno(f) for f in filas]
+
+    def reservar(
+        self,
+        clientecuit: str,
+        codigo: str,
+        sede: str,
+        fecha: date,
+        camiones: int,
+        kg_por_camion: int,
+        organica: bool,
+    ) -> TurnoVigente:
+        try:
+            with self._conexion() as conexion:
+                fila = conexion.execute(
+                    """SELECT id,sede,fecha,clientecuit,clientecodigo,camiones,camiones_usados,
+                              kg_por_camion,declara_organica
+                       FROM fila.reservar_turno_whatsapp(%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    (sede, fecha, clientecuit, codigo, camiones, kg_por_camion, organica,
+                     self._telefono),
+                ).fetchone()
+        except psycopg.errors.RaiseException as exc:
+            # Sólo las reglas (P0001) se le muestran al productor; el resto se reintenta.
+            raise TurnoRechazado(exc.diag.message_primary or "") from exc
+        return _turno(fila)
+
+
+def _turno(f: dict) -> TurnoVigente:
+    return TurnoVigente(
+        id=f["id"],
+        sede=f["sede"],
+        fecha=f["fecha"],
+        clientecuit=f["clientecuit"],
+        codigo=f["clientecodigo"],
+        camiones=f["camiones"],
+        camiones_usados=f["camiones_usados"],
+        kg_por_camion=f["kg_por_camion"],
+        organica=f["declara_organica"],
+    )
 
 
 class RepositorioArchivos:
