@@ -52,3 +52,18 @@ def test_exige_permiso_y_avisa_si_no_esta_conectado(monkeypatch):
     cliente = TestClient(app)
     assert cliente.get("/fila-tablero", headers={"X-Perfil-Simulado": "MEDICO"}).status_code == 403
     assert cliente.get("/fila-tablero", headers={"X-Perfil-Simulado": "BODEGA"}).status_code == 503
+
+
+def test_turnos_exige_permiso_y_conexion(monkeypatch):
+    monkeypatch.setattr(tablero_fila, "_dsn", "")
+    app = FastAPI()
+    app.include_router(tablero_fila.turnos)
+    cliente = TestClient(app)
+    parametros = {"sede": "chimbas", "mes": "2026-10"}
+    assert cliente.get("/turnos-bodega/mes", params=parametros,
+                       headers={"X-Perfil-Simulado": "MEDICO"}).status_code == 403
+    assert cliente.get("/turnos-bodega/mes", params=parametros,
+                       headers={"X-Perfil-Simulado": "BODEGA"}).status_code == 503
+    assert cliente.post("/turnos-bodega", headers={"X-Perfil-Simulado": "BODEGA"}, json={
+        "sede": "chimbas", "fecha": "2026-11-02", "cuit": "abc", "camiones": 1, "kg_por_camion": 11000,
+    }).status_code == 422
