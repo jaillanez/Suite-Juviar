@@ -929,3 +929,16 @@ th button {
 .estado-cv-panel small { color: var(--muted); }
 .estado-cv-panel-CONTRATADO { background: #eef4fa; }
 .estado-cv-panel-NO_CONVOCAR { background: #fbefed; }
+/* Recepción */
+.camiones-recepcion { display: grid; gap: 8px; margin-bottom: 16px; }
+.camiones-recepcion h3 { margin: 0; }
+.lista-camiones-recepcion { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.lista-camiones-recepcion button { width: 100%; display: grid; gap: 2px; text-align: left; padding: 10px 12px; background: #fff; }
+.lista-camiones-recepcion small { color: var(--muted); }
+.grilla-carga input, .grilla-carga select { width: 100%; min-width: 0; }
+.grilla-carga td { padding: 6px; vertical-align: middle; }
+.grilla-carga td:nth-child(1) { min-width: 240px; }
+.grilla-carga td:nth-child(2) { width: 90px; }
+.grilla-carga td:nth-child(5) { text-align: center; }
+.grilla-carga td:nth-child(6) { min-width: 200px; }
+.grilla-carga input[type="checkbox"] { width: 18px; height: 18px; min-height: 0; }

@@ -36,6 +36,7 @@ ENV SJ_GESTION_ESTATICOS=/opt/gestion/pantallas \
     SJ_USUARIOS_SQLITE_PATH=/datos/usuarios.sqlite3 \
     SJ_MODULOS_SQLITE_PATH=/datos/modulos.sqlite3 \
     SJ_RRHH_EPP_SQLITE_PATH=/datos/rrhh_epp.sqlite3 \
+    SJ_RRHH_EPP_MATRIZ_CAMBIOS_PATH=/datos/matriz_cambios.json \
     SJ_RECEPCION_SQLITE_PATH=/datos/recepcion.sqlite3
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \

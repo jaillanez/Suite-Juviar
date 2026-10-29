@@ -129,6 +129,7 @@ def construir(
         RAIZ / "data" / "matriz_sector_puesto_epp.yaml",
         RAIZ / "data" / "vida_util_referencial.yaml",
         RAIZ / "data" / "catalogo_items.yaml",
+        os.getenv("SJ_RRHH_EPP_MATRIZ_CAMBIOS_PATH") or None,
     )
 
     # Guarda de arranque: enumera cada sustituto simulado que impide producción.
