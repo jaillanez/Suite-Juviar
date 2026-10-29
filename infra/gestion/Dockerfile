@@ -23,7 +23,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
 COPY apps/api/pyproject.toml /opt/gestion/api/pyproject.toml
 COPY apps/api/src /opt/gestion/api/src
-RUN pip install /opt/gestion/api httpx2 && rm -rf /opt/gestion/api
+RUN pip install /opt/gestion/api "httpx>=0.28" && rm -rf /opt/gestion/api
 COPY --from=pantallas /repo/apps/gestion/out /opt/gestion/pantallas
 # Datos de ejemplo para un servidor nuevo: docker exec suite-juviar-gestion python /opt/gestion/cargar_demostracion.py
 COPY apps/api/tools/cargar_demostracion.py /opt/gestion/cargar_demostracion.py
