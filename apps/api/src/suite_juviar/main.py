@@ -66,9 +66,9 @@ if not identidad_es_simulada():
 app.include_router(ingreso_router, prefix="/api/v1")
 app.include_router(usuarios_router, prefix="/api/v1")
 app.include_router(recepcion_router, prefix="/api/v1")
-# En el servidor, Gestión entra a la base de la suite sólo con el rol terceros_gestor
-# (contactos de productores), por una red exclusiva: SJ_GESTION_CONTACTOS_DSN.
-dsn_contactos = os.getenv("SJ_GESTION_CONTACTOS_DSN", "").strip() or dsn_psycopg(obligatorio=False)
+# En el servidor de Gestión, SJ_DATABASE_URL usa el rol terceros_gestor (sólo contactos de
+# productores) por una red exclusiva con la base de la suite (infra/gestion/compose.yaml).
+dsn_contactos = dsn_psycopg(obligatorio=False)
 if dsn_contactos:
     configurar_contactos(
         GestionarContactos(
