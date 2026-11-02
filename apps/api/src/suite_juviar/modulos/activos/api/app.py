@@ -13,6 +13,7 @@ from suite_juviar.plataforma.identidad.api.dependencias import (
 )
 
 from ..application.servicios import GestionarActivos
+from ..domain.modelos import BODEGAS
 from ..domain.puertos import Impresora
 from ..infrastructure.sqlite import ActivosSQLite
 from ..infrastructure.zebra import (
@@ -31,6 +32,7 @@ class TipoEntrada(BaseModel):
 
 class SectorEntrada(BaseModel):
     nombre: str = Field(min_length=1, max_length=80)
+    bodega: str
 
 
 class ActivoEntrada(BaseModel):
@@ -59,6 +61,11 @@ class RegresoTallerEntrada(BaseModel):
     costo: float = Field(ge=0)
     trabajo_realizado: str = Field(default="", max_length=500)
     sector_id: str
+    empresa: str
+
+
+class BajaEntrada(BaseModel):
+    motivo: str = Field(min_length=1, max_length=300)
 
 
 class ImpresoraEntrada(BaseModel):
@@ -120,19 +127,24 @@ def crear_router(
 
     @app.get("/sectores", dependencies=operar)
     def sectores():
-        return sorted((asdict(s) for s in repo.sectores.values()), key=lambda s: s["nombre"].casefold())
+        return sorted(({**asdict(s), "bodega_nombre": BODEGAS[s.bodega]} for s in repo.sectores.values()),
+                      key=lambda s: (s["bodega_nombre"], s["nombre"].casefold()))
+
+    @app.get("/bodegas", dependencies=operar)
+    def bodegas():
+        return [{"id": clave, "nombre": nombre} for clave, nombre in BODEGAS.items()]
 
     @app.post("/sectores", status_code=201, dependencies=operar)
     def crear_sector(entrada: SectorEntrada):
         try:
-            return servicio.guardar_sector(entrada.nombre)
+            return servicio.guardar_sector(entrada.nombre, entrada.bodega)
         except (ValueError, LookupError) as exc:
             raise _error(exc) from exc
 
     @app.put("/sectores/{sector_id}", dependencies=operar)
     def editar_sector(sector_id: str, entrada: SectorEntrada):
         try:
-            return servicio.guardar_sector(entrada.nombre, sector_id)
+            return servicio.guardar_sector(entrada.nombre, entrada.bodega, sector_id)
         except (ValueError, LookupError) as exc:
             raise _error(exc) from exc
 
@@ -159,8 +171,8 @@ def crear_router(
 
     @app.get("/equipos", dependencies=operar)
     def listar(tipo_id: str | None = None, sector_id: str | None = None, texto: str | None = None,
-               mas_reparados: bool = False):
-        return servicio.listar(tipo_id, sector_id, texto, mas_reparados)
+               mas_reparados: bool = False, bodega: str | None = None):
+        return servicio.listar(tipo_id, sector_id, texto, mas_reparados, bodega)
 
     @app.post("/equipos", status_code=201, dependencies=operar)
     def alta(entrada: AltaEntrada, sesion: SesionActual):
@@ -204,7 +216,14 @@ def crear_router(
     def registrar_regreso(codigo: str, entrada: RegresoTallerEntrada, sesion: SesionActual):
         try:
             return asdict(servicio.registrar_regreso(codigo, entrada.costo, entrada.trabajo_realizado,
-                                                     entrada.sector_id, sesion.actor))
+                                                     entrada.sector_id, sesion.actor, entrada.empresa))
+        except (ValueError, LookupError) as exc:
+            raise _error(exc) from exc
+
+    @app.post("/equipos/{codigo}/baja", dependencies=operar)
+    def dar_de_baja(codigo: str, entrada: BajaEntrada, sesion: SesionActual):
+        try:
+            return servicio.vista(servicio.dar_de_baja(codigo, entrada.motivo, sesion.actor))
         except (ValueError, LookupError) as exc:
             raise _error(exc) from exc
 

@@ -31,8 +31,8 @@ def cliente(perfil="MANTENIMIENTO", impresora=None, ruta=None):
 def preparar(c):
     bomba = c.post("/activos/tipos", json={"nombre": "Bombas", "prefijo": "bom"}).json()
     mueble = c.post("/activos/tipos", json={"nombre": "Muebles", "prefijo": "MUE"}).json()
-    molienda = c.post("/activos/sectores", json={"nombre": "Molienda"}).json()
-    bodega = c.post("/activos/sectores", json={"nombre": "Bodega"}).json()
+    molienda = c.post("/activos/sectores", json={"nombre": "Molienda", "bodega": "chimbas"}).json()
+    bodega = c.post("/activos/sectores", json={"nombre": "Bodega", "bodega": "lavalle"}).json()
     return bomba, mueble, molienda, bodega
 
 
@@ -67,21 +67,25 @@ def test_traslados_y_reparaciones_quedan_en_el_historial_con_costo_acumulado():
     assert c.post(f"/activos/equipos/{codigo}/traslado", json={"sector_id": bodega["id"]}).json()["sector"] == "Bodega"
     assert c.post(f"/activos/equipos/{codigo}/traslado", json={"sector_id": bodega["id"]}).status_code == 400
 
-    for costo in (1000, 2500.5):
+    for costo, empresa in ((1000, "ENAV"), (2500.5, "JUBIAR")):
         assert c.post(f"/activos/equipos/{codigo}/taller",
                       json={"taller": "Taller Pérez", "motivo": "Pierde agua"}).status_code == 200
         # En taller no se puede trasladar ni volver a enviar.
         assert c.post(f"/activos/equipos/{codigo}/traslado", json={"sector_id": molienda["id"]}).status_code == 400
         assert c.post(f"/activos/equipos/{codigo}/taller", json={"taller": "Otro", "motivo": "x"}).status_code == 400
         assert c.post(f"/activos/equipos/{codigo}/regreso",
-                      json={"costo": costo, "trabajo_realizado": "Sellos", "sector_id": molienda["id"]}).status_code == 200
+                      json={"costo": costo, "trabajo_realizado": "Sellos", "sector_id": molienda["id"],
+                            "empresa": empresa}).status_code == 200
 
-    assert c.post(f"/activos/equipos/{codigo}/regreso", json={"costo": 1, "sector_id": molienda["id"]}).status_code == 400
+    assert c.post(f"/activos/equipos/{codigo}/regreso",
+                  json={"costo": 1, "sector_id": molienda["id"], "empresa": "ENAV"}).status_code == 400
     ficha = c.get(f"/activos/equipos/{codigo.lower()}").json()  # el lector puede mandar minúsculas
     assert (ficha["reparaciones"], ficha["costo_reparaciones"], ficha["estado"]) == (2, 3500.5, "EN_PLANTA")
     assert [m["tipo"] for m in ficha["historial"]][::-1] == [
         "ALTA", "TRASLADO", "SALIDA_TALLER", "REGRESO_TALLER", "SALIDA_TALLER", "REGRESO_TALLER"]
-    assert ficha["historial"][-2]["hacia_sector"] == "Bodega"
+    assert ficha["historial"][-2]["hacia_sector"] == "Bodega (Lavalle)"
+    assert ficha["costo_por_empresa"] == {"ENAV": 1000, "JUBIAR": 2500.5}
+    assert ficha["detalle_reparaciones"][0]["empresa"] == "JUBIAR"
 
 
 def test_listado_con_los_mas_reparados_primero_y_busqueda():
@@ -91,7 +95,7 @@ def test_listado_con_los_mas_reparados_primero_y_busqueda():
                                              "descripcion": d, "marca": "Grundfos"}).json()["codigo"]
             for d in ("Bomba vieja", "Bomba nueva"))
     c.post(f"/activos/equipos/{b}/taller", json={"taller": "T", "motivo": "m"})
-    c.post(f"/activos/equipos/{b}/regreso", json={"costo": 10, "sector_id": molienda["id"]})
+    c.post(f"/activos/equipos/{b}/regreso", json={"costo": 10, "sector_id": molienda["id"], "empresa": "ENAV"})
     assert [f["codigo"] for f in c.get("/activos/equipos").json()] == [a, b]
     assert [f["codigo"] for f in c.get("/activos/equipos?mas_reparados=true").json()] == [b, a]
     assert [f["codigo"] for f in c.get("/activos/equipos?texto=nueva").json()] == [b]
@@ -139,3 +143,51 @@ def test_etiqueta_respeta_el_tamano_configurado(dpi):
 def test_la_impresora_solo_puede_ser_una_zebra_de_la_red_interna(direccion, puerto):
     with pytest.raises(ValueError):
         ConfiguracionEtiqueta(direccion, puerto)
+
+
+def test_sectores_por_bodega_y_filtro_por_bodega():
+    c = cliente()
+    bomba, _, molienda, bodega = preparar(c)
+    # El mismo nombre de sector puede repetirse en otra bodega, no en la misma.
+    assert c.post("/activos/sectores", json={"nombre": "Molienda", "bodega": "media-agua"}).status_code == 201
+    assert c.post("/activos/sectores", json={"nombre": "molienda", "bodega": "chimbas"}).status_code == 400
+    assert c.post("/activos/sectores", json={"nombre": "Otro", "bodega": "mendoza"}).status_code == 400
+    for sector in (molienda, bodega):
+        c.post("/activos/equipos", json={"tipo_id": bomba["id"], "sector_id": sector["id"], "descripcion": "x"})
+    filas = c.get("/activos/equipos?bodega=lavalle").json()
+    assert [(f["sector"], f["bodega_nombre"]) for f in filas] == [("Bodega", "Lavalle")]
+    assert [b["nombre"] for b in c.get("/activos/bodegas").json()] == ["Chimbas", "Media Agua", "Lavalle"]
+
+
+def test_la_factura_de_la_reparacion_va_a_una_empresa_del_grupo():
+    c = cliente()
+    bomba, _, molienda, _ = preparar(c)
+    codigo = c.post("/activos/equipos", json={"tipo_id": bomba["id"], "sector_id": molienda["id"],
+                                              "descripcion": "x"}).json()["codigo"]
+    c.post(f"/activos/equipos/{codigo}/taller", json={"taller": "T", "motivo": "m"})
+    assert c.post(f"/activos/equipos/{codigo}/regreso",
+                  json={"costo": 5, "sector_id": molienda["id"], "empresa": "OTRA"}).status_code == 400
+    assert c.post(f"/activos/equipos/{codigo}/regreso",
+                  json={"costo": 5, "sector_id": molienda["id"]}).status_code == 422
+
+
+def test_la_baja_queda_visible_y_no_se_puede_mover():
+    c = cliente()
+    bomba, _, molienda, bodega = preparar(c)
+    codigo = c.post("/activos/equipos", json={"tipo_id": bomba["id"], "sector_id": molienda["id"],
+                                              "descripcion": "x"}).json()["codigo"]
+    c.post(f"/activos/equipos/{codigo}/taller", json={"taller": "T", "motivo": "m"})
+    assert c.post(f"/activos/equipos/{codigo}/baja", json={"motivo": "Rota"}).status_code == 400  # está en taller
+    c.post(f"/activos/equipos/{codigo}/regreso", json={"costo": 5, "sector_id": molienda["id"], "empresa": "ENAV"})
+
+    baja = c.post(f"/activos/equipos/{codigo}/baja", json={"motivo": "No conviene repararla"}).json()
+
+    assert (baja["estado"], baja["baja_motivo"], baja["baja_por"]) == ("DE_BAJA", "No conviene repararla", "operario")
+    assert [f["estado"] for f in c.get("/activos/equipos").json()] == ["DE_BAJA"]
+    for ruta, cuerpo in (("traslado", {"sector_id": bodega["id"]}), ("taller", {"taller": "T", "motivo": "m"}),
+                         ("baja", {"motivo": "otra vez"})):
+        assert c.post(f"/activos/equipos/{codigo}/{ruta}", json=cuerpo).status_code == 400
+    assert c.get(f"/activos/equipos/{codigo}").json()["historial"][0]["tipo"] == "BAJA"
+    # El código no se reutiliza.
+    nuevo = c.post("/activos/equipos", json={"tipo_id": bomba["id"], "sector_id": molienda["id"], "descripcion": "y"})
+    assert nuevo.json()["codigo"] == "BOM-0002"
