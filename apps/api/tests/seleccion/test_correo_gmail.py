@@ -41,6 +41,7 @@ class GmailFalso:
         self.clave_valida = clave_valida
         self.uidvalidity = 7
         self.falla_fetch: set[int] = set()
+        self.vacios: set[int] = set()
         self.solo_lectura = None
         self.pedidos: list[str] = []
 
@@ -77,6 +78,8 @@ class GmailFalso:
             return "OK", [f"{numero} (UID {numero} RFC822.SIZE {len(crudo)})".encode()]
         if numero in self.falla_fetch:
             return "NO", [None]
+        if numero in self.vacios:
+            return "OK", [None]
         return "OK", [(f"{numero} (UID {numero} BODY[] {{1}}".encode(), crudo), b")"]
 
     def logout(self):
@@ -260,3 +263,14 @@ def test_si_gmail_renumera_la_bandeja_vuelve_a_buscar_por_fecha_sin_duplicar():
 
     assert gmail.pedidos.count("(SINCE 01-Oct-2026)") == 2
     assert (resultado.adjuntos, resultado.incorporados) == (1, 0)
+
+
+def test_un_correo_que_llega_vacio_se_saltea_y_no_traba_la_lectura():
+    gmail = GmailFalso([correo_con(("a.pdf", b"%PDF a")), correo_con(("b.pdf", b"%PDF b"), message_id="<b@x>")])
+    gmail.vacios = {1}
+    correo, _ = servicio(gmail)
+    correo.guardar("ENAV", "rrhh@gmail.com", CLAVE, "admin")
+
+    resultado = correo.leer("ENAV")
+
+    assert (resultado.incorporados, resultado.salteados, resultado.incompleta) == (1, 1, False)

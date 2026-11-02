@@ -116,11 +116,17 @@ class BandejaGmailIMAP:
             for uid in uids[:MAXIMO_CORREOS_POR_LECTURA]:
                 if self._tamano(conexion, uid) <= TAMANO_MAXIMO_CORREO:
                     estado, partes = conexion.uid("FETCH", str(uid), "(BODY.PEEK[])")
-                    crudo = next((p[1] for p in partes or [] if isinstance(p, tuple)), None) if estado == "OK" else None
-                    if not crudo:
+                    if estado != "OK":
                         # Corte transitorio: se reintenta desde este correo en la próxima lectura.
                         self.completa = False
                         break
+                    crudo = next((p[1] for p in partes or [] if isinstance(p, tuple)), None)
+                    if not crudo:
+                        # Gmail respondió sin contenido: se saltea para no quedar trabado en este correo.
+                        self.salteados += 1
+                        _registro.warning("Se salteó el correo UID %s de %s: llegó vacío.", uid, self._casilla)
+                        ultimo = uid
+                        continue
                     try:
                         documentos.extend(self._adjuntos(email.message_from_bytes(crudo)))
                     except Exception:  # noqa: BLE001
