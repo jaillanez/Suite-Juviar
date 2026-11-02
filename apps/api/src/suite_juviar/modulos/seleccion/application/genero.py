@@ -71,9 +71,10 @@ def genero_explicito(valor: object) -> str | None:
     if not isinstance(valor, str):
         return None
     texto = _normalizar(valor).replace("no binario", "nobinario")
-    # Palabra por palabra, para reconocer también «Sexo: F» o «Género: femenino».
-    hallados = {_EXPLICITO[p] for p in texto.split() if p in _EXPLICITO}
-    return hallados.pop() if len(hallados) == 1 else None
+    # Se quita la etiqueta («Sexo: F», «Género: femenino») y lo que queda tiene que ser
+    # exactamente un valor conocido; una palabra suelta en medio de otra frase no cuenta.
+    texto = re.sub(r"^(?:sexo|genero)\s*", "", texto).strip()
+    return _EXPLICITO.get(texto)
 
 
 def genero_por_nombre(nombre_completo: object) -> str | None:

@@ -93,7 +93,8 @@ def test_la_busqueda_con_ia_respeta_el_periodo_y_recibe_el_genero(monkeypatch):
 
 @pytest.mark.parametrize("declarado,esperado", [
     ("Sexo: F", "F"), ("Género: femenino", "F"), ("masculino", "M"), ("No binario", "X"),
-    ("prefiero no decirlo", None), ("F / M", None),
+    ("prefiero no decirlo", None), ("F / M", None), ("otra persona", None), ("M en ciencias", None),
+    ("Sexo F", "F"),
 ])
 def test_lo_declarado_en_el_cv_nunca_se_reemplaza_por_el_nombre(declarado, esperado):
     assert genero_de({"nombre_completo": "Andrea Funes", "genero": declarado}) == {"genero": esperado, "origen": "CV"}
