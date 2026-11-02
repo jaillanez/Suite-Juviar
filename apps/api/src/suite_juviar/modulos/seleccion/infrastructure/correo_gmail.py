@@ -25,6 +25,7 @@ EXTENSIONES_CV = {".pdf", ".jpg", ".jpeg", ".png", ".webp"}
 TAMANO_MAXIMO = 15 * 1024 * 1024
 TAMANO_MAXIMO_CORREO = 25 * 1024 * 1024  # el límite de Gmail para un correo recibido
 MAXIMO_CORREOS_POR_LECTURA = 500
+REINTENTOS_POR_CORREO = 3
 _registro = logging.getLogger(__name__)
 _MESES = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
@@ -73,6 +74,7 @@ class BandejaGmailIMAP:
         # Dónde quedó la lectura: el UID que Gmail asigna a cada correo. Crece siempre y no
         # depende de la fecha que escribe quien envía, así no se saltean ni se repiten correos.
         self.cursor = dict(cursor) if cursor else None
+        self._pendiente: dict[str, int] = {}
         self.completa = True
         self.salteados = 0
 
@@ -116,15 +118,18 @@ class BandejaGmailIMAP:
             for uid in uids[:MAXIMO_CORREOS_POR_LECTURA]:
                 if self._tamano(conexion, uid) <= TAMANO_MAXIMO_CORREO:
                     estado, partes = conexion.uid("FETCH", str(uid), "(BODY.PEEK[])")
-                    if estado != "OK":
-                        # Corte transitorio: se reintenta desde este correo en la próxima lectura.
-                        self.completa = False
-                        break
-                    crudo = next((p[1] for p in partes or [] if isinstance(p, tuple)), None)
+                    crudo = next((p[1] for p in partes or [] if isinstance(p, tuple)), None) if estado == "OK" else None
                     if not crudo:
-                        # Gmail respondió sin contenido: se saltea para no quedar trabado en este correo.
+                        # No se pudo bajar: se reintenta en las próximas lecturas y, si sigue
+                        # igual, se saltea para no quedar trabado para siempre en este correo.
+                        intentos = self._intentos_previos(uid) + 1
+                        if intentos < REINTENTOS_POR_CORREO:
+                            self.completa = False
+                            self._pendiente = {"pendiente_uid": uid, "pendiente_intentos": intentos}
+                            break
                         self.salteados += 1
-                        _registro.warning("Se salteó el correo UID %s de %s: llegó vacío.", uid, self._casilla)
+                        _registro.warning("Se salteó el correo UID %s de %s tras %s intentos.",
+                                          uid, self._casilla, intentos)
                         ultimo = uid
                         continue
                     try:
@@ -136,11 +141,19 @@ class BandejaGmailIMAP:
                 else:
                     self.salteados += 1
                 ultimo = uid
-            if ultimo is not None:
-                self.cursor = {"uidvalidity": validez, "uid": ultimo}
+            if ultimo is not None or self._pendiente:
+                base = {"uidvalidity": validez, "uid": ultimo} if ultimo is not None else dict(self.cursor or {})
+                if not base:
+                    base = {"uidvalidity": validez, "uid": uids[0] - 1}
+                self.cursor = {k: v for k, v in base.items() if not k.startswith("pendiente_")} | self._pendiente
             return documentos
         finally:
             conexion.logout()
+
+    def _intentos_previos(self, uid: int) -> int:
+        if self.cursor and self.cursor.get("pendiente_uid") == uid:
+            return int(self.cursor.get("pendiente_intentos", 0))
+        return 0
 
     @staticmethod
     def _tamano(conexion: imaplib.IMAP4, uid: int) -> int:

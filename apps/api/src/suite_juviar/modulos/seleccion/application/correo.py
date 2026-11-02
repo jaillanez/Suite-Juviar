@@ -26,7 +26,7 @@ class Cifrador(Protocol):
 
 
 class BandejaConPrueba(FuenteCV, Protocol):
-    cursor: dict[str, int] | None  # hasta qué correo se leyó
+    cursor: dict[str, int] | None  # hasta qué correo se leyó y reintentos pendientes
     completa: bool  # False si quedaron correos para la próxima lectura
     salteados: int  # correos que no se pudieron leer o eran demasiado grandes
 

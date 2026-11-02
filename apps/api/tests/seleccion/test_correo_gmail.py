@@ -265,12 +265,26 @@ def test_si_gmail_renumera_la_bandeja_vuelve_a_buscar_por_fecha_sin_duplicar():
     assert (resultado.adjuntos, resultado.incorporados) == (1, 0)
 
 
-def test_un_correo_que_llega_vacio_se_saltea_y_no_traba_la_lectura():
+def test_un_correo_que_no_baja_se_reintenta_y_despues_se_saltea():
     gmail = GmailFalso([correo_con(("a.pdf", b"%PDF a")), correo_con(("b.pdf", b"%PDF b"), message_id="<b@x>")])
     gmail.vacios = {1}
     correo, _ = servicio(gmail)
     correo.guardar("ENAV", "rrhh@gmail.com", CLAVE, "admin")
 
-    resultado = correo.leer("ENAV")
+    for _ in range(2):
+        resultado = correo.leer("ENAV")
+        assert (resultado.incorporados, resultado.incompleta) == (0, True)
+    assert correo.ver("ENAV")["ultima_lectura"] is None
 
+    resultado = correo.leer("ENAV")
     assert (resultado.incorporados, resultado.salteados, resultado.incompleta) == (1, 1, False)
+
+
+def test_si_el_reintento_funciona_no_se_pierde_el_correo():
+    gmail = GmailFalso([correo_con(("a.pdf", b"%PDF a"))])
+    gmail.vacios = {1}
+    correo, _ = servicio(gmail)
+    correo.guardar("ENAV", "rrhh@gmail.com", CLAVE, "admin")
+    assert correo.leer("ENAV").incompleta is True
+    gmail.vacios = set()
+    assert correo.leer("ENAV").incorporados == 1
