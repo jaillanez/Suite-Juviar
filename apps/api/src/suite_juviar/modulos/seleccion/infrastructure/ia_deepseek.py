@@ -62,7 +62,8 @@ no está, usá null o una lista vacía. Respondé solamente JSON válido con est
 nombre_completo, localidad, provincia, edad, estudios (lista de textos), experiencia (lista de
 objetos con puesto, empresa, periodo), oficios (lista: p. ej. tractorista, soldador, administrativo,
 jornalero, capataz), idiomas (lista), licencia_conducir (texto o null), habilidades (lista),
-disponibilidad (texto o null), resumen (2 o 3 líneas para RRHH).
+disponibilidad (texto o null), genero ("femenino" o "masculino" sólo si el CV lo dice
+expresamente; si no, null), resumen (2 o 3 líneas para RRHH).
 Como máximo 10 experiencias (las más recientes) y 15 habilidades."""
 
 

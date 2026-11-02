@@ -4,8 +4,9 @@ import hashlib
 import os
 from base64 import b64decode, b64encode
 from dataclasses import asdict
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from pydantic import BaseModel, Field
@@ -17,7 +18,9 @@ from suite_juviar.plataforma.identidad.api.dependencias import (
 )
 
 from ..application.correo import CorreoRRHH
+from ..application.datos_faltantes import datos_faltantes
 from ..application.extraccion import ExtraerDatosCV
+from ..application.genero import FEMENINO, genero_de
 from ..application.ingesta import IngestarCVs
 from ..application.ranking import EvaluarBusqueda, ordenar_resultados
 from ..domain.modelos import (
@@ -64,6 +67,23 @@ class ConfirmacionEntrada(BaseModel):
 class PedidoEntrada(BaseModel):
     pedido: str = Field(min_length=5, max_length=1500)
     incluir_marcados: bool = False
+    desde: date | None = None
+    hasta: date | None = None
+
+
+ZONA = ZoneInfo("America/Argentina/San_Juan")
+
+
+def _dia_de_carga(original: CVOriginal) -> date:
+    return original.incorporado_en.astimezone(ZONA).date()
+
+
+def _periodo(desde: date | None, hasta: date | None):
+    """Filtro por fecha de carga del CV en la plataforma (Desde / Hasta, ambos incluidos)."""
+    if desde and hasta and desde > hasta:
+        raise HTTPException(400, "La fecha «Desde» no puede ser posterior a «Hasta».")
+    return lambda original: (desde is None or _dia_de_carga(original) >= desde) and (
+        hasta is None or _dia_de_carga(original) <= hasta)
 
 
 ESTADOS_CV = {"DISPONIBLE", "CONTRATADO", "NO_CONVOCAR"}
@@ -146,11 +166,20 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
             ids.append(digest)
         return {"incorporados": ids, "marca": "DATOS SIMULADOS — SIN VALIDEZ"}
 
+    def faltantes_y_genero(original: CVOriginal, extraccion) -> dict[str, object]:
+        ficha = fichas_ia.get(original.id)
+        leidos = [c.nombre for c in extraccion.campos] if extraccion else []
+        return {"datos_faltantes": datos_faltantes(leidos, ficha), **genero_de(ficha),
+                "cargado_en": original.incorporado_en}
+
     @app.get("/cvs")
-    def listar_cvs(busqueda_id: str | None = None):
+    def listar_cvs(busqueda_id: str | None = None, desde: date | None = None, hasta: date | None = None):
         busqueda = busquedas.get(busqueda_id) if busqueda_id else None
+        en_periodo = _periodo(desde, hasta)
         filas = []
         for original in originales.listar_originales():
+            if not en_periodo(original):
+                continue
             extraccion = extracciones.obtener_extraccion(original.id)
             resultado = evaluar.ejecutar(busqueda, extraccion) if busqueda and extraccion else None
             filas.append({
@@ -160,6 +189,7 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
                 "campos_pendientes": list(extraccion.campos_pendientes) if extraccion else [],
                 "resultado": resultado,
                 "estado": estado_de(original.id),
+                **faltantes_y_genero(original, extraccion),
             })
         if busqueda:
             por_id = {fila["id"]: fila for fila in filas}
@@ -168,8 +198,8 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
         return filas
 
     @app.get("/revision")
-    def revision():
-        return [fila for fila in listar_cvs() if fila["requiere_revision"]]
+    def revision(desde: date | None = None, hasta: date | None = None):
+        return [fila for fila in listar_cvs(None, desde, hasta) if fila["requiere_revision"]]
 
     @app.get("/cvs/{cv_id}")
     def ficha_cv(cv_id: str, busqueda_id: str | None = None):
@@ -187,6 +217,7 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
             "estado": estado_de(cv_id),
             "historial_estado": [h for h in historial_estados if h["cv_id"] == cv_id],
             "resultado": evaluar.ejecutar(busqueda, extraccion) if busqueda else None,
+            **faltantes_y_genero(original, extraccion),
             "marca": "DATOS SIMULADOS — SIN VALIDEZ",
         }
 
@@ -242,12 +273,20 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
         fichas_ia[cv_id] = ficha
         return ficha
 
+    def genero_para_ia(ficha: dict[str, object]) -> str | None:
+        dato = genero_de(ficha)
+        if not dato["genero"]:
+            return None
+        texto = "femenino" if dato["genero"] == FEMENINO else "masculino"
+        return texto if dato["origen"] == "CV" else f"{texto} (deducido del nombre)"
+
     @app.post("/ia/buscar")
     def buscar_con_ia(entrada: PedidoEntrada, sesion: SesionActual):
         exigir_ia()
-        disponibles = {o.id: o for o in originales.listar_originales()}
+        en_periodo = _periodo(entrada.desde, entrada.hasta)
+        disponibles = {o.id: o for o in originales.listar_originales() if en_periodo(o)}
         leidas = {
-            cv_id: f for cv_id, f in fichas_ia.items()
+            cv_id: {**f, "genero": genero_para_ia(f)} for cv_id, f in fichas_ia.items()
             if cv_id in disponibles
             and (entrada.incluir_marcados or estado_de(cv_id)["estado"] == "DISPONIBLE")
         }
