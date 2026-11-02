@@ -26,6 +26,10 @@ class Cifrador(Protocol):
 
 
 class BandejaConPrueba(FuenteCV, Protocol):
+    cursor: dict[str, int] | None  # hasta qué correo se leyó
+    completa: bool  # False si quedaron correos para la próxima lectura
+    salteados: int  # correos que no se pudieron leer o eran demasiado grandes
+
     def probar(self) -> None: ...
 
 
@@ -38,6 +42,7 @@ class ResultadoLectura:
     repetidos: int
     error: str | None = None
     incompleta: bool = False  # quedaron correos para la próxima lectura
+    salteados: int = 0
 
 
 class CorreoRRHH:
@@ -45,7 +50,7 @@ class CorreoRRHH:
         self,
         parametros: MutableMapping[str, dict[str, Any]],
         cifrador: Cifrador,
-        crear_bandeja: Callable[[str, str, datetime | None], BandejaConPrueba],
+        crear_bandeja: Callable[[str, str, datetime | None, dict[str, int] | None], BandejaConPrueba],
         ingestar: IngestarCVs,
         extraer: ExtraerDatosCV,
     ) -> None:
@@ -90,7 +95,9 @@ class CorreoRRHH:
         elif not actual.get("clave"):
             raise ValueError("Falta la contraseña de aplicación.")
         if actual.get("casilla") != casilla:
-            actual["ultima_lectura"] = None  # otra casilla: se vuelve a traer el último mes
+            # otra casilla: se vuelve a traer el último mes
+            actual["ultima_lectura"] = None
+            actual["cursor"] = None
         actual.update(casilla=casilla, actualizado_por=actor, actualizado_en=datetime.now(UTC))
         self._parametros[empresa] = actual
         return self.ver(empresa)
@@ -100,7 +107,7 @@ class CorreoRRHH:
         if not datos.get("casilla") or not datos.get("clave"):
             raise ValueError("Primero cargá la casilla y la contraseña de aplicación.")
         clave = self._cifrador.descifrar(datos["clave"])
-        return datos, self._crear_bandeja(datos["casilla"], clave, datos.get("ultima_lectura"))
+        return datos, self._crear_bandeja(datos["casilla"], clave, datos.get("ultima_lectura"), datos.get("cursor"))
 
     def probar(self, empresa: str) -> None:
         self._bandeja(self._empresa(empresa))[1].probar()
@@ -118,13 +125,12 @@ class CorreoRRHH:
         incorporados = self._ingestar.ejecutar(_FuenteFija(bandeja.estado, documentos))
         for original in incorporados:
             self._extraer.ejecutar(original.id)
-        completa = getattr(bandeja, "completa", True)
         resultado = ResultadoLectura(empresa, ahora, len(documentos), len(incorporados),
-                                     len(documentos) - len(incorporados), incompleta=not completa)
-        # La última lectura sólo avanza cuando Gmail respondió, y si la lectura quedó cortada
-        # avanza hasta el último correo procesado: así nunca se saltean correos.
-        hasta = ahora if completa else (getattr(bandeja, "leido_hasta", None) or datos.get("ultima_lectura"))
-        self._parametros[empresa] = {**datos, "ultima_lectura": hasta, "ultimo_resultado": asdict(resultado)}
+                                     len(documentos) - len(incorporados), incompleta=not bandeja.completa,
+                                     salteados=bandeja.salteados)
+        # Sólo se avanza cuando Gmail respondió y los CV quedaron incorporados: un corte no pierde correos.
+        self._parametros[empresa] = {**datos, "ultima_lectura": ahora, "cursor": bandeja.cursor,
+                                     "ultimo_resultado": asdict(resultado)}
         return resultado
 
     def leer_todas(self) -> list[ResultadoLectura]:
@@ -135,7 +141,7 @@ class CorreoRRHH:
                 continue
             try:
                 resultados.append(self.leer(empresa))
-            except Exception as exc:  # una casilla caída no frena a la otra
+            except Exception as exc:  # noqa: BLE001 - una casilla caída no frena a la otra
                 resultados.append(ResultadoLectura(empresa, datetime.now(UTC), 0, 0, 0, str(exc)))
         return resultados
 

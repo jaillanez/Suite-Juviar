@@ -33,6 +33,9 @@ def iniciar(correo: CorreoRRHH, hora: int) -> threading.Thread:
                 else:
                     _registro.info("Correo RRHH %s: %s CV nuevos de %s adjuntos",
                                    resultado.empresa, resultado.incorporados, resultado.adjuntos)
+                if resultado.incompleta or resultado.salteados:
+                    _registro.warning("Correo RRHH %s: lectura incompleta=%s, %s correos salteados",
+                                      resultado.empresa, resultado.incompleta, resultado.salteados)
 
     hilo = threading.Thread(target=ciclo, name="lectura-correo-rrhh", daemon=True)
     hilo.start()

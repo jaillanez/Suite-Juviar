@@ -31,9 +31,13 @@ def correo_con(*adjuntos: tuple[str, bytes], message_id: str = "<cv-1@gmail.com>
 
 
 class GmailFalso:
+    """Bandeja IMAP de mentira: cada correo tiene el UID de su posición (1, 2, 3…)."""
+
     def __init__(self, correos: list[bytes], clave_valida: str = CLAVE.replace(" ", "")) -> None:
         self.correos = correos
         self.clave_valida = clave_valida
+        self.uidvalidity = 7
+        self.falla_fetch: set[int] = set()
         self.solo_lectura = None
         self.pedidos: list[str] = []
 
@@ -47,18 +51,30 @@ class GmailFalso:
 
     def select(self, bandeja, readonly=False):
         self.solo_lectura = readonly
-        return "OK", [b"1"]
+        return "OK", [str(len(self.correos)).encode()]
 
-    def search(self, charset, criterio):
-        self.pedidos.append(criterio)
-        return "OK", [b" ".join(str(i + 1).encode() for i in range(len(self.correos)))]
+    def response(self, codigo):
+        assert codigo == "UIDVALIDITY"
+        return codigo, [str(self.uidvalidity).encode()]
 
-    def fetch(self, numero, partes):
+    def uid(self, comando, *args):
+        if comando == "SEARCH":
+            criterio = args[1]
+            self.pedidos.append(criterio)
+            uids = list(range(1, len(self.correos) + 1))
+            if criterio.startswith("(UID "):
+                desde = int(criterio[5:].split(":")[0])
+                # Como Gmail: «n:*» devuelve al menos el último aunque sea menor.
+                uids = [u for u in uids if u >= desde] or uids[-1:]
+            return "OK", [" ".join(map(str, uids)).encode()]
+        numero, partes = int(args[0]), args[1]
         self.pedidos.append(partes)
-        crudo = self.correos[int(numero) - 1]
+        crudo = self.correos[numero - 1]
         if partes == "(RFC822.SIZE)":
-            return "OK", [f"{int(numero)} (RFC822.SIZE {len(crudo)})".encode()]
-        return "OK", [(b"1 (BODY[] {1}", crudo), b")"]
+            return "OK", [f"{numero} (UID {numero} RFC822.SIZE {len(crudo)})".encode()]
+        if numero in self.falla_fetch:
+            return "NO", [None]
+        return "OK", [(f"{numero} (UID {numero} BODY[] {{1}}".encode(), crudo), b")"]
 
     def logout(self):
         return "BYE", []
@@ -66,7 +82,7 @@ class GmailFalso:
 
 def test_trae_solo_adjuntos_de_cv_sin_marcar_correos_como_leidos():
     gmail = GmailFalso([correo_con(("cv.pdf", b"%PDF-1.4 cv"), ("foto.JPG", b"jpg"), ("carta.docx", b"doc"))])
-    documentos = BandejaGmailIMAP("RRHH@gmail.com", CLAVE, date(2026, 10, 1), gmail).listar_nuevos()
+    documentos = BandejaGmailIMAP("RRHH@gmail.com", CLAVE, date(2026, 10, 1), conectar=gmail).listar_nuevos()
 
     assert [d.nombre_archivo for d in documentos] == ["cv.pdf", "foto.JPG"]
     assert documentos[0].referencia_fuente == "gmail:rrhh@gmail.com:<cv-1@gmail.com>:cv.pdf"
@@ -78,13 +94,14 @@ def test_trae_solo_adjuntos_de_cv_sin_marcar_correos_como_leidos():
 
 def test_clave_rechazada_explica_que_debe_ser_de_aplicacion():
     with pytest.raises(ErrorCorreo, match="contraseña de aplicación"):
-        BandejaGmailIMAP("rrhh@gmail.com", "otra", date(2026, 10, 1), GmailFalso([])).probar()
+        BandejaGmailIMAP("rrhh@gmail.com", "otra", date(2026, 10, 1), conectar=GmailFalso([])).probar()
 
 
 def servicio(gmail: GmailFalso) -> tuple[CorreoRRHH, str]:
     ruta = str(Path(tempfile.mkdtemp()) / "modulos.sqlite3")
     correo = construir_correo(ruta, "clave-de-prueba")
-    correo._crear_bandeja = lambda casilla, clave, ultima: BandejaGmailIMAP(casilla, clave, date(2026, 10, 1), gmail)
+    correo._crear_bandeja = lambda casilla, clave, ultima, cursor: BandejaGmailIMAP(
+        casilla, clave, date(2026, 10, 1), cursor, gmail)
     return correo, ruta
 
 
@@ -125,7 +142,8 @@ def test_leer_dos_veces_no_duplica_y_reenvio_del_mismo_cv_tampoco():
     gmail.correos.append(correo_con(("cv-de-nuevo.pdf", pdf), message_id="<cv-2@gmail.com>"))
     segunda = correo.leer("ENAV")
 
-    assert (segunda.adjuntos, segunda.incorporados, segunda.repetidos) == (2, 0, 2)
+    # Sólo baja el correo nuevo; el mismo PDF reenviado no entra de nuevo.
+    assert (segunda.adjuntos, segunda.incorporados, segunda.repetidos) == (1, 0, 1)
     assert len(OriginalesSQLite(ruta).listar_originales()) == 1
     assert correo.ver("ENAV")["ultimo_resultado"]["incorporados"] == 0
 
@@ -183,7 +201,7 @@ def test_un_correo_mal_armado_no_frena_al_resto():
     roto = correo_con(("cv.pdf", b"%PDF roto"), message_id="<roto@gmail.com>").replace(
         b'filename="cv.pdf"', b'filename="=?utf-8?b?###?="')
     gmail = GmailFalso([roto, correo_con(("bueno.pdf", b"%PDF-1.4 ok"), message_id="<ok@gmail.com>")])
-    documentos = BandejaGmailIMAP("rrhh@gmail.com", CLAVE, date(2026, 10, 1), gmail).listar_nuevos()
+    documentos = BandejaGmailIMAP("rrhh@gmail.com", CLAVE, date(2026, 10, 1), conectar=gmail).listar_nuevos()
     assert "bueno.pdf" in [d.nombre_archivo for d in documentos]
 
 
@@ -191,18 +209,50 @@ def test_correos_demasiado_grandes_no_se_descargan(monkeypatch):
     from suite_juviar.modulos.seleccion.infrastructure import correo_gmail
     monkeypatch.setattr(correo_gmail, "TAMANO_MAXIMO_CORREO", 10)
     gmail = GmailFalso([correo_con(("cv.pdf", b"%PDF-1.4 cv"))])
-    assert BandejaGmailIMAP("rrhh@gmail.com", CLAVE, date(2026, 10, 1), gmail).listar_nuevos() == []
+    assert BandejaGmailIMAP("rrhh@gmail.com", CLAVE, date(2026, 10, 1), conectar=gmail).listar_nuevos() == []
     assert "(BODY.PEEK[])" not in gmail.pedidos
 
 
-def test_si_hay_mas_correos_que_el_tope_la_proxima_lectura_sigue_desde_el_ultimo(monkeypatch):
+def test_la_lectura_sigue_por_uid_sin_saltear_ni_repetir(monkeypatch):
     from suite_juviar.modulos.seleccion.infrastructure import correo_gmail
-    monkeypatch.setattr(correo_gmail, "MAXIMO_CORREOS_POR_LECTURA", 1)
-    gmail = GmailFalso([correo_con(("a.pdf", b"%PDF a")), correo_con(("b.pdf", b"%PDF b"), message_id="<b@x>")])
+    monkeypatch.setattr(correo_gmail, "MAXIMO_CORREOS_POR_LECTURA", 2)
+    gmail = GmailFalso([correo_con((f"{n}.pdf", f"%PDF {n}".encode()), message_id=f"<{n}@x>") for n in "abc"])
     correo, _ = servicio(gmail)
     correo.guardar("ENAV", "rrhh@gmail.com", CLAVE, "admin")
 
+    primera = correo.leer("ENAV")
+    assert (primera.incorporados, primera.incompleta) == (2, True)
+    assert correo.ver("ENAV")["ultimo_resultado"]["incompleta"] is True
+
+    segunda = correo.leer("ENAV")
+    assert (segunda.incorporados, segunda.incompleta) == (1, False)
+    assert gmail.pedidos.count("(UID 3:*)") == 1
+
+    # Sin correos nuevos Gmail igual devuelve el último: no se vuelve a procesar.
+    tercera = correo.leer("ENAV")
+    assert (tercera.adjuntos, tercera.incompleta) == (0, False)
+
+
+def test_un_corte_al_descargar_reintenta_desde_ese_correo():
+    gmail = GmailFalso([correo_con(("a.pdf", b"%PDF a")), correo_con(("b.pdf", b"%PDF b"), message_id="<b@x>")])
+    gmail.falla_fetch = {2}
+    correo, _ = servicio(gmail)
+    correo.guardar("ENAV", "rrhh@gmail.com", CLAVE, "admin")
+
+    assert correo.leer("ENAV").incompleta is True
+    gmail.falla_fetch = set()
+    assert correo.leer("ENAV").incorporados == 1
+    assert "(UID 2:*)" in gmail.pedidos
+
+
+def test_si_gmail_renumera_la_bandeja_vuelve_a_buscar_por_fecha_sin_duplicar():
+    gmail = GmailFalso([correo_con(("a.pdf", b"%PDF a"))])
+    correo, _ = servicio(gmail)
+    correo.guardar("ENAV", "rrhh@gmail.com", CLAVE, "admin")
+    correo.leer("ENAV")
+    gmail.uidvalidity = 8
+
     resultado = correo.leer("ENAV")
 
-    assert resultado.incompleta is True
-    assert correo.ver("ENAV")["ultima_lectura"] == datetime(2026, 11, 2, 13, 0, tzinfo=UTC)
+    assert gmail.pedidos.count("(SINCE 01-Oct-2026)") == 2
+    assert (resultado.adjuntos, resultado.incorporados) == (1, 0)

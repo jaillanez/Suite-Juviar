@@ -36,8 +36,8 @@ from ..infrastructure.sqlite import (
     ExtraccionesSQLite,
     OriginalesSQLite,
     busquedas_sqlite,
-    correo_rrhh_sqlite,
     consultas_ia_sqlite,
+    correo_rrhh_sqlite,
     estados_cv_sqlite,
     fichas_ia_sqlite,
     historial_estados_sqlite,
@@ -317,7 +317,7 @@ def construir_correo(ruta_base: str, clave: str) -> CorreoRRHH:
     return CorreoRRHH(
         correo_rrhh_sqlite(ruta_base),
         CifradorAESGCM(hashlib.scrypt(clave.encode(), salt=b"suite-juviar-parametros", n=2**14, r=8, p=1, dklen=32)),
-        lambda casilla, clave_app, ultima: BandejaGmailIMAP(casilla, clave_app, desde_para(ultima)),
+        lambda casilla, clave_app, ultima, cursor: BandejaGmailIMAP(casilla, clave_app, desde_para(ultima), cursor),
         IngestarCVs(originales),
         ExtraerDatosCV(originales, extracciones, TextoPDF(), CamposPorReglasProvisorias()),
     )

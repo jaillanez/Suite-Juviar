@@ -38,7 +38,7 @@ def _texto(valor: str | None) -> str:
         return ""
     try:
         return str(make_header(decode_header(valor)))
-    except Exception:  # encabezado mal codificado: se usa tal como llegó
+    except Exception:  # noqa: BLE001 - encabezado mal codificado: se usa tal como llegó
         return str(valor)
 
 
@@ -62,6 +62,7 @@ class BandejaGmailIMAP:
         casilla: str,
         clave_aplicacion: str,
         desde: date,
+        cursor: dict[str, int] | None = None,
         conectar: Callable[[str], imaplib.IMAP4] = lambda servidor: imaplib.IMAP4_SSL(servidor, timeout=60),
     ) -> None:
         self._casilla = casilla.strip().lower()
@@ -69,9 +70,11 @@ class BandejaGmailIMAP:
         self._clave = clave_aplicacion.replace(" ", "")
         self._desde = desde
         self._conectar = conectar
-        # Si hubo más correos que el tope, la próxima lectura sigue desde el último procesado.
+        # Dónde quedó la lectura: el UID que Gmail asigna a cada correo. Crece siempre y no
+        # depende de la fecha que escribe quien envía, así no se saltean ni se repiten correos.
+        self.cursor = dict(cursor) if cursor else None
         self.completa = True
-        self.leido_hasta: datetime | None = None
+        self.salteados = 0
 
     def _abrir(self) -> imaplib.IMAP4:
         try:
@@ -97,35 +100,45 @@ class BandejaGmailIMAP:
     def listar_nuevos(self) -> list[DocumentoEntrante]:
         conexion = self._abrir()
         try:
-            estado, datos = conexion.search(None, f"(SINCE {_fecha_imap(self._desde)})")
+            validez = int((conexion.response("UIDVALIDITY")[1] or [b"0"])[0] or 0)
+            anterior = self.cursor["uid"] if self.cursor and self.cursor.get("uidvalidity") == validez else None
+            # Si Gmail renumeró la bandeja (cambia UIDVALIDITY) se vuelve a buscar por fecha;
+            # los duplicados igual se descartan al incorporar.
+            criterio = f"(UID {anterior + 1}:*)" if anterior is not None else f"(SINCE {_fecha_imap(self._desde)})"
+            estado, datos = conexion.uid("SEARCH", None, criterio)
             if estado != "OK":
                 raise ErrorCorreo("Gmail no respondió la búsqueda de correos.")
+            # «UID n:*» siempre devuelve el último correo aunque sea viejo: se filtra.
+            uids = sorted(u for u in map(int, (datos[0] or b"").split()) if anterior is None or u > anterior)
+            self.completa = len(uids) <= MAXIMO_CORREOS_POR_LECTURA
+            ultimo = anterior
             documentos: list[DocumentoEntrante] = []
-            numeros = (datos[0] or b"").split()
-            self.completa = len(numeros) <= MAXIMO_CORREOS_POR_LECTURA
-            for numero in numeros[:MAXIMO_CORREOS_POR_LECTURA]:
-                if self._tamano(conexion, numero) > TAMANO_MAXIMO_CORREO:
-                    continue
-                estado, partes = conexion.fetch(numero, "(BODY.PEEK[])")
-                if estado != "OK":
-                    continue
-                crudo = next((p[1] for p in partes if isinstance(p, tuple)), None)
-                if not crudo:
-                    continue
-                try:
-                    mensaje = email.message_from_bytes(crudo)
-                    self.leido_hasta = max(filter(None, (self.leido_hasta, _recibido_en(mensaje))))
-                    documentos.extend(self._adjuntos(mensaje))
-                except Exception:
-                    # Un correo mal armado no frena la lectura del resto.
-                    _registro.warning("Se salteó un correo de %s que no se pudo leer.", self._casilla)
+            for uid in uids[:MAXIMO_CORREOS_POR_LECTURA]:
+                if self._tamano(conexion, uid) <= TAMANO_MAXIMO_CORREO:
+                    estado, partes = conexion.uid("FETCH", str(uid), "(BODY.PEEK[])")
+                    if estado != "OK":
+                        # Corte transitorio: se reintenta desde este correo en la próxima lectura.
+                        self.completa = False
+                        break
+                    crudo = next((p[1] for p in partes if isinstance(p, tuple)), None)
+                    try:
+                        documentos.extend(self._adjuntos(email.message_from_bytes(crudo or b"")))
+                    except Exception:  # noqa: BLE001
+                        # Un correo mal armado no frena al resto ni se reintenta para siempre.
+                        self.salteados += 1
+                        _registro.warning("Se salteó el correo UID %s de %s: no se pudo leer.", uid, self._casilla)
+                else:
+                    self.salteados += 1
+                ultimo = uid
+            if ultimo is not None:
+                self.cursor = {"uidvalidity": validez, "uid": ultimo}
             return documentos
         finally:
             conexion.logout()
 
     @staticmethod
-    def _tamano(conexion: imaplib.IMAP4, numero: bytes) -> int:
-        estado, partes = conexion.fetch(numero, "(RFC822.SIZE)")
+    def _tamano(conexion: imaplib.IMAP4, uid: int) -> int:
+        estado, partes = conexion.uid("FETCH", str(uid), "(RFC822.SIZE)")
         if estado != "OK" or not partes:
             return 0
         linea = partes[0] if isinstance(partes[0], bytes) else partes[0][0]
