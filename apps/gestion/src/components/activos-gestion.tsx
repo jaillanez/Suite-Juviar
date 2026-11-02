@@ -87,8 +87,10 @@ function VentanaEquipo({ codigo, sectores, cerrar, cambio }: { codigo: string; s
         {ficha.estado === "DE_BAJA" && <div><dt>Baja</dt><dd>{ficha.baja_motivo} · {ficha.baja_por} · {fecha(ficha.baja_en)}</dd></div>}
       </dl>
       <div className="acciones">
-        <button onClick={() => { setAviso(""); setAccion("etiqueta"); }}>Imprimir etiqueta</button>
-        <button onClick={() => { setAviso(""); setAccion("editar"); }}>Editar datos</button>
+        {ficha.estado !== "DE_BAJA" && <>
+          <button onClick={() => { setAviso(""); setAccion("etiqueta"); }}>Imprimir etiqueta</button>
+          <button onClick={() => { setAviso(""); setAccion("editar"); }}>Editar datos</button>
+        </>}
         {ficha.estado === "EN_PLANTA" && <>
           <button className="peligro" onClick={() => { setAviso(""); setAccion("baja"); }}>Dar de baja</button>
           <button onClick={() => { setAviso(""); setAccion("taller"); }}>Enviar a taller</button>

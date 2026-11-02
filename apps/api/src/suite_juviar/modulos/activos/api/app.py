@@ -236,6 +236,8 @@ def crear_router(
             fila = servicio.vista(servicio.obtener(codigo))
         except LookupError as exc:
             raise _error(exc) from exc
+        if fila["estado"] == "DE_BAJA":
+            raise HTTPException(400, "El equipo está dado de baja.")
         subtitulo = " · ".join(v for v in (fila["tipo"], fila["marca"], fila["modelo"]) if v)
         zpl = etiqueta_zpl(fila["codigo"], fila["descripcion"], subtitulo, config, entrada.copias)
         try:

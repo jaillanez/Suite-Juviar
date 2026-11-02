@@ -188,6 +188,17 @@ def test_la_baja_queda_visible_y_no_se_puede_mover():
                          ("baja", {"motivo": "otra vez"})):
         assert c.post(f"/activos/equipos/{codigo}/{ruta}", json=cuerpo).status_code == 400
     assert c.get(f"/activos/equipos/{codigo}").json()["historial"][0]["tipo"] == "BAJA"
+    assert c.put(f"/activos/equipos/{codigo}", json={"descripcion": "z"}).status_code == 400
+    assert c.post(f"/activos/equipos/{codigo}/etiqueta", json={}).status_code in {400, 409}
     # El código no se reutiliza.
     nuevo = c.post("/activos/equipos", json={"tipo_id": bomba["id"], "sector_id": molienda["id"], "descripcion": "y"})
     assert nuevo.json()["codigo"] == "BOM-0002"
+
+
+def test_no_se_cambia_la_bodega_de_un_sector_con_equipos():
+    c = cliente()
+    bomba, _, molienda, bodega = preparar(c)
+    assert c.put(f"/activos/sectores/{bodega['id']}", json={"nombre": "Bodega", "bodega": "chimbas"}).status_code == 200
+    c.post("/activos/equipos", json={"tipo_id": bomba["id"], "sector_id": molienda["id"], "descripcion": "x"})
+    assert c.put(f"/activos/sectores/{molienda['id']}", json={"nombre": "Molienda", "bodega": "lavalle"}).status_code == 400
+    assert c.put(f"/activos/sectores/{molienda['id']}", json={"nombre": "Molienda 1", "bodega": "chimbas"}).status_code == 200

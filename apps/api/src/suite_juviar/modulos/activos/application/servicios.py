@@ -79,7 +79,9 @@ class GestionarActivos:
                    for s in self.repo.sectores.values()):
                 raise ValueError("Esa bodega ya tiene un sector con ese nombre.")
             if sector_id:
-                self._sector(sector_id)
+                actual = self._sector(sector_id)
+                if actual.bodega != bodega and any(a.sector_id == sector_id for a in self.repo.activos.values()):
+                    raise ValueError("No se puede cambiar la bodega: hay equipos en este sector. Trasladalos primero.")
             sector = Sector(sector_id or str(uuid4()), nombre.strip(), bodega)
             self.repo.sectores[sector.id] = sector
             return sector
@@ -116,6 +118,7 @@ class GestionarActivos:
     def editar(self, codigo: str, descripcion: str, marca: str = "", modelo: str = "",
                numero_serie: str = "") -> Activo:
         with self._bloqueo:
+            self._no_de_baja(self.obtener(codigo))
             activo = replace(self.obtener(codigo), descripcion=descripcion.strip(), marca=marca.strip(),
                              modelo=modelo.strip(), numero_serie=numero_serie.strip())
             self.repo.activos[codigo] = activo
