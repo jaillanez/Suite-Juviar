@@ -45,3 +45,7 @@ def estados_cv_sqlite(ruta: str | Path):
 
 def historial_estados_sqlite(ruta: str | Path):
     return ListaSQLite(BaseColeccionesSQLite(ruta), "seleccion.estados_historial")
+
+
+def correo_rrhh_sqlite(ruta: str | Path):
+    return MapaSQLite(BaseColeccionesSQLite(ruta), "seleccion.correo_rrhh")

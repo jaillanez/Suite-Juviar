@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import os
 from base64 import b64decode, b64encode
+from dataclasses import asdict
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -14,7 +16,9 @@ from suite_juviar.plataforma.identidad.api.dependencias import (
     exigir_permiso,
 )
 
+from ..application.correo import CorreoRRHH
 from ..application.extraccion import ExtraerDatosCV
+from ..application.ingesta import IngestarCVs
 from ..application.ranking import EvaluarBusqueda, ordenar_resultados
 from ..domain.modelos import (
     Busqueda,
@@ -25,11 +29,14 @@ from ..domain.modelos import (
     PerfilBusqueda,
 )
 from ..infrastructure import ia_deepseek
+from ..infrastructure.cifrado import CifradorAESGCM
+from ..infrastructure.correo_gmail import BandejaGmailIMAP, ErrorCorreo, desde_para
 from ..infrastructure.extraccion_pdf import CamposPorReglasProvisorias, TextoPDF
 from ..infrastructure.sqlite import (
     ExtraccionesSQLite,
     OriginalesSQLite,
     busquedas_sqlite,
+    correo_rrhh_sqlite,
     consultas_ia_sqlite,
     estados_cv_sqlite,
     fichas_ia_sqlite,
@@ -296,4 +303,64 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
 def crear_app(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> FastAPI:
     app = FastAPI(title="Selección de personal")
     app.include_router(crear_router(perfiles, entorno, ruta_base))
+    return app
+
+
+class CorreoEntrada(BaseModel):
+    casilla: str = Field(min_length=3, max_length=200)
+    clave_aplicacion: str | None = Field(default=None, max_length=100)
+
+
+def construir_correo(ruta_base: str, clave: str) -> CorreoRRHH:
+    originales = OriginalesSQLite(ruta_base)
+    extracciones = ExtraccionesSQLite(ruta_base)
+    return CorreoRRHH(
+        correo_rrhh_sqlite(ruta_base),
+        CifradorAESGCM(hashlib.sha256(clave.encode()).digest()),
+        lambda casilla, clave_app, ultima: BandejaGmailIMAP(casilla, clave_app, desde_para(ultima)),
+        IngestarCVs(originales),
+        ExtraerDatosCV(originales, extracciones, TextoPDF(), CamposPorReglasProvisorias()),
+    )
+
+
+def crear_router_parametros(correo: CorreoRRHH | None, entorno: str = "prueba") -> APIRouter:
+    """Parámetros de la casilla de RRHH; sólo administradores."""
+    exigir_identidad_configurada(entorno)
+    app = APIRouter(dependencies=[Depends(exigir_permiso("parametros.gestionar"))])
+
+    def servicio() -> CorreoRRHH:
+        if correo is None:
+            raise HTTPException(503, "Falta configurar SJ_CLAVE_PARAMETROS en el servidor.")
+        return correo
+
+    @app.get("/correo-rrhh")
+    def listar_correos():
+        return servicio().listar()
+
+    @app.put("/correo-rrhh/{codigo}")
+    def guardar_correo(codigo: str, entrada: CorreoEntrada, sesion: SesionActual):
+        try:
+            return servicio().guardar(codigo, entrada.casilla, entrada.clave_aplicacion, sesion.actor)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+    @app.post("/correo-rrhh/{codigo}/probar")
+    def probar_correo(codigo: str):
+        try:
+            servicio().probar(codigo)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        except ErrorCorreo as exc:
+            raise HTTPException(502, str(exc)) from exc
+        return {"ok": True}
+
+    @app.post("/correo-rrhh/{codigo}/leer")
+    def leer_correo(codigo: str):
+        try:
+            return asdict(servicio().leer(codigo))
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        except ErrorCorreo as exc:
+            raise HTTPException(502, str(exc)) from exc
+
     return app

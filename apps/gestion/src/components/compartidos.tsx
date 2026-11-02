@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
+import { PointerEvent, ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 
 export function ErrorVisible({ mensaje }: { mensaje: string }) {
   return <div className="aviso-error" role="alert"><strong>No se pudo completar.</strong><span>{mensaje}</span></div>;
@@ -56,4 +56,30 @@ export function Ventana({ titulo, cerrar, children, tamano = "ancha" }: { titulo
 export function urlDeArchivo(base64: string, tipo: string): string {
   const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
   return URL.createObjectURL(new Blob([bytes], { type: tipo }));
+}
+
+// Mismo trazo que la tablet de depósito: la firma viaja como PNG en base64.
+export function PanelFirma({ alCambiar, etiqueta = "Firma del trabajador" }: { alCambiar: (valor: string) => void; etiqueta?: string }) {
+  const lienzo = useRef<HTMLCanvasElement>(null);
+  const dibujando = useRef(false);
+  function punto(evento: PointerEvent<HTMLCanvasElement>) {
+    const canvas = lienzo.current;
+    if (!canvas) return;
+    const caja = canvas.getBoundingClientRect();
+    return { x: (evento.clientX - caja.left) * (canvas.width / caja.width), y: (evento.clientY - caja.top) * (canvas.height / caja.height) };
+  }
+  function iniciar(evento: PointerEvent<HTMLCanvasElement>) {
+    const canvas = lienzo.current; const p = punto(evento); const ctx = canvas?.getContext("2d");
+    if (!canvas || !p || !ctx) return;
+    canvas.setPointerCapture(evento.pointerId); ctx.beginPath(); ctx.moveTo(p.x, p.y); dibujando.current = true;
+  }
+  function mover(evento: PointerEvent<HTMLCanvasElement>) {
+    if (!dibujando.current) return;
+    const canvas = lienzo.current; const p = punto(evento); const ctx = canvas?.getContext("2d");
+    if (!canvas || !p || !ctx) return;
+    ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.strokeStyle = "#141a1f"; ctx.lineTo(p.x, p.y); ctx.stroke();
+    alCambiar(canvas.toDataURL("image/png"));
+  }
+  function borrar() { const canvas = lienzo.current; canvas?.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height); alCambiar(""); }
+  return <div className="panel-firma"><canvas ref={lienzo} width={900} height={220} aria-label={etiqueta} onPointerDown={iniciar} onPointerMove={mover} onPointerUp={() => { dibujando.current = false; }} onPointerCancel={() => { dibujando.current = false; }} /><button type="button" onClick={borrar}>Borrar firma</button></div>;
 }

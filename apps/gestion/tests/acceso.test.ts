@@ -35,9 +35,9 @@ test("Superadministrador ve y puede abrir toda la aplicación", () => {
 
 test("el menú separa RRHH, Producción, Bot y Configuración", () => {
   const porNombre = Object.fromEntries(gruposMenu.map((grupo) => [grupo.nombre, grupo.secciones]));
-  assert.deepEqual(porNombre.Producción, ["produccion", "fila"]);
-  assert.deepEqual(porNombre.Bot, ["bot", "contactos"]);
-  assert.deepEqual(porNombre.Configuración, ["configuracion"]);
+  assert.deepEqual(porNombre.Producción, ["produccion", "fila", "cosecha"]);
+  assert.deepEqual(porNombre.Bot, ["bot", "contactos", "personal"]);
+  assert.deepEqual(porNombre.Configuración, ["configuracion", "usuarios", "parametros"]);
   assert.equal(porNombre.RRHH.includes("epp"), true);
   assert.equal(porNombre.RRHH.includes("salud"), true);
 });

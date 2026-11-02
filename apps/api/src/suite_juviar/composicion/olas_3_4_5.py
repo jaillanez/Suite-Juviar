@@ -31,7 +31,9 @@ from suite_juviar.modulos.salud.infrastructure.sqlite import (
     CatalogoDiagnosticoSQLite,
     SaludSQLite,
 )
+from suite_juviar.modulos.seleccion.api.app import construir_correo, crear_router_parametros
 from suite_juviar.modulos.seleccion.api.app import crear_router as crear_seleccion
+from suite_juviar.modulos.seleccion.infrastructure import lectura_nocturna
 from suite_juviar.modulos.seleccion.infrastructure.perfiles_yaml import CriteriosPerfilYAML
 from suite_juviar.modulos.turnos.api.app import crear_router as crear_turnos
 from suite_juviar.modulos.turnos.application.servicios import ConciliarTurnos
@@ -77,7 +79,14 @@ def construir_routers(rrhh):
     configuracion_capacitacion = ConfiguracionCapacitacionYAML(
         raiz_modulos / "capacitacion" / "data" / "configuracion.yaml"
     )
+    correo_rrhh = None
+    clave_parametros = os.getenv("SJ_CLAVE_PARAMETROS", "").strip()
+    if clave_parametros or entorno not in {"produccion", "production", "prod"}:
+        correo_rrhh = construir_correo(ruta_modulos, clave_parametros or clave_adjuntos.decode())
+        if os.getenv("SJ_CORREO_CV_AUTOMATICO", "1").strip() not in {"0", "false", "no"}:
+            lectura_nocturna.iniciar(correo_rrhh, int(os.getenv("SJ_CORREO_CV_HORA") or "2"))
     return {
+        "parametros": crear_router_parametros(correo_rrhh, entorno),
         "epp-analitica": crear_analitica(analitica, entorno),
         "legajo": crear_legajo(legajo, entorno),
         "salud": crear_salud(salud, entorno),
