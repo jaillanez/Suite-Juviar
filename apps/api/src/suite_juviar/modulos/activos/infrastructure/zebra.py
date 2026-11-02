@@ -7,10 +7,15 @@ La impresora recibe el ZPL por la red en el puerto 9100, que es el estándar de 
 from __future__ import annotations
 
 import ipaddress
+import logging
 import socket
 from dataclasses import dataclass
 
 PUERTO_ZEBRA = 9100
+_REDES_PLANTA = tuple(ipaddress.IPv4Network(r) for r in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"))
+
+
+_registro = logging.getLogger(__name__)
 
 
 class ErrorImpresora(RuntimeError):
@@ -27,14 +32,14 @@ class ConfiguracionEtiqueta:
 
     def __post_init__(self) -> None:
         try:
-            ip = ipaddress.ip_address(self.direccion.strip())
+            ip = ipaddress.IPv4Address(self.direccion.strip())
         except ValueError:
             raise ValueError("La dirección de la impresora debe ser una IP, por ejemplo 192.168.1.50.") from None
         # Sólo impresoras de la red interna: el servidor no abre conexiones hacia afuera.
-        if not ip.is_private or ip.is_loopback:
+        if not any(ip in red for red in _REDES_PLANTA):
             raise ValueError("La impresora tiene que estar en la red interna de la planta.")
-        if not 1 <= self.puerto <= 65535:
-            raise ValueError("El puerto de la impresora no es válido.")
+        if not PUERTO_ZEBRA <= self.puerto <= PUERTO_ZEBRA + 10:
+            raise ValueError(f"El puerto de la impresora va de {PUERTO_ZEBRA} a {PUERTO_ZEBRA + 10}.")
         if self.dpi not in {203, 300, 600}:
             raise ValueError("La resolución debe ser 203, 300 o 600 puntos por pulgada.")
         if not (20 <= self.ancho_mm <= 220 and 10 <= self.alto_mm <= 300):
@@ -80,7 +85,8 @@ class ImpresoraZebraRed:
             with socket.create_connection(self._destino, timeout=self._espera) as conexion:
                 conexion.sendall(zpl.encode("utf-8"))
         except OSError as exc:
+            _registro.warning("Impresora %s:%s sin respuesta: %s", *self._destino, exc)
             raise ErrorImpresora(
-                f"No se pudo conectar con la impresora en {self._destino[0]}. "
+                "No se pudo conectar con la impresora cargada en Parámetros. "
                 "Revisá que esté encendida, con papel y en la red."
             ) from exc

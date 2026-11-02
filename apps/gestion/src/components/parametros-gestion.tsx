@@ -85,7 +85,7 @@ function ImpresoraEtiquetas() {
     {exito && <p className="aviso-exito">{exito}</p>}
     <form className="form-grid" onSubmit={guardar}>
       <label>Dirección IP<input name="direccion" required defaultValue={impresora?.direccion} placeholder="192.168.1.50" /></label>
-      <label>Puerto<input name="puerto" type="number" min={1} max={65535} required defaultValue={impresora?.puerto ?? 9100} /></label>
+      <label>Puerto<input name="puerto" type="number" min={9100} max={9110} required defaultValue={impresora?.puerto ?? 9100} /></label>
       <label>Resolución<select name="dpi" defaultValue={impresora?.dpi ?? 203}><option value={203}>203 dpi</option><option value={300}>300 dpi</option><option value={600}>600 dpi</option></select></label>
       <label>Ancho de etiqueta (mm)<input name="ancho_mm" type="number" min={20} max={220} step="0.1" required defaultValue={impresora?.ancho_mm ?? 100} /></label>
       <label>Alto de etiqueta (mm)<input name="alto_mm" type="number" min={10} max={300} step="0.1" required defaultValue={impresora?.alto_mm ?? 50} /></label>

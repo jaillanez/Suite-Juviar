@@ -130,3 +130,12 @@ def test_etiqueta_respeta_el_tamano_configurado(dpi):
                                                                              alto_mm=50))
     assert f"^PW{round(100 * dpi / 25.4)}" in zpl
     assert f"^LL{round(50 * dpi / 25.4)}" in zpl
+
+
+@pytest.mark.parametrize("direccion,puerto", [
+    ("169.254.169.254", 9100), ("127.0.0.1", 9100), ("::ffff:192.168.1.5", 9100), ("fd00::1", 9100),
+    ("100.64.0.1", 9100), ("192.168.1.50", 22), ("192.168.1.50", 5432),
+])
+def test_la_impresora_solo_puede_ser_una_zebra_de_la_red_interna(direccion, puerto):
+    with pytest.raises(ValueError):
+        ConfiguracionEtiqueta(direccion, puerto)

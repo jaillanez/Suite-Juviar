@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import asdict, replace
 from datetime import UTC, datetime
-from threading import Lock
+from threading import RLock
 from typing import Any
 from uuid import uuid4
 
@@ -32,7 +32,8 @@ def _mismo_nombre(a: str, b: str) -> bool:
 class GestionarActivos:
     def __init__(self, repo: RepositorioActivos) -> None:
         self.repo = repo
-        self._bloqueo = Lock()  # el correlativo del código no puede repetirse
+        # Una sola escritura a la vez: el correlativo no se repite y no se borra un tipo o sector en uso.
+        self._bloqueo = RLock()
 
     # --- Tipos de activo -------------------------------------------------
     def guardar_tipo(self, nombre: str, prefijo: str, tipo_id: str | None = None) -> TipoActivo:
@@ -54,10 +55,11 @@ class GestionarActivos:
         return tipo
 
     def eliminar_tipo(self, tipo_id: str) -> None:
-        self._tipo(tipo_id)
-        if self._usado_por_tipo(tipo_id):
-            raise ValueError("No se puede eliminar: hay activos cargados de este tipo.")
-        del self.repo.tipos[tipo_id]
+        with self._bloqueo:
+            self._tipo(tipo_id)
+            if self._usado_por_tipo(tipo_id):
+                raise ValueError("No se puede eliminar: hay activos cargados de este tipo.")
+            del self.repo.tipos[tipo_id]
 
     def _usado_por_tipo(self, tipo_id: str) -> bool:
         return any(a.tipo_id == tipo_id for a in self.repo.activos.values())
@@ -70,19 +72,21 @@ class GestionarActivos:
 
     # --- Sectores --------------------------------------------------------
     def guardar_sector(self, nombre: str, sector_id: str | None = None) -> Sector:
-        if any(s.id != sector_id and _mismo_nombre(s.nombre, nombre) for s in self.repo.sectores.values()):
-            raise ValueError("Ya existe un sector con ese nombre.")
-        if sector_id:
-            self._sector(sector_id)
-        sector = Sector(sector_id or str(uuid4()), nombre.strip())
-        self.repo.sectores[sector.id] = sector
-        return sector
+        with self._bloqueo:
+            if any(s.id != sector_id and _mismo_nombre(s.nombre, nombre) for s in self.repo.sectores.values()):
+                raise ValueError("Ya existe un sector con ese nombre.")
+            if sector_id:
+                self._sector(sector_id)
+            sector = Sector(sector_id or str(uuid4()), nombre.strip())
+            self.repo.sectores[sector.id] = sector
+            return sector
 
     def eliminar_sector(self, sector_id: str) -> None:
-        self._sector(sector_id)
-        if any(a.sector_id == sector_id for a in self.repo.activos.values()):
-            raise ValueError("No se puede eliminar: hay activos ubicados en este sector.")
-        del self.repo.sectores[sector_id]
+        with self._bloqueo:
+            self._sector(sector_id)
+            if any(a.sector_id == sector_id for a in self.repo.activos.values()):
+                raise ValueError("No se puede eliminar: hay activos ubicados en este sector.")
+            del self.repo.sectores[sector_id]
 
     def _sector(self, sector_id: str) -> Sector:
         try:
@@ -108,10 +112,11 @@ class GestionarActivos:
 
     def editar(self, codigo: str, descripcion: str, marca: str = "", modelo: str = "",
                numero_serie: str = "") -> Activo:
-        activo = replace(self.obtener(codigo), descripcion=descripcion.strip(), marca=marca.strip(),
-                         modelo=modelo.strip(), numero_serie=numero_serie.strip())
-        self.repo.activos[codigo] = activo
-        return activo
+        with self._bloqueo:
+            activo = replace(self.obtener(codigo), descripcion=descripcion.strip(), marca=marca.strip(),
+                             modelo=modelo.strip(), numero_serie=numero_serie.strip())
+            self.repo.activos[codigo] = activo
+            return activo
 
     def obtener(self, codigo: str) -> Activo:
         try:
@@ -120,43 +125,47 @@ class GestionarActivos:
             raise LookupError(f"No hay ningún activo con el código {codigo.strip().upper()}.") from None
 
     def trasladar(self, codigo: str, hacia_sector_id: str, actor: str, detalle: str = "") -> Activo:
-        activo = self.obtener(codigo)
-        self._sector(hacia_sector_id)
-        if activo.estado is EstadoActivo.EN_TALLER:
-            raise ValueError("El equipo está en un taller externo; primero registrá su regreso.")
-        if activo.sector_id == hacia_sector_id:
-            raise ValueError("El equipo ya está en ese sector.")
-        self.repo.activos[activo.codigo] = replace(activo, sector_id=hacia_sector_id)
-        self.repo.registrar_movimiento(Movimiento(activo.codigo, TipoMovimiento.TRASLADO, _ahora(), actor,
-                                                  activo.sector_id, hacia_sector_id, detalle.strip()))
-        return self.repo.activos[activo.codigo]
+        with self._bloqueo:
+            activo = self.obtener(codigo)
+            self._sector(hacia_sector_id)
+            if activo.estado is EstadoActivo.EN_TALLER:
+                raise ValueError("El equipo está en un taller externo; primero registrá su regreso.")
+            if activo.sector_id == hacia_sector_id:
+                raise ValueError("El equipo ya está en ese sector.")
+            self.repo.activos[activo.codigo] = replace(activo, sector_id=hacia_sector_id)
+            self.repo.registrar_movimiento(Movimiento(activo.codigo, TipoMovimiento.TRASLADO, _ahora(), actor,
+                                                      activo.sector_id, hacia_sector_id, detalle.strip()))
+            return self.repo.activos[activo.codigo]
 
     def enviar_a_taller(self, codigo: str, taller: str, motivo: str, actor: str) -> Reparacion:
-        activo = self.obtener(codigo)
-        if activo.estado is EstadoActivo.EN_TALLER:
-            raise ValueError("El equipo ya figura en un taller externo.")
-        reparacion = Reparacion(str(uuid4()), activo.codigo, taller.strip(), motivo.strip(), _ahora(), actor)
-        self.repo.reparaciones[reparacion.id] = reparacion
-        self.repo.activos[activo.codigo] = replace(activo, estado=EstadoActivo.EN_TALLER)
-        self.repo.registrar_movimiento(Movimiento(activo.codigo, TipoMovimiento.SALIDA_TALLER, reparacion.salida_en,
-                                                  actor, activo.sector_id, None,
-                                                  f"{reparacion.taller}: {reparacion.motivo}"))
-        return reparacion
+        with self._bloqueo:
+            activo = self.obtener(codigo)
+            if activo.estado is EstadoActivo.EN_TALLER:
+                raise ValueError("El equipo ya figura en un taller externo.")
+            reparacion = Reparacion(str(uuid4()), activo.codigo, taller.strip(), motivo.strip(), _ahora(), actor)
+            self.repo.reparaciones[reparacion.id] = reparacion
+            self.repo.activos[activo.codigo] = replace(activo, estado=EstadoActivo.EN_TALLER)
+            self.repo.registrar_movimiento(Movimiento(activo.codigo, TipoMovimiento.SALIDA_TALLER, reparacion.salida_en,
+                                                      actor, activo.sector_id, None,
+                                                      f"{reparacion.taller}: {reparacion.motivo}"))
+            return reparacion
 
     def registrar_regreso(self, codigo: str, costo: float, trabajo_realizado: str, hacia_sector_id: str,
                           actor: str) -> Reparacion:
-        activo = self.obtener(codigo)
-        self._sector(hacia_sector_id)
-        abierta = next((r for r in self.repo.reparaciones.values() if r.codigo == activo.codigo and r.abierta), None)
-        if activo.estado is not EstadoActivo.EN_TALLER or abierta is None:
-            raise ValueError("El equipo no figura en un taller externo.")
-        cerrada = replace(abierta, regreso_en=_ahora(), regreso_por=actor, costo=costo,
-                          trabajo_realizado=trabajo_realizado.strip())
-        self.repo.reparaciones[cerrada.id] = cerrada
-        self.repo.activos[activo.codigo] = replace(activo, estado=EstadoActivo.EN_PLANTA, sector_id=hacia_sector_id)
-        self.repo.registrar_movimiento(Movimiento(activo.codigo, TipoMovimiento.REGRESO_TALLER, cerrada.regreso_en,
-                                                  actor, None, hacia_sector_id, cerrada.trabajo_realizado))
-        return cerrada
+        with self._bloqueo:
+            activo = self.obtener(codigo)
+            self._sector(hacia_sector_id)
+            abierta = next((r for r in self.repo.reparaciones.values() if r.codigo == activo.codigo and r.abierta), None)
+            if activo.estado is not EstadoActivo.EN_TALLER or abierta is None:
+                raise ValueError("El equipo no figura en un taller externo.")
+            cerrada = replace(abierta, regreso_en=_ahora(), regreso_por=actor, costo=costo,
+                              trabajo_realizado=trabajo_realizado.strip())
+            self.repo.reparaciones[cerrada.id] = cerrada
+            self.repo.activos[activo.codigo] = replace(activo, estado=EstadoActivo.EN_PLANTA, sector_id=hacia_sector_id)
+            self.repo.registrar_movimiento(Movimiento(activo.codigo, TipoMovimiento.REGRESO_TALLER, cerrada.regreso_en,
+                                                      actor, None, hacia_sector_id, cerrada.trabajo_realizado))
+            return cerrada
+
 
     # --- Consultas -------------------------------------------------------
     def _reparaciones_de(self, codigo: str) -> list[Reparacion]:
