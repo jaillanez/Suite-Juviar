@@ -55,7 +55,10 @@ class GmailFalso:
 
     def fetch(self, numero, partes):
         self.pedidos.append(partes)
-        return "OK", [(b"1 (BODY[] {1}", self.correos[int(numero) - 1]), b")"]
+        crudo = self.correos[int(numero) - 1]
+        if partes == "(RFC822.SIZE)":
+            return "OK", [f"{int(numero)} (RFC822.SIZE {len(crudo)})".encode()]
+        return "OK", [(b"1 (BODY[] {1}", crudo), b")"]
 
     def logout(self):
         return "BYE", []
@@ -174,3 +177,19 @@ def test_lectura_nocturna_espera_hasta_la_hora_pedida():
     ahora = datetime(2026, 11, 2, 1, 30, tzinfo=UTC)
     assert segundos_hasta(2, ahora) == 30 * 60
     assert segundos_hasta(1, ahora) == 23.5 * 3600
+
+
+def test_un_correo_mal_armado_no_frena_al_resto():
+    roto = correo_con(("cv.pdf", b"%PDF roto"), message_id="<roto@gmail.com>").replace(
+        b'filename="cv.pdf"', b'filename="=?utf-8?b?###?="')
+    gmail = GmailFalso([roto, correo_con(("bueno.pdf", b"%PDF-1.4 ok"), message_id="<ok@gmail.com>")])
+    documentos = BandejaGmailIMAP("rrhh@gmail.com", CLAVE, date(2026, 10, 1), gmail).listar_nuevos()
+    assert "bueno.pdf" in [d.nombre_archivo for d in documentos]
+
+
+def test_correos_demasiado_grandes_no_se_descargan(monkeypatch):
+    from suite_juviar.modulos.seleccion.infrastructure import correo_gmail
+    monkeypatch.setattr(correo_gmail, "TAMANO_MAXIMO_CORREO", 10)
+    gmail = GmailFalso([correo_con(("cv.pdf", b"%PDF-1.4 cv"))])
+    assert BandejaGmailIMAP("rrhh@gmail.com", CLAVE, date(2026, 10, 1), gmail).listar_nuevos() == []
+    assert "(BODY.PEEK[])" not in gmail.pedidos

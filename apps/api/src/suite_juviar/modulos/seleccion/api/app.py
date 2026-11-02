@@ -316,7 +316,7 @@ def construir_correo(ruta_base: str, clave: str) -> CorreoRRHH:
     extracciones = ExtraccionesSQLite(ruta_base)
     return CorreoRRHH(
         correo_rrhh_sqlite(ruta_base),
-        CifradorAESGCM(hashlib.sha256(clave.encode()).digest()),
+        CifradorAESGCM(hashlib.scrypt(clave.encode(), salt=b"suite-juviar-parametros", n=2**14, r=8, p=1, dklen=32)),
         lambda casilla, clave_app, ultima: BandejaGmailIMAP(casilla, clave_app, desde_para(ultima)),
         IngestarCVs(originales),
         ExtraerDatosCV(originales, extracciones, TextoPDF(), CamposPorReglasProvisorias()),

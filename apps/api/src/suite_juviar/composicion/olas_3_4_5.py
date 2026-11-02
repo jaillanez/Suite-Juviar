@@ -81,7 +81,8 @@ def construir_routers(rrhh):
     )
     correo_rrhh = None
     clave_parametros = os.getenv("SJ_CLAVE_PARAMETROS", "").strip()
-    if clave_parametros or entorno not in {"produccion", "production", "prod"}:
+    # Sólo en desarrollo se acepta la clave de prueba; cualquier otro entorno exige la propia.
+    if clave_parametros or entorno in {"desarrollo", "development", "dev", "local", "prueba", "test"}:
         correo_rrhh = construir_correo(ruta_modulos, clave_parametros or clave_adjuntos.decode())
         if os.getenv("SJ_CORREO_CV_AUTOMATICO", "1").strip() not in {"0", "false", "no"}:
             lectura_nocturna.iniciar(correo_rrhh, int(os.getenv("SJ_CORREO_CV_HORA") or "2"))

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import email
 import imaplib
+import logging
+import re
 from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from email.header import decode_header, make_header
@@ -21,6 +23,9 @@ from ..domain.modelos import DocumentoEntrante, OrigenCV
 SERVIDOR_GMAIL = "imap.gmail.com"
 EXTENSIONES_CV = {".pdf", ".jpg", ".jpeg", ".png", ".webp"}
 TAMANO_MAXIMO = 15 * 1024 * 1024
+TAMANO_MAXIMO_CORREO = 25 * 1024 * 1024  # el límite de Gmail para un correo recibido
+MAXIMO_CORREOS_POR_LECTURA = 500
+_registro = logging.getLogger(__name__)
 _MESES = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
 
@@ -29,7 +34,12 @@ class ErrorCorreo(RuntimeError):
 
 
 def _texto(valor: str | None) -> str:
-    return str(make_header(decode_header(valor))) if valor else ""
+    if not valor:
+        return ""
+    try:
+        return str(make_header(decode_header(valor)))
+    except Exception:  # encabezado mal codificado: se usa tal como llegó
+        return str(valor)
 
 
 def _fecha_imap(dia: date) -> str:
@@ -88,16 +98,32 @@ class BandejaGmailIMAP:
             if estado != "OK":
                 raise ErrorCorreo("Gmail no respondió la búsqueda de correos.")
             documentos: list[DocumentoEntrante] = []
-            for numero in (datos[0] or b"").split():
+            for numero in (datos[0] or b"").split()[:MAXIMO_CORREOS_POR_LECTURA]:
+                if self._tamano(conexion, numero) > TAMANO_MAXIMO_CORREO:
+                    continue
                 estado, partes = conexion.fetch(numero, "(BODY.PEEK[])")
                 if estado != "OK":
                     continue
                 crudo = next((p[1] for p in partes if isinstance(p, tuple)), None)
-                if crudo:
+                if not crudo:
+                    continue
+                try:
                     documentos.extend(self._adjuntos(email.message_from_bytes(crudo)))
+                except Exception:
+                    # Un correo mal armado no frena la lectura del resto.
+                    _registro.warning("Se salteó un correo de %s que no se pudo leer.", self._casilla)
             return documentos
         finally:
             conexion.logout()
+
+    @staticmethod
+    def _tamano(conexion: imaplib.IMAP4, numero: bytes) -> int:
+        estado, partes = conexion.fetch(numero, "(RFC822.SIZE)")
+        if estado != "OK" or not partes:
+            return 0
+        linea = partes[0] if isinstance(partes[0], bytes) else partes[0][0]
+        coincidencia = re.search(rb"RFC822\.SIZE (\d+)", linea or b"")
+        return int(coincidencia.group(1)) if coincidencia else 0
 
     def _adjuntos(self, mensaje: Message) -> list[DocumentoEntrante]:
         identificador = (mensaje["Message-ID"] or "").strip() or f"sin-id:{mensaje['Date']}:{mensaje['From']}"
@@ -106,6 +132,9 @@ class BandejaGmailIMAP:
         for parte in mensaje.walk():
             nombre = _texto(parte.get_filename())
             if not nombre or PurePath(nombre).suffix.lower() not in EXTENSIONES_CV:
+                continue
+            # El tamaño codificado se revisa antes de decodificar, para no armar archivos enormes.
+            if len(str(parte.get_payload())) > TAMANO_MAXIMO * 4 // 3 + 4096:
                 continue
             contenido = parte.get_payload(decode=True)
             if not contenido or len(contenido) > TAMANO_MAXIMO:
