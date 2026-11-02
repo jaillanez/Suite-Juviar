@@ -20,7 +20,7 @@ from suite_juviar.plataforma.identidad.api.dependencias import (
 from ..application.correo import CorreoRRHH
 from ..application.datos_faltantes import datos_faltantes
 from ..application.extraccion import ExtraerDatosCV
-from ..application.genero import FEMENINO, genero_de
+from ..application.genero import FEMENINO, MASCULINO, genero_de
 from ..application.ingesta import IngestarCVs
 from ..application.ranking import EvaluarBusqueda, ordenar_resultados
 from ..domain.modelos import (
@@ -277,7 +277,7 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
         dato = genero_de(ficha)
         if not dato["genero"]:
             return None
-        texto = "femenino" if dato["genero"] == FEMENINO else "masculino"
+        texto = {FEMENINO: "femenino", MASCULINO: "masculino"}.get(dato["genero"], "otro")
         return texto if dato["origen"] == "CV" else f"{texto} (deducido del nombre)"
 
     @app.post("/ia/buscar")

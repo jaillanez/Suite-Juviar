@@ -9,7 +9,7 @@ type Campo = { nombre: string; valor: string; fragmento_fuente?: string; fragmen
 type Resultado = { cumple?: boolean; requiere_revision?: boolean; puntaje: number; razones: string[] };
 type EstadoCv = { estado: "DISPONIBLE" | "CONTRATADO" | "NO_CONVOCAR"; motivo?: string; por?: string; en?: string };
 const ESTADO_CV: Record<string, string> = { DISPONIBLE: "Disponible", CONTRATADO: "Contratado", NO_CONVOCAR: "No volver a convocar" };
-type Extra = { datos_faltantes?: string[]; genero?: "F" | "M" | null; origen?: "CV" | "NOMBRE" | null; cargado_en?: string };
+type Extra = { datos_faltantes?: string[]; genero?: "F" | "M" | "X" | null; origen?: "CV" | "NOMBRE" | null; cargado_en?: string };
 type Cv = Record<string, unknown> & Extra & { id: string; estado?: EstadoCv; nombre: string; requiere_revision: boolean; campos?: Campo[]; campos_pendientes?: string[]; resultado?: Resultado | null };
 type Ficha = Extra & { id: string; estado?: EstadoCv; historial_estado?: Array<EstadoCv & { anterior: string }>; nombre: string; campos: Campo[]; pendientes: string[]; confirmaciones: Array<{ campo: string; valor: string; confirmado_por: string; confirmado_en: string }>; resultado?: Resultado | null };
 
@@ -20,7 +20,8 @@ const perfil = (p: string) => PERFILES[p] ?? p;
 const campo = (c: string) => CAMPOS[c] ?? c.replaceAll("_", " ");
 const mensaje = (e: unknown) => e instanceof Error ? e.message : "No se pudo completar la operación.";
 const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
-const genero = (c: Extra) => !c.genero ? "Sin dato" : `${c.genero === "F" ? "Femenino" : "Masculino"}${c.origen === "NOMBRE" ? " (por el nombre)" : ""}`;
+const GENEROS: Record<string, string> = { F: "Femenino", M: "Masculino", X: "Otro" };
+const genero = (c: Extra) => !c.genero ? (c.origen === "CV" ? "Lo indica el CV" : "Sin dato") : `${GENEROS[c.genero]}${c.origen === "NOMBRE" ? " (por el nombre)" : ""}`;
 const faltantes = (c: Extra) => c.datos_faltantes?.length ? <span className="estado estado-revisar">Falta: {c.datos_faltantes.map(campo).join(", ")}</span> : <span className="estado">Completo</span>;
 
 function requisitos(b: Busqueda) {

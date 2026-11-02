@@ -10,6 +10,7 @@ import unicodedata
 
 FEMENINO = "F"
 MASCULINO = "M"
+OTRO = "X"  # no binario u otro, tal como lo declara el postulante
 
 # Nombres de pila frecuentes en Argentina que no siguen la regla de la terminación,
 # más los más comunes de cada género para no depender sólo de la regla.
@@ -45,7 +46,7 @@ elian bastian ian liam dylan isaac josue moises jesus luka borja nehuen
 """.split())  # noqa: SIM905 - lista larga, más legible como texto
 
 # Terminados en «a» que son de varón, y terminados en «o» o consonante que son de mujer.
-_EXCEPCIONES_MASCULINAS = {"luca", "luka", "bautista", "nicola", "joshua", "elia", "garcia", "kalua"}
+_EXCEPCIONES_MASCULINAS = {"luca", "luka", "bautista", "nicola", "joshua", "elia", "kalua"}
 _EXCEPCIONES_FEMENINAS = {"consuelo", "rocio", "amparo", "socorro", "rosario", "ines", "raquel",
                           "isabel", "maribel", "abigail", "beatriz", "luz", "carmen", "mercedes",
                           "dolores", "pilar", "ruth", "ester", "miriam", "edith", "judith", "lilian",
@@ -54,21 +55,25 @@ _EXCEPCIONES_FEMENINAS = {"consuelo", "rocio", "amparo", "socorro", "rosario", "
                           "solange", "gladys", "jaquelin", "elizabeth", "sol", "ambar", "aime"}
 
 _EXPLICITO = {
-    "f": FEMENINO, "femenino": FEMENINO, "mujer": FEMENINO,
-    "m": MASCULINO, "masculino": MASCULINO, "hombre": MASCULINO, "varon": MASCULINO,
+    "f": FEMENINO, "femenino": FEMENINO, "mujer": FEMENINO, "fem": FEMENINO,
+    "m": MASCULINO, "masculino": MASCULINO, "hombre": MASCULINO, "varon": MASCULINO, "masc": MASCULINO,
+    "x": OTRO, "otro": OTRO, "otra": OTRO, "nobinario": OTRO,
 }
 
 
 def _normalizar(texto: str) -> str:
     sin_tildes = unicodedata.normalize("NFKD", texto).encode("ascii", "ignore").decode()
-    return re.sub(r"[^a-z ]", " ", sin_tildes.lower()).strip()
+    return " ".join(re.sub(r"[^a-z ]", " ", sin_tildes.lower()).split())
 
 
 def genero_explicito(valor: object) -> str | None:
     """«Femenino», «M», «Mujer»… tal como lo escribió el postulante."""
     if not isinstance(valor, str):
         return None
-    return _EXPLICITO.get(_normalizar(valor))
+    texto = _normalizar(valor).replace("no binario", "nobinario")
+    # Palabra por palabra, para reconocer también «Sexo: F» o «Género: femenino».
+    hallados = {_EXPLICITO[p] for p in texto.split() if p in _EXPLICITO}
+    return hallados.pop() if len(hallados) == 1 else None
 
 
 def genero_por_nombre(nombre_completo: object) -> str | None:
@@ -91,10 +96,12 @@ def genero_por_nombre(nombre_completo: object) -> str | None:
 
 
 def genero_de(ficha: dict[str, object] | None) -> dict[str, str | None]:
-    """{"genero": "F" | "M" | None, "origen": "CV" | "NOMBRE" | None}."""
+    """{"genero": "F" | "M" | "X" | None, "origen": "CV" | "NOMBRE" | None}."""
     ficha = ficha or {}
-    if explicito := genero_explicito(ficha.get("genero")):
-        return {"genero": explicito, "origen": "CV"}
+    declarado = ficha.get("genero")
+    if isinstance(declarado, str) and declarado.strip():
+        # El postulante dijo algo: nunca se reemplaza por una deducción, aunque no se entienda.
+        return {"genero": genero_explicito(declarado), "origen": "CV"}
     if deducido := genero_por_nombre(ficha.get("nombre_completo")):
         return {"genero": deducido, "origen": "NOMBRE"}
     return {"genero": None, "origen": None}

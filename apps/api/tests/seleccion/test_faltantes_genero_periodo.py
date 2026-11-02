@@ -89,3 +89,15 @@ def test_la_busqueda_con_ia_respeta_el_periodo_y_recibe_el_genero(monkeypatch):
     adentro = c.post("/ia/buscar", json={"pedido": "capataz con experiencia", "desde": str(hoy)})
     assert [x["id"] for x in adentro.json()["candidatos"]] == [cv_id]
     assert recibidas[cv_id]["genero"] == "masculino (deducido del nombre)"
+
+
+@pytest.mark.parametrize("declarado,esperado", [
+    ("Sexo: F", "F"), ("Género: femenino", "F"), ("masculino", "M"), ("No binario", "X"),
+    ("prefiero no decirlo", None), ("F / M", None),
+])
+def test_lo_declarado_en_el_cv_nunca_se_reemplaza_por_el_nombre(declarado, esperado):
+    assert genero_de({"nombre_completo": "Andrea Funes", "genero": declarado}) == {"genero": esperado, "origen": "CV"}
+
+
+def test_un_apellido_no_decide_el_genero():
+    assert genero_por_nombre("Kim García") is None
