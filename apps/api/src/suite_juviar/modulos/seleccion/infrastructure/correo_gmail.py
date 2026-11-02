@@ -115,10 +115,12 @@ class BandejaGmailIMAP:
                 raise ErrorCorreo("Gmail no respondió la búsqueda de correos.")
             # «UID n:*» siempre devuelve el último correo aunque sea viejo: se filtra.
             nuevos = sorted(u for u in map(int, (datos[0] or b"").split()) if anterior is None or u > anterior)
-            truncado = len(nuevos) > MAXIMO_CORREOS_POR_LECTURA
-            nuevos = nuevos[:MAXIMO_CORREOS_POR_LECTURA]
+            # El tope cuenta pendientes y nuevos; lo que no entra queda para la próxima lectura.
+            lugar = max(0, MAXIMO_CORREOS_POR_LECTURA - len(pendientes))
+            truncado = len(nuevos) > lugar
+            nuevos = nuevos[:lugar]
             documentos: list[DocumentoEntrante] = []
-            for uid in sorted(pendientes) + nuevos:
+            for uid in sorted(pendientes)[:MAXIMO_CORREOS_POR_LECTURA] + nuevos:
                 crudo = self._descargar(conexion, uid)
                 if crudo is None:  # demasiado grande
                     self.salteados += 1
@@ -143,8 +145,11 @@ class BandejaGmailIMAP:
                     # Un correo mal armado no frena al resto ni se reintenta para siempre.
                     self.salteados += 1
                     _registro.warning("Se salteó el correo UID %s de %s: no se pudo leer.", uid, self._casilla)
-            ultimo = max(nuevos, default=anterior if anterior is not None else 0)
-            self.cursor = {"uidvalidity": validez, "uid": ultimo, "pendientes": pendientes}
+            ultimo = max(nuevos, default=anterior)
+            # Sin ningún correo leído todavía no hay cursor: se sigue buscando por fecha y
+            # nunca se abre la búsqueda a toda la bandeja.
+            if ultimo is not None:
+                self.cursor = {"uidvalidity": validez, "uid": ultimo, "pendientes": pendientes}
             self.completa = not truncado and not pendientes
             return documentos
         finally:

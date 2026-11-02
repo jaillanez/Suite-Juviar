@@ -299,3 +299,31 @@ def test_si_gmail_renumera_se_olvidan_los_pendientes():
     gmail.uidvalidity, gmail.vacios = 9, set()
     assert correo.leer("ENAV").incorporados == 1
     assert correo.ver("ENAV")["ultima_lectura"] is not None
+
+
+def test_una_casilla_vacia_no_abre_la_busqueda_a_toda_la_bandeja():
+    gmail = GmailFalso([])
+    correo, _ = servicio(gmail)
+    correo.guardar("ENAV", "rrhh@gmail.com", CLAVE, "admin")
+    correo.leer("ENAV")
+    gmail.correos.append(correo_con(("a.pdf", b"%PDF a")))
+
+    assert correo.leer("ENAV").incorporados == 1
+    assert gmail.pedidos.count("(SINCE 01-Oct-2026)") == 2
+    assert not any(p.startswith("(UID") for p in gmail.pedidos)
+
+
+def test_el_tope_cuenta_tambien_los_pendientes(monkeypatch):
+    from suite_juviar.modulos.seleccion.infrastructure import correo_gmail
+    monkeypatch.setattr(correo_gmail, "MAXIMO_CORREOS_POR_LECTURA", 2)
+    gmail = GmailFalso([correo_con((f"{n}.pdf", f"%PDF {n}".encode()), message_id=f"<{n}@x>") for n in "abc"])
+    gmail.vacios = {1}
+    correo, _ = servicio(gmail)
+    correo.guardar("ENAV", "rrhh@gmail.com", CLAVE, "admin")
+    correo.leer("ENAV")  # UID 1 queda pendiente, entra el 2
+    gmail.vacios = set()
+
+    segunda = correo.leer("ENAV")  # reintenta el 1 y suma sólo uno nuevo
+
+    assert gmail.pedidos.count("(BODY.PEEK[])") == 4
+    assert (segunda.incorporados, segunda.incompleta) == (2, False)
