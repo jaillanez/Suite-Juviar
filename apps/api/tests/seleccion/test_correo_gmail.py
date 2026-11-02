@@ -193,3 +193,16 @@ def test_correos_demasiado_grandes_no_se_descargan(monkeypatch):
     gmail = GmailFalso([correo_con(("cv.pdf", b"%PDF-1.4 cv"))])
     assert BandejaGmailIMAP("rrhh@gmail.com", CLAVE, date(2026, 10, 1), gmail).listar_nuevos() == []
     assert "(BODY.PEEK[])" not in gmail.pedidos
+
+
+def test_si_hay_mas_correos_que_el_tope_la_proxima_lectura_sigue_desde_el_ultimo(monkeypatch):
+    from suite_juviar.modulos.seleccion.infrastructure import correo_gmail
+    monkeypatch.setattr(correo_gmail, "MAXIMO_CORREOS_POR_LECTURA", 1)
+    gmail = GmailFalso([correo_con(("a.pdf", b"%PDF a")), correo_con(("b.pdf", b"%PDF b"), message_id="<b@x>")])
+    correo, _ = servicio(gmail)
+    correo.guardar("ENAV", "rrhh@gmail.com", CLAVE, "admin")
+
+    resultado = correo.leer("ENAV")
+
+    assert resultado.incompleta is True
+    assert correo.ver("ENAV")["ultima_lectura"] == datetime(2026, 11, 2, 13, 0, tzinfo=UTC)

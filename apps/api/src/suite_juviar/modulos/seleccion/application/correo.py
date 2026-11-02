@@ -37,6 +37,7 @@ class ResultadoLectura:
     incorporados: int
     repetidos: int
     error: str | None = None
+    incompleta: bool = False  # quedaron correos para la próxima lectura
 
 
 class CorreoRRHH:
@@ -117,10 +118,13 @@ class CorreoRRHH:
         incorporados = self._ingestar.ejecutar(_FuenteFija(bandeja.estado, documentos))
         for original in incorporados:
             self._extraer.ejecutar(original.id)
+        completa = getattr(bandeja, "completa", True)
         resultado = ResultadoLectura(empresa, ahora, len(documentos), len(incorporados),
-                                     len(documentos) - len(incorporados))
-        # La última lectura sólo avanza cuando Gmail respondió: un corte no hace perder correos.
-        self._parametros[empresa] = {**datos, "ultima_lectura": ahora, "ultimo_resultado": asdict(resultado)}
+                                     len(documentos) - len(incorporados), incompleta=not completa)
+        # La última lectura sólo avanza cuando Gmail respondió, y si la lectura quedó cortada
+        # avanza hasta el último correo procesado: así nunca se saltean correos.
+        hasta = ahora if completa else (getattr(bandeja, "leido_hasta", None) or datos.get("ultima_lectura"))
+        self._parametros[empresa] = {**datos, "ultima_lectura": hasta, "ultimo_resultado": asdict(resultado)}
         return resultado
 
     def leer_todas(self) -> list[ResultadoLectura]:

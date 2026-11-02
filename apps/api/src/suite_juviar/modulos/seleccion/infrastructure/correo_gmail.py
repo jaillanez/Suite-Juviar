@@ -69,6 +69,9 @@ class BandejaGmailIMAP:
         self._clave = clave_aplicacion.replace(" ", "")
         self._desde = desde
         self._conectar = conectar
+        # Si hubo más correos que el tope, la próxima lectura sigue desde el último procesado.
+        self.completa = True
+        self.leido_hasta: datetime | None = None
 
     def _abrir(self) -> imaplib.IMAP4:
         try:
@@ -98,7 +101,9 @@ class BandejaGmailIMAP:
             if estado != "OK":
                 raise ErrorCorreo("Gmail no respondió la búsqueda de correos.")
             documentos: list[DocumentoEntrante] = []
-            for numero in (datos[0] or b"").split()[:MAXIMO_CORREOS_POR_LECTURA]:
+            numeros = (datos[0] or b"").split()
+            self.completa = len(numeros) <= MAXIMO_CORREOS_POR_LECTURA
+            for numero in numeros[:MAXIMO_CORREOS_POR_LECTURA]:
                 if self._tamano(conexion, numero) > TAMANO_MAXIMO_CORREO:
                     continue
                 estado, partes = conexion.fetch(numero, "(BODY.PEEK[])")
@@ -108,7 +113,9 @@ class BandejaGmailIMAP:
                 if not crudo:
                     continue
                 try:
-                    documentos.extend(self._adjuntos(email.message_from_bytes(crudo)))
+                    mensaje = email.message_from_bytes(crudo)
+                    self.leido_hasta = max(filter(None, (self.leido_hasta, _recibido_en(mensaje))))
+                    documentos.extend(self._adjuntos(mensaje))
                 except Exception:
                     # Un correo mal armado no frena la lectura del resto.
                     _registro.warning("Se salteó un correo de %s que no se pudo leer.", self._casilla)

@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { ErrorVisible } from "./compartidos";
 
-type Resultado = { leida_en: string; adjuntos: number; incorporados: number; repetidos: number; error: string | null };
+type Resultado = { leida_en: string; adjuntos: number; incorporados: number; repetidos: number; error: string | null; incompleta?: boolean };
 type Correo = { empresa: string; casilla: string; clave_cargada: boolean; actualizado_por: string | null; actualizado_en: string | null; ultima_lectura: string | null; ultimo_resultado: Resultado | null };
 
 function fecha(valor: string) {
@@ -13,7 +13,7 @@ function fecha(valor: string) {
 
 function resumen(r: Resultado) {
   if (r.error) return `${fecha(r.leida_en)} · No se pudo leer: ${r.error}`;
-  return `${fecha(r.leida_en)} · ${r.incorporados} CV nuevo(s) de ${r.adjuntos} adjunto(s); ${r.repetidos} ya estaban cargados.`;
+  return `${fecha(r.leida_en)} · ${r.incorporados} CV nuevo(s) de ${r.adjuntos} adjunto(s); ${r.repetidos} ya estaban cargados.${r.incompleta ? " Quedaron correos: se traen en la próxima lectura." : ""}`;
 }
 
 function CasillaEmpresa({ inicial }: { inicial: Correo }) {
