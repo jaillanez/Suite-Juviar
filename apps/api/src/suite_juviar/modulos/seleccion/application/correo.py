@@ -129,8 +129,13 @@ class CorreoRRHH:
                                      len(documentos) - len(incorporados), incompleta=not bandeja.completa,
                                      salteados=bandeja.salteados)
         # Sólo se avanza cuando Gmail respondió y los CV quedaron incorporados: un corte no pierde correos.
-        self._parametros[empresa] = {**datos, "ultima_lectura": ahora, "cursor": bandeja.cursor,
-                                     "ultimo_resultado": asdict(resultado)}
+        # La fecha (respaldo si Gmail renumera la bandeja) avanza sólo con la lectura completa.
+        self._parametros[empresa] = {
+            **datos,
+            "ultima_lectura": ahora if bandeja.completa else datos.get("ultima_lectura"),
+            "cursor": bandeja.cursor or datos.get("cursor"),
+            "ultimo_resultado": asdict(resultado),
+        }
         return resultado
 
     def leer_todas(self) -> list[ResultadoLectura]:

@@ -12,7 +12,10 @@ from suite_juviar.modulos.seleccion.api.app import construir_correo, crear_route
 from suite_juviar.modulos.seleccion.application.correo import CorreoRRHH
 from suite_juviar.modulos.seleccion.infrastructure.correo_gmail import BandejaGmailIMAP, ErrorCorreo
 from suite_juviar.modulos.seleccion.infrastructure.lectura_nocturna import segundos_hasta
-from suite_juviar.modulos.seleccion.infrastructure.sqlite import OriginalesSQLite, correo_rrhh_sqlite
+from suite_juviar.modulos.seleccion.infrastructure.sqlite import (
+    OriginalesSQLite,
+    correo_rrhh_sqlite,
+)
 
 CLAVE = "abcd efgh ijkl mnop"
 
@@ -240,6 +243,7 @@ def test_un_corte_al_descargar_reintenta_desde_ese_correo():
     correo.guardar("ENAV", "rrhh@gmail.com", CLAVE, "admin")
 
     assert correo.leer("ENAV").incompleta is True
+    assert correo.ver("ENAV")["ultima_lectura"] is None  # la fecha de respaldo no avanza
     gmail.falla_fetch = set()
     assert correo.leer("ENAV").incorporados == 1
     assert "(UID 2:*)" in gmail.pedidos
