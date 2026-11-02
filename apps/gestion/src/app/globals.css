@@ -1006,3 +1006,5 @@ th button {
 
 .panel-firma { grid-column: 1 / -1; display: grid; gap: 8px; justify-items: start; }
 .panel-firma canvas { display: block; width: 100%; height: 180px; border: 1px dashed #8b949c; border-radius: 8px; background: #fff; touch-action: none; }
+.fila-catalogo { grid-template-columns: 1fr auto; padding: 14px 20px; }
+.fila-catalogo .acciones { display: flex; gap: 8px; }

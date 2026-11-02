@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from suite_juviar.modulos.activos.api.app import crear_router as crear_activos
 from suite_juviar.modulos.capacitacion.api.app import crear_router as crear_capacitacion
 from suite_juviar.modulos.capacitacion.infrastructure.configuracion_yaml import (
     ConfiguracionCapacitacionYAML,
@@ -94,4 +95,5 @@ def construir_routers(rrhh):
         "turnos": crear_turnos(turnos, entorno),
         "seleccion": crear_seleccion(perfiles_seleccion, entorno, ruta_modulos),
         "capacitaciones": crear_capacitacion(configuracion_capacitacion, entorno, ruta_modulos),
+        "activos": crear_activos(entorno, ruta_modulos),
     }
