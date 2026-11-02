@@ -103,7 +103,9 @@ class BandejaGmailIMAP:
         conexion = self._abrir()
         try:
             validez = int((conexion.response("UIDVALIDITY")[1] or [b"0"])[0] or 0)
-            vigente = bool(self.cursor) and self.cursor.get("uidvalidity") == validez
+            # Un cursor sin UID positivo (versiones anteriores) no vale: se busca por fecha.
+            vigente = (bool(self.cursor) and self.cursor.get("uidvalidity") == validez
+                       and int(self.cursor.get("uid") or 0) > 0)
             anterior = self.cursor["uid"] if vigente else None
             # Correos que no bajaron antes, con sus intentos. Si Gmail renumeró la bandeja
             # (cambia UIDVALIDITY) esos números ya no valen y se vuelve a buscar por fecha;

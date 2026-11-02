@@ -327,3 +327,10 @@ def test_el_tope_cuenta_tambien_los_pendientes(monkeypatch):
 
     assert gmail.pedidos.count("(BODY.PEEK[])") == 4
     assert (segunda.incorporados, segunda.incompleta) == (2, False)
+
+
+def test_un_cursor_en_cero_guardado_antes_no_abre_toda_la_bandeja():
+    gmail = GmailFalso([correo_con(("a.pdf", b"%PDF a"))])
+    BandejaGmailIMAP("rrhh@gmail.com", CLAVE, date(2026, 10, 1), {"uidvalidity": 7, "uid": 0},
+                     conectar=gmail).listar_nuevos()
+    assert gmail.pedidos[0] == "(SINCE 01-Oct-2026)"
