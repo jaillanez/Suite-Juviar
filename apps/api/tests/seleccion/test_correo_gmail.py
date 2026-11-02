@@ -249,7 +249,7 @@ def test_un_corte_al_descargar_reintenta_desde_ese_correo():
     assert correo.ver("ENAV")["ultima_lectura"] is None  # la fecha de respaldo no avanza
     gmail.falla_fetch = set()
     assert correo.leer("ENAV").incorporados == 1
-    assert "(UID 2:*)" in gmail.pedidos
+    assert "(UID 3:*)" in gmail.pedidos  # sigue adelante y el 2 se reintentó aparte
 
 
 def test_si_gmail_renumera_la_bandeja_vuelve_a_buscar_por_fecha_sin_duplicar():
@@ -265,26 +265,37 @@ def test_si_gmail_renumera_la_bandeja_vuelve_a_buscar_por_fecha_sin_duplicar():
     assert (resultado.adjuntos, resultado.incorporados) == (1, 0)
 
 
-def test_un_correo_que_no_baja_se_reintenta_y_despues_se_saltea():
+def test_un_correo_que_no_baja_no_frena_a_los_demas_y_se_reintenta():
     gmail = GmailFalso([correo_con(("a.pdf", b"%PDF a")), correo_con(("b.pdf", b"%PDF b"), message_id="<b@x>")])
     gmail.vacios = {1}
     correo, _ = servicio(gmail)
     correo.guardar("ENAV", "rrhh@gmail.com", CLAVE, "admin")
 
-    for _ in range(2):
-        resultado = correo.leer("ENAV")
-        assert (resultado.incorporados, resultado.incompleta) == (0, True)
+    primera = correo.leer("ENAV")
+    assert (primera.incorporados, primera.incompleta) == (1, True)  # el segundo entra igual
     assert correo.ver("ENAV")["ultima_lectura"] is None
 
-    resultado = correo.leer("ENAV")
-    assert (resultado.incorporados, resultado.salteados, resultado.incompleta) == (1, 1, False)
+    gmail.vacios = set()
+    segunda = correo.leer("ENAV")
+    assert (segunda.incorporados, segunda.incompleta) == (1, False)
 
 
-def test_si_el_reintento_funciona_no_se_pierde_el_correo():
+def test_tras_tres_intentos_el_correo_se_saltea():
     gmail = GmailFalso([correo_con(("a.pdf", b"%PDF a"))])
     gmail.vacios = {1}
     correo, _ = servicio(gmail)
     correo.guardar("ENAV", "rrhh@gmail.com", CLAVE, "admin")
-    assert correo.leer("ENAV").incompleta is True
-    gmail.vacios = set()
+    assert [correo.leer("ENAV").incompleta for _ in range(2)] == [True, True]
+    tercera = correo.leer("ENAV")
+    assert (tercera.salteados, tercera.incompleta) == (1, False)
+
+
+def test_si_gmail_renumera_se_olvidan_los_pendientes():
+    gmail = GmailFalso([correo_con(("a.pdf", b"%PDF a"))])
+    gmail.vacios = {1}
+    correo, _ = servicio(gmail)
+    correo.guardar("ENAV", "rrhh@gmail.com", CLAVE, "admin")
+    correo.leer("ENAV")
+    gmail.uidvalidity, gmail.vacios = 9, set()
     assert correo.leer("ENAV").incorporados == 1
+    assert correo.ver("ENAV")["ultima_lectura"] is not None

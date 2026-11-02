@@ -26,7 +26,7 @@ class Cifrador(Protocol):
 
 
 class BandejaConPrueba(FuenteCV, Protocol):
-    cursor: dict[str, int] | None  # hasta qué correo se leyó y reintentos pendientes
+    cursor: dict[str, Any] | None  # hasta qué correo se leyó y cuáles quedaron pendientes
     completa: bool  # False si quedaron correos para la próxima lectura
     salteados: int  # correos que no se pudieron leer o eran demasiado grandes
 
@@ -50,7 +50,7 @@ class CorreoRRHH:
         self,
         parametros: MutableMapping[str, dict[str, Any]],
         cifrador: Cifrador,
-        crear_bandeja: Callable[[str, str, datetime | None, dict[str, int] | None], BandejaConPrueba],
+        crear_bandeja: Callable[[str, str, datetime | None, dict[str, Any] | None], BandejaConPrueba],
         ingestar: IngestarCVs,
         extraer: ExtraerDatosCV,
     ) -> None:
