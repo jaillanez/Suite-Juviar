@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from suite_juviar.modulos.activos.api.app import crear_router as crear_activos
 from suite_juviar.modulos.capacitacion.api.app import crear_router as crear_capacitacion
 from suite_juviar.modulos.capacitacion.infrastructure.configuracion_yaml import (
     ConfiguracionCapacitacionYAML,
@@ -31,7 +32,9 @@ from suite_juviar.modulos.salud.infrastructure.sqlite import (
     CatalogoDiagnosticoSQLite,
     SaludSQLite,
 )
+from suite_juviar.modulos.seleccion.api.app import construir_correo, crear_router_parametros
 from suite_juviar.modulos.seleccion.api.app import crear_router as crear_seleccion
+from suite_juviar.modulos.seleccion.infrastructure import lectura_nocturna
 from suite_juviar.modulos.seleccion.infrastructure.perfiles_yaml import CriteriosPerfilYAML
 from suite_juviar.modulos.turnos.api.app import crear_router as crear_turnos
 from suite_juviar.modulos.turnos.application.servicios import ConciliarTurnos
@@ -77,11 +80,20 @@ def construir_routers(rrhh):
     configuracion_capacitacion = ConfiguracionCapacitacionYAML(
         raiz_modulos / "capacitacion" / "data" / "configuracion.yaml"
     )
+    correo_rrhh = None
+    clave_parametros = os.getenv("SJ_CLAVE_PARAMETROS", "").strip()
+    # Sólo en desarrollo se acepta la clave de prueba; cualquier otro entorno exige la propia.
+    if clave_parametros or entorno in {"desarrollo", "development", "dev", "local", "prueba", "test"}:
+        correo_rrhh = construir_correo(ruta_modulos, clave_parametros or clave_adjuntos.decode())
+        if os.getenv("SJ_CORREO_CV_AUTOMATICO", "1").strip() not in {"0", "false", "no"}:
+            lectura_nocturna.iniciar(correo_rrhh, int(os.getenv("SJ_CORREO_CV_HORA") or "2"))
     return {
+        "parametros": crear_router_parametros(correo_rrhh, entorno),
         "epp-analitica": crear_analitica(analitica, entorno),
         "legajo": crear_legajo(legajo, entorno),
         "salud": crear_salud(salud, entorno),
         "turnos": crear_turnos(turnos, entorno),
         "seleccion": crear_seleccion(perfiles_seleccion, entorno, ruta_modulos),
         "capacitaciones": crear_capacitacion(configuracion_capacitacion, entorno, ruta_modulos),
+        "activos": crear_activos(entorno, ruta_modulos),
     }

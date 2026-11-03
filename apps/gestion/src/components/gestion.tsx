@@ -19,6 +19,8 @@ import { ContactosGestion } from "./contactos-gestion";
 import { ProduccionGestion } from "./produccion-gestion";
 import { BotonWhatsapp } from "./simulador-bot";
 import { PersonalBot } from "./personal-bot";
+import { ParametrosGestion } from "./parametros-gestion";
+import { ActivosGestion } from "./activos-gestion";
 
 const VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.1.0";
 const COMMIT = process.env.NEXT_PUBLIC_GIT_COMMIT ?? "local";
@@ -38,6 +40,8 @@ function Icono({ nombre }: { nombre: Seccion }) {
     contactos: "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2 M9 11a4 4 0 100-8 4 4 0 000 8z M19 8v6 M22 11h-6",
     personal: "M4 6h16v13H4z M9 13a2 2 0 100-4 2 2 0 000 4z M6 17c.6-1.6 1.7-2.4 3-2.4s2.4.8 3 2.4 M14 10h4 M14 14h3 M9 6V4h6v2",
     cosecha: "M4 5h16v15H4z M4 9h16 M8 3v4 M16 3v4 M8 13h2 M14 13h2 M8 17h2",
+    activos: "M12 3v4 M12 17v4 M5 12H3 M21 12h-2 M12 16a4 4 0 100-8 4 4 0 000 8z M7 7l-1.5-1.5 M18.5 18.5L17 17 M7 17l-1.5 1.5 M18.5 5.5L17 7",
+    parametros: "M4 6h10 M18 6h2 M4 12h4 M12 12h8 M4 18h12 M14 4v4 M8 10v4 M16 16v4",
     usuarios: "M12 12a4 4 0 100-8 4 4 0 000 8z M4 21v-1a6 6 0 0112 0v1 M17 11l2 2 4-4",
     configuracion: "M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z M19.4 15a1.7 1.7 0 00.34 1.88l.06.06-2 3.46-.08-.02a1.7 1.7 0 00-1.8.27l-.4.23a1.7 1.7 0 00-.86 1.68V22h-4v-.1a1.7 1.7 0 00-.86-1.68l-.4-.23a1.7 1.7 0 00-1.8-.27l-.08.02-2-3.46.06-.06A1.7 1.7 0 004.6 15v-.46a1.7 1.7 0 00-1.2-1.61l-.08-.03v-4l.08-.03a1.7 1.7 0 001.2-1.61V6.8l2-3.46.08.02a1.7 1.7 0 001.8-.27l.4-.23A1.7 1.7 0 009.74 1.2V1h4v.1a1.7 1.7 0 00.86 1.68l.4.23a1.7 1.7 0 001.8.27l.08-.02 2 3.46-.06.06a1.7 1.7 0 00-.34 1.88v.46a1.7 1.7 0 001.2 1.61l.08.03v4l-.08.03A1.7 1.7 0 0019.4 15z",
   };
@@ -171,6 +175,8 @@ function Pendiente({ seccion }: { seccion: Seccion }) { return <><Encabezado tit
 
 function Contenido({ seccion, sesion, guardar, actualizar }: { seccion: Seccion; sesion: SesionGestion; guardar: (empresa: Empresa, perfil: Perfil) => void; actualizar: (yo: Yo) => void }) {
   if (seccion === "usuarios") return <Usuarios />;
+  if (seccion === "parametros") return <><Encabezado titulo="Parámetros" descripcion="Casillas de Gmail de RRHH de las que el sistema trae los CV cada noche e impresora de etiquetas." /><ParametrosGestion /></>;
+  if (seccion === "activos") return <><Encabezado titulo="Equipos y activos" descripcion="Bombas, maquinarias y demás bienes de planta: ubicación, traslados, reparaciones externas y etiquetas con código de barras." /><ActivosGestion /></>;
   if (seccion === "cosecha") return <><Encabezado titulo="Turnos de cosecha" descripcion="Cuántos kilos recibe cada bodega por día y qué productores vienen. Tocá un día para anotar." /><CalendarioCosecha /></>;
   if (seccion === "configuracion" && sesion.real) return <ConfiguracionReal sesion={sesion} actualizar={actualizar} />;
   if (seccion === "inicio") return <Inicio empresa={sesion.empresa} nombre={sesion.nombre} perfil={sesion.perfil} />; if (seccion === "produccion") return <Produccion area="recepcion" />; if (seccion === "fila") return <Produccion area="fila" />; if (seccion === "bot") return <Produccion area="bot" />; if (seccion === "epp") return <Epp />; if (seccion === "analitica") return <Analitica />; if (seccion === "seleccion") return <Seleccion />; if (seccion === "capacitaciones") return <Capacitaciones />; if (seccion === "legajo") return <Legajo />; if (seccion === "salud") return <Salud />; if (seccion === "turnos") return <Turnos />; if (seccion === "contactos") return <Contactos />; if (seccion === "personal") return <Personal />; if (seccion === "configuracion") return <Configuracion sesion={sesion} guardar={guardar} />; return <Pendiente seccion={seccion} />;
