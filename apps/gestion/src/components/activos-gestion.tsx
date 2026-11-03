@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { Confirmacion, ErrorVisible, Tabla, Vacio, Ventana } from "./compartidos";
+import { Confirmacion, ErrorVisible, FormularioVentana as Formulario, Tabla, Vacio, Ventana } from "./compartidos";
 
 type Tipo = { id: string; nombre: string; prefijo: string };
 type Sector = { id: string; nombre: string; bodega: string; bodega_nombre: string };
@@ -31,21 +31,6 @@ function lugar(m: Movimiento) {
   if (m.tipo === "SALIDA_TALLER") return `Sale de ${m.desde_sector}`;
   if (m.tipo === "BAJA") return `Estaba en ${m.desde_sector}`;
   return `A ${m.hacia_sector}`;
-}
-
-/** Ventana chica con un formulario; los errores se muestran adentro. */
-function Formulario({ titulo, cerrar, enviar, boton, children }: { titulo: string; cerrar: () => void; enviar: (f: FormData) => Promise<void>; boton: string; children: React.ReactNode }) {
-  const [error, setError] = useState(""); const [ocupado, setOcupado] = useState(false);
-  async function alEnviar(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault(); setError(""); setOcupado(true);
-    try { await enviar(new FormData(e.currentTarget)); } catch (x) { setError(mensaje(x, "No se pudo guardar.")); }
-    setOcupado(false);
-  }
-  return <Ventana titulo={titulo} tamano="chica" cerrar={cerrar}><form className="formulario-ventana" onSubmit={alEnviar}>
-    {error && <ErrorVisible mensaje={error} />}
-    {children}
-    <div className="acciones"><button type="button" onClick={cerrar}>Cancelar</button><button className="primario" disabled={ocupado}>{boton}</button></div>
-  </form></Ventana>;
 }
 
 function SelectorSector({ sectores, nombre = "sector_id", excluir, etiqueta = "Sector" }: { sectores: Sector[]; nombre?: string; excluir?: string; etiqueta?: string }) {

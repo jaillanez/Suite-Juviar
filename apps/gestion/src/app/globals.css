@@ -1032,3 +1032,5 @@ th button {
 .estado-equipo-en_planta { background: #e3f1e9; color: #1f5c45; }
 .estado-equipo-en_taller { background: #fff1cf; color: #76500b; }
 .estado-equipo-de_baja { background: #eceeed; color: #5b6b64; }
+.periodo-compacto { padding-top: 14px; padding-bottom: 14px; margin-bottom: 16px; }
+.periodo-compacto h3 { margin: 0 0 4px; }

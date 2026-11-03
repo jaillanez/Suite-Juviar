@@ -1,6 +1,6 @@
 "use client";
 
-import { PointerEvent, ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
+import { FormEvent, PointerEvent, ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 
 export function ErrorVisible({ mensaje }: { mensaje: string }) {
   return <div className="aviso-error" role="alert"><strong>No se pudo completar.</strong><span>{mensaje}</span></div>;
@@ -50,6 +50,26 @@ export function Ventana({ titulo, cerrar, children, tamano = "ancha" }: { titulo
     return () => { document.removeEventListener("keydown", tecla); ventanasAbiertas.splice(ventanasAbiertas.indexOf(propia), 1); };
   }, []);
   return <div className="modal-fondo" role="presentation" onMouseDown={cerrar}><div className={`modal modal-ancho${tamano === "ancha" ? "" : ` modal-${tamano}`}`} role="dialog" aria-modal="true" aria-labelledby={id} onMouseDown={(e) => e.stopPropagation()}><div className="titulo-fila"><h2 id={id}>{titulo}</h2><button onClick={cerrar} aria-label="Cerrar" autoFocus>✕</button></div>{children}</div></div>;
+}
+
+/** Pestañas de una pantalla: cada una muestra sólo su parte. */
+export function Pestanas<T extends string>({ opciones, activa, cambiar }: { opciones: ReadonlyArray<readonly [T, string]>; activa: T; cambiar: (id: T) => void }) {
+  return <div className="pestanas" role="tablist">{opciones.map(([id, nombre]) => <button key={id} role="tab" aria-selected={activa === id} className={activa === id ? "activo" : ""} onClick={() => cambiar(id)}>{nombre}</button>)}</div>;
+}
+
+/** Ventana con un formulario: los errores se muestran adentro y la ventana sigue abierta. */
+export function FormularioVentana({ titulo, cerrar, enviar, boton, children, tamano = "chica" }: { titulo: string; cerrar: () => void; enviar: (f: FormData) => Promise<void>; boton: string; children: ReactNode; tamano?: "chica" | "ancha" | "amplia" }) {
+  const [error, setError] = useState(""); const [ocupado, setOcupado] = useState(false);
+  async function alEnviar(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault(); setError(""); setOcupado(true);
+    try { await enviar(new FormData(e.currentTarget)); } catch (x) { setError(x instanceof Error ? x.message : "No se pudo guardar."); }
+    setOcupado(false);
+  }
+  return <Ventana titulo={titulo} tamano={tamano} cerrar={cerrar}><form className="formulario-ventana" onSubmit={alEnviar}>
+    {error && <ErrorVisible mensaje={error} />}
+    {children}
+    <div className="acciones"><button type="button" onClick={cerrar}>Cancelar</button><button className="primario" disabled={ocupado}>{boton}</button></div>
+  </form></Ventana>;
 }
 
 // Chrome no muestra PDF «data:» dentro de un iframe: se arma una dirección blob local.
