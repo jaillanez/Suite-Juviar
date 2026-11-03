@@ -61,6 +61,7 @@ function SelectorSector({ sectores, nombre = "sector_id", excluir, etiqueta = "S
 function VentanaEquipo({ codigo, sectores, cerrar, cambio }: { codigo: string; sectores: Sector[]; cerrar: () => void; cambio: () => void }) {
   const [ficha, setFicha] = useState<Ficha | null>(null); const [error, setError] = useState(""); const [aviso, setAviso] = useState("");
   const [accion, setAccion] = useState<"traslado" | "taller" | "regreso" | "editar" | "etiqueta" | "baja" | null>(null);
+  const [vista, setVista] = useState<"datos" | "reparaciones" | "historial">("datos");
   const ruta = `activos/equipos/${encodeURIComponent(codigo)}`;
 
   async function cargar() {
@@ -75,18 +76,11 @@ function VentanaEquipo({ codigo, sectores, cerrar, cambio }: { codigo: string; s
     {error && <ErrorVisible mensaje={error} />}
     {aviso && <p className="aviso-exito">{aviso}</p>}
     {!ficha ? !error && <p className="ayuda">Cargando…</p> : <>
-      <dl className="ficha">
-        <div><dt>Tipo</dt><dd>{ficha.tipo}</dd></div>
-        <div><dt>Estado</dt><dd>{ESTADOS[ficha.estado]}</dd></div>
-        <div><dt>Ubicación</dt><dd>{ubicacion(ficha)}</dd></div>
-        <div><dt>Marca y modelo</dt><dd>{[ficha.marca, ficha.modelo].filter(Boolean).join(" ") || "—"}</dd></div>
-        <div><dt>Número de serie</dt><dd>{ficha.numero_serie || "—"}</dd></div>
-        <div><dt>Reparaciones externas</dt><dd>{ficha.reparaciones} · {pesos(ficha.costo_reparaciones)}</dd></div>
-        <div><dt>Gasto imputado</dt><dd>{Object.entries(EMPRESAS).map(([id, n]) => `${n} ${pesos(ficha.costo_por_empresa[id] ?? 0)}`).join(" · ")}</dd></div>
-        <div><dt>Alta</dt><dd>{ficha.alta_por} · {fecha(ficha.alta_en)}</dd></div>
-        {ficha.estado === "DE_BAJA" && <div><dt>Baja</dt><dd>{ficha.baja_motivo} · {ficha.baja_por} · {fecha(ficha.baja_en)}</dd></div>}
-      </dl>
-      <div className="acciones">
+      <div className="cabecera-ficha">
+        <span className={`estado estado-equipo-${ficha.estado.toLowerCase()}`}>{ESTADOS[ficha.estado]}</span>
+        <span className="ayuda">{ficha.tipo} · {ubicacion(ficha)}</span>
+      </div>
+      <div className="acciones acciones-ficha">
         {ficha.estado !== "DE_BAJA" && <>
           <button onClick={() => { setAviso(""); setAccion("etiqueta"); }}>Imprimir etiqueta</button>
           <button onClick={() => { setAviso(""); setAccion("editar"); }}>Editar datos</button>
@@ -98,12 +92,36 @@ function VentanaEquipo({ codigo, sectores, cerrar, cambio }: { codigo: string; s
         </>}
         {ficha.estado === "EN_TALLER" && <button className="primario" onClick={() => { setAviso(""); setAccion("regreso"); }}>Registrar regreso</button>}
       </div>
-      <h3>Reparaciones externas</h3>
-      {ficha.detalle_reparaciones.length ? <ul className="historial">{ficha.detalle_reparaciones.map(r => <li key={r.id}>
-        <strong>{r.taller}</strong> · {r.motivo} · salió {fecha(r.salida_en)} · {r.regreso_en ? `volvió ${fecha(r.regreso_en)} · ${pesos(r.costo ?? 0)}${r.empresa ? ` a cargo de ${EMPRESAS[r.empresa] ?? r.empresa}` : ""}${r.trabajo_realizado ? ` · ${r.trabajo_realizado}` : ""}` : "todavía en el taller"}
-      </li>)}</ul> : <Vacio>Nunca salió a un taller externo.</Vacio>}
-      <h3>Historial de movimientos</h3>
-      <ul className="historial">{ficha.historial.map((m, i) => <li key={i}><strong>{MOVIMIENTOS[m.tipo] ?? m.tipo}</strong> · {lugar(m)}{m.detalle ? ` · ${m.detalle}` : ""} · {m.actor} · {fecha(m.fecha)}</li>)}</ul>
+      <div className="pestanas pestanas-chicas">
+        {(["datos", "reparaciones", "historial"] as const).map(v => <button key={v} className={vista === v ? "activo" : ""} onClick={() => setVista(v)}>
+          {v === "datos" ? "Datos" : v === "reparaciones" ? `Reparaciones (${ficha.detalle_reparaciones.length})` : `Historial (${ficha.historial.length})`}</button>)}
+      </div>
+      {vista === "datos" && <dl className="ficha">
+        <div><dt>Tipo</dt><dd>{ficha.tipo}</dd></div>
+        <div><dt>Ubicación</dt><dd>{ubicacion(ficha)}</dd></div>
+        <div><dt>Marca y modelo</dt><dd>{[ficha.marca, ficha.modelo].filter(Boolean).join(" ") || "—"}</dd></div>
+        <div><dt>Número de serie</dt><dd>{ficha.numero_serie || "—"}</dd></div>
+        <div><dt>Reparaciones externas</dt><dd>{ficha.reparaciones} · {pesos(ficha.costo_reparaciones)}</dd></div>
+        <div><dt>Gasto imputado</dt><dd>{Object.entries(EMPRESAS).map(([id, n]) => `${n} ${pesos(ficha.costo_por_empresa[id] ?? 0)}`).join(" · ")}</dd></div>
+        <div><dt>Alta</dt><dd>{ficha.alta_por} · {fecha(ficha.alta_en)}</dd></div>
+        {ficha.estado === "DE_BAJA" && <div><dt>Baja</dt><dd>{ficha.baja_motivo} · {ficha.baja_por} · {fecha(ficha.baja_en)}</dd></div>}
+      </dl>}
+      {vista === "reparaciones" && (ficha.detalle_reparaciones.length ? <Tabla etiqueta="Reparaciones externas" filas={ficha.detalle_reparaciones as Array<Reparacion & Record<string, unknown>>} columnas={[
+        { clave: "taller", titulo: "Taller" },
+        { clave: "motivo", titulo: "Motivo" },
+        { clave: "salida_en", titulo: "Salió", valor: r => fecha(r.salida_en) },
+        { clave: "regreso_en", titulo: "Volvió", valor: r => r.regreso_en ? fecha(r.regreso_en) : "En el taller" },
+        { clave: "costo", titulo: "Costo", valor: r => r.costo === null ? "—" : pesos(r.costo) },
+        { clave: "empresa", titulo: "Factura a", valor: r => r.empresa ? EMPRESAS[r.empresa] ?? r.empresa : "—" },
+        { clave: "trabajo_realizado", titulo: "Trabajo", valor: r => r.trabajo_realizado || "—" },
+      ]} /> : <Vacio>Nunca salió a un taller externo.</Vacio>)}
+      {vista === "historial" && <Tabla etiqueta="Historial de movimientos" filas={ficha.historial as Array<Movimiento & Record<string, unknown>>} columnas={[
+        { clave: "fecha", titulo: "Fecha", valor: m => fecha(m.fecha) },
+        { clave: "tipo", titulo: "Movimiento", valor: m => MOVIMIENTOS[m.tipo] ?? m.tipo },
+        { clave: "hacia_sector", titulo: "Lugar", valor: lugar },
+        { clave: "detalle", titulo: "Nota", valor: m => m.detalle || "—" },
+        { clave: "actor", titulo: "Usuario" },
+      ]} />}
 
       {accion === "traslado" && <Formulario titulo="Trasladar equipo" boton="Trasladar" cerrar={() => setAccion(null)} enviar={async f => { await enviar("/traslado", { sector_id: f.get("sector_id"), detalle: f.get("detalle") }); await hecho("Traslado registrado."); }}>
         <p className="ayuda">Está en {ubicacion(ficha)}.</p>
@@ -138,9 +156,10 @@ function VentanaEquipo({ codigo, sectores, cerrar, cambio }: { codigo: string; s
   </Ventana>;
 }
 
-function ListaEditable<T extends { id: string; nombre: string }>({ titulo, ayuda, items, detalle, ruta, campos, cambio }: {
-  titulo: string; ayuda: string; items: T[]; detalle?: (item: T) => string; ruta: string;
-  campos: (item?: T) => React.ReactNode; cambio: () => void;
+function Catalogo<T extends Record<string, unknown> & { id: string; nombre: string }>({ titulo, ayuda, nuevo, items, ruta, columnas, campos, cambio, filtro }: {
+  titulo: string; ayuda: string; nuevo: string; items: T[]; ruta: string;
+  columnas: Array<{ clave: keyof T; titulo: string; valor?: (fila: T) => React.ReactNode }>;
+  campos: (item?: T) => React.ReactNode; cambio: () => void; filtro?: React.ReactNode;
 }) {
   const [editando, setEditando] = useState<T | "nuevo" | null>(null); const [borrando, setBorrando] = useState<T | null>(null); const [error, setError] = useState("");
   async function borrar(item: T) {
@@ -148,13 +167,16 @@ function ListaEditable<T extends { id: string; nombre: string }>({ titulo, ayuda
     try { await api(`${ruta}/${item.id}`, { method: "DELETE" }); cambio(); } catch (x) { setError(mensaje(x, "No se pudo eliminar.")); }
   }
   return <section className="tarjeta">
-    <div className="titulo-fila"><div><h2>{titulo}</h2><p className="ayuda">{ayuda}</p></div><button className="primario" onClick={() => setEditando("nuevo")}>Agregar</button></div>
+    <div className="titulo-fila"><div><h2>{titulo}</h2><p className="ayuda">{ayuda}</p></div><button className="primario" onClick={() => setEditando("nuevo")}>{nuevo}</button></div>
     {error && <ErrorVisible mensaje={error} />}
-    {items.length ? <div className="contactos-lista">{items.map(item => <article className="contacto-fila fila-catalogo" key={item.id}>
-      <div><strong>{item.nombre}</strong>{detalle && <small>{detalle(item)}</small>}</div>
-      <div className="acciones"><button onClick={() => setEditando(item)}>Editar</button><button className="peligro" onClick={() => setBorrando(item)}>Eliminar</button></div>
-    </article>)}</div> : <Vacio>Todavía no hay ninguno cargado.</Vacio>}
-    {editando && <Formulario titulo={editando === "nuevo" ? `Agregar · ${titulo}` : `Editar ${editando.nombre}`} boton="Guardar" cerrar={() => setEditando(null)} enviar={async f => {
+    {filtro}
+    {items.length ? <Tabla etiqueta={titulo} filas={items} porPagina={15} alElegir={setEditando} columnas={[...columnas, {
+      clave: "id", titulo: "", valor: item => <div className="acciones-fila">
+        <button onClick={e => { e.stopPropagation(); setEditando(item); }}>Editar</button>
+        <button className="peligro" onClick={e => { e.stopPropagation(); setBorrando(item); }}>Eliminar</button>
+      </div>,
+    }]} /> : <Vacio>Todavía no hay ninguno cargado.</Vacio>}
+    {editando && <Formulario titulo={editando === "nuevo" ? nuevo : `Editar ${editando.nombre}`} boton="Guardar" cerrar={() => setEditando(null)} enviar={async f => {
       const cuerpo = JSON.stringify(Object.fromEntries(f.entries()));
       await (editando === "nuevo" ? api(ruta, { method: "POST", body: cuerpo }) : api(`${ruta}/${editando.id}`, { method: "PUT", body: cuerpo }));
       setEditando(null); cambio();
@@ -164,7 +186,8 @@ function ListaEditable<T extends { id: string; nombre: string }>({ titulo, ayuda
 }
 
 export function ActivosGestion() {
-  const [pestana, setPestana] = useState<"equipos" | "tipos">("equipos");
+  const [pestana, setPestana] = useState<"equipos" | "tipos" | "sectores" | "reparados">("equipos");
+  const [filtroBodegaSector, setFiltroBodegaSector] = useState("");
   const [tipos, setTipos] = useState<Tipo[]>([]); const [sectores, setSectores] = useState<Sector[]>([]);
   const [equipos, setEquipos] = useState<Equipo[] | null>(null); const [masReparados, setMasReparados] = useState<Equipo[]>([]);
   const [filtroTipo, setFiltroTipo] = useState(""); const [filtroSector, setFiltroSector] = useState(""); const [filtroBodega, setFiltroBodega] = useState("");
@@ -201,62 +224,63 @@ export function ActivosGestion() {
     if (lector.current) lector.current.value = "";
   }
 
+  const faltaCatalogo = !tipos.length || !sectores.length;
+  const pestanas = [["equipos", "Equipos"], ["tipos", "Tipos"], ["sectores", "Sectores"], ["reparados", "Más reparados"]] as const;
+
   return <>
     <div className="pestanas">
-      <button className={pestana === "equipos" ? "activo" : ""} onClick={() => setPestana("equipos")}>Equipos</button>
-      <button className={pestana === "tipos" ? "activo" : ""} onClick={() => setPestana("tipos")}>Tipos y sectores</button>
+      {pestanas.map(([id, nombre]) => <button key={id} className={pestana === id ? "activo" : ""} onClick={() => setPestana(id)}>{nombre}</button>)}
     </div>
     {error && <ErrorVisible mensaje={error} />}
 
-    {pestana === "equipos" ? <>
-      <section className="tarjeta">
-        <h2>Leer código</h2>
-        <p className="ayuda">Apuntá el lector USB o el colector Zebra a la etiqueta. También podés escribir el código y apretar Enter.</p>
-        {errorLectura && <ErrorVisible mensaje={errorLectura} />}
-        <form className="form-linea" onSubmit={leer}><label>Código<input ref={lector} name="codigo" autoFocus autoComplete="off" placeholder="BOM-0001" /></label><button className="primario">Abrir</button></form>
-      </section>
-
-      <section className="tarjeta">
-        <div className="titulo-fila"><div><h2>Equipos</h2><p className="ayuda">Tocá un equipo para ver su historial, trasladarlo, mandarlo a taller o imprimir la etiqueta.</p></div>
-          <button className="primario" disabled={!tipos.length || !sectores.length} onClick={() => setAlta(true)}>Alta de equipo</button></div>
-        {(!tipos.length || !sectores.length) && <p className="ayuda">Antes de dar de alta equipos cargá al menos un tipo y un sector en «Tipos y sectores».</p>}
-        <div className="form-linea">
-          <label>Tipo<select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}><option value="">Todos</option>{tipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}</select></label>
-          <label>Bodega<select value={filtroBodega} onChange={e => { setFiltroBodega(e.target.value); setFiltroSector(""); }}><option value="">Todas</option>{Object.entries(BODEGAS).map(([id, n]) => <option key={id} value={id}>{n}</option>)}</select></label>
-          <label>Sector<select value={filtroSector} onChange={e => setFiltroSector(e.target.value)}><option value="">Todos</option>{sectores.filter(s => !filtroBodega || s.bodega === filtroBodega).map(s => <option key={s.id} value={s.id}>{filtroBodega ? s.nombre : `${s.nombre} · ${s.bodega_nombre}`}</option>)}</select></label>
-        </div>
-        {equipos === null ? <p className="ayuda">Cargando…</p> : equipos.length ? <Tabla etiqueta="Equipos" filas={equipos} porPagina={15} alElegir={e => setAbierto(e.codigo)} columnas={[
+    {pestana === "equipos" && <section className="tarjeta">
+      <div className="titulo-fila"><div><h2>Equipos</h2><p className="ayuda">Tocá un equipo para ver su ficha, trasladarlo, mandarlo a taller o imprimir la etiqueta.</p></div>
+        <button className="primario" disabled={faltaCatalogo} onClick={() => setAlta(true)}>Nuevo equipo</button></div>
+      <div className="barra-filtros">
+        <form className="lector-codigo" onSubmit={leer}><label>Leer código<input ref={lector} name="codigo" autoFocus autoComplete="off" placeholder="Escaneá o escribí, ej. BOM-0001" /></label><button>Abrir</button></form>
+        <label>Tipo<select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}><option value="">Todos</option>{tipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}</select></label>
+        <label>Bodega<select value={filtroBodega} onChange={e => { setFiltroBodega(e.target.value); setFiltroSector(""); }}><option value="">Todas</option>{Object.entries(BODEGAS).map(([id, n]) => <option key={id} value={id}>{n}</option>)}</select></label>
+        <label>Sector<select value={filtroSector} onChange={e => setFiltroSector(e.target.value)}><option value="">Todos</option>{sectores.filter(s => !filtroBodega || s.bodega === filtroBodega).map(s => <option key={s.id} value={s.id}>{filtroBodega ? s.nombre : `${s.nombre} · ${s.bodega_nombre}`}</option>)}</select></label>
+      </div>
+      {errorLectura && <ErrorVisible mensaje={errorLectura} />}
+      {faltaCatalogo ? <div className="vacio-accion"><p>Para dar de alta equipos primero cargá al menos un tipo y un sector.</p>
+        <div className="acciones">{!tipos.length && <button onClick={() => setPestana("tipos")}>Cargar tipos</button>}{!sectores.length && <button onClick={() => setPestana("sectores")}>Cargar sectores</button>}</div></div>
+        : equipos === null ? <p className="ayuda">Cargando…</p> : equipos.length ? <Tabla etiqueta="Equipos" filas={equipos} porPagina={15} alElegir={e => setAbierto(e.codigo)} columnas={[
           { clave: "codigo", titulo: "Código" },
           { clave: "descripcion", titulo: "Descripción" },
           { clave: "tipo", titulo: "Tipo" },
           { clave: "bodega_nombre", titulo: "Bodega" },
           { clave: "sector", titulo: "Sector", valor: e => e.estado === "EN_TALLER" ? "En taller" : e.sector },
-          { clave: "estado", titulo: "Estado", valor: e => ESTADOS[e.estado] },
+          { clave: "estado", titulo: "Estado", valor: e => <span className={`estado estado-equipo-${e.estado.toLowerCase()}`}>{ESTADOS[e.estado]}</span> },
           { clave: "reparaciones", titulo: "Reparaciones", valor: e => String(e.reparaciones) },
         ]} /> : <Vacio>No hay equipos cargados con estos filtros.</Vacio>}
-      </section>
+    </section>}
 
-      <section className="tarjeta">
-        <h2>Equipos con más reparaciones</h2>
-        <p className="ayuda">Los que más veces fueron a un taller externo y cuánto se gastó en total. Sirve para decidir si conviene reparar o comprar uno nuevo.</p>
-        {masReparados.length ? <div className="tabla-scroll"><table><thead><tr><th>Código</th><th>Descripción</th><th>Reparaciones</th><th>Costo total</th></tr></thead>
-          <tbody>{masReparados.map(e => <tr key={e.codigo} className="fila-elegible" tabIndex={0} onClick={() => setAbierto(e.codigo)} onKeyDown={k => { if (k.key === "Enter") setAbierto(e.codigo); }}><td>{e.codigo}</td><td>{e.descripcion}</td><td>{e.reparaciones}</td><td>{pesos(e.costo_reparaciones)}</td></tr>)}</tbody></table></div>
-          : <Vacio>Todavía ningún equipo pasó por un taller externo.</Vacio>}
-      </section>
-    </> : <>
-      <ListaEditable titulo="Tipos de activo" ayuda="Bombas, maquinarias, muebles… El prefijo es el comienzo del código de barras: por ejemplo BOM da BOM-0001." items={tipos} ruta="activos/tipos" cambio={() => void cargarCatalogos()}
-        detalle={t => `Prefijo ${t.prefijo}`} campos={t => <>
-          <label>Nombre<input name="nombre" required maxLength={60} defaultValue={t?.nombre} autoFocus /></label>
-          <label>Prefijo del código (2 a 5 letras)<input name="prefijo" required pattern="[A-Za-z]{2,5}" maxLength={5} defaultValue={t?.prefijo} style={{ textTransform: "uppercase" }} /></label>
-        </>} />
-      <ListaEditable titulo="Sectores" ayuda="Lugares de cada bodega donde se ubican los equipos." items={sectores} ruta="activos/sectores" cambio={() => void cargarCatalogos()}
-        detalle={s => s.bodega_nombre} campos={s => <>
-          <label>Nombre<input name="nombre" required maxLength={80} defaultValue={s?.nombre} autoFocus /></label>
-          <label>Bodega<select name="bodega" required defaultValue={s?.bodega ?? ""}><option value="" disabled>Elegí la bodega</option>{Object.entries(BODEGAS).map(([id, n]) => <option key={id} value={id}>{n}</option>)}</select></label>
-        </>} />
-    </>}
+    {pestana === "tipos" && <Catalogo titulo="Tipos de activo" nuevo="Nuevo tipo" ayuda="Bombas, maquinarias, muebles… El prefijo es el comienzo del código de barras: por ejemplo BOM da BOM-0001." items={tipos} ruta="activos/tipos" cambio={() => void cargarCatalogos()}
+      columnas={[{ clave: "nombre", titulo: "Nombre" }, { clave: "prefijo", titulo: "Prefijo del código" }]} campos={t => <>
+        <label>Nombre<input name="nombre" required maxLength={60} defaultValue={t?.nombre} autoFocus /></label>
+        <label>Prefijo del código (2 a 5 letras)<input name="prefijo" required pattern="[A-Za-z]{2,5}" maxLength={5} defaultValue={t?.prefijo} style={{ textTransform: "uppercase" }} /></label>
+      </>} />}
 
-    {alta && <Formulario titulo="Alta de equipo" boton="Dar de alta" cerrar={() => setAlta(false)} enviar={async f => {
+    {pestana === "sectores" && <Catalogo titulo="Sectores" nuevo="Nuevo sector" ayuda="Lugares de cada bodega donde se ubican los equipos." items={sectores.filter(s => !filtroBodegaSector || s.bodega === filtroBodegaSector)} ruta="activos/sectores" cambio={() => void cargarCatalogos()}
+      filtro={<div className="barra-filtros"><label>Bodega<select value={filtroBodegaSector} onChange={e => setFiltroBodegaSector(e.target.value)}><option value="">Todas</option>{Object.entries(BODEGAS).map(([id, n]) => <option key={id} value={id}>{n}</option>)}</select></label></div>}
+      columnas={[{ clave: "nombre", titulo: "Nombre" }, { clave: "bodega_nombre", titulo: "Bodega" }]} campos={s => <>
+        <label>Nombre<input name="nombre" required maxLength={80} defaultValue={s?.nombre} autoFocus /></label>
+        <label>Bodega<select name="bodega" required defaultValue={s?.bodega ?? filtroBodegaSector}><option value="" disabled>Elegí la bodega</option>{Object.entries(BODEGAS).map(([id, n]) => <option key={id} value={id}>{n}</option>)}</select></label>
+      </>} />}
+
+    {pestana === "reparados" && <section className="tarjeta">
+      <h2>Equipos con más reparaciones</h2>
+      <p className="ayuda">Los que más veces fueron a un taller externo y cuánto se gastó en total. Sirve para decidir si conviene reparar o comprar uno nuevo.</p>
+      {masReparados.length ? <Tabla etiqueta="Equipos con más reparaciones" filas={masReparados} alElegir={e => setAbierto(e.codigo)} columnas={[
+        { clave: "codigo", titulo: "Código" },
+        { clave: "descripcion", titulo: "Descripción" },
+        { clave: "reparaciones", titulo: "Reparaciones", valor: e => String(e.reparaciones) },
+        { clave: "costo_reparaciones", titulo: "Costo total", valor: e => pesos(e.costo_reparaciones) },
+      ]} /> : <Vacio>Todavía ningún equipo pasó por un taller externo.</Vacio>}
+    </section>}
+
+    {alta && <Formulario titulo="Nuevo equipo" boton="Dar de alta" cerrar={() => setAlta(false)} enviar={async f => {
       const equipo = await api<Equipo>("activos/equipos", { method: "POST", body: JSON.stringify(Object.fromEntries(f.entries())) });
       setAlta(false); await cargarEquipos(); setAbierto(equipo.codigo);
     }}>
