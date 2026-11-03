@@ -10,6 +10,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from suite_juviar.plataforma.hoja_calculo import escribir
+
 from ..domain.modelos import MARCA_SIMULADA
 
 TIPOS_ACCIDENTE = {
@@ -32,10 +34,10 @@ def expediente_xlsx(expediente: dict, generado_por: str) -> bytes:
     persona = expediente["persona"]
     fila = 1
     if expediente["simulado"]:
-        hoja.cell(fila, 1, MARCA_SIMULADA).font = Font(bold=True, color="FFFFFF")
+        escribir(hoja, fila, 1, MARCA_SIMULADA).font = Font(bold=True, color="FFFFFF")
         hoja.cell(fila, 1).fill = PatternFill("solid", fgColor="B00020")
         fila += 2
-    hoja.cell(fila, 1, "Expediente de ausentismo").font = Font(bold=True, size=14)
+    escribir(hoja, fila, 1, "Expediente de ausentismo").font = Font(bold=True, size=14)
     fila += 2
     desde, hasta = expediente["desde"], expediente["hasta"]
     periodo = (f"Del {desde:%d/%m/%Y}" if desde else "Desde el inicio") + (f" al {hasta:%d/%m/%Y}" if hasta else " a hoy")
@@ -53,13 +55,13 @@ def expediente_xlsx(expediente: dict, generado_por: str) -> bytes:
         ("Generado", f"{datetime.now(ZoneInfo('America/Argentina/San_Juan')):%d/%m/%Y %H:%M} por {generado_por}"),
     ]
     for etiqueta, valor in datos:
-        hoja.cell(fila, 1, etiqueta).font = negrita
-        hoja.cell(fila, 2, valor)
+        escribir(hoja, fila, 1, etiqueta).font = negrita
+        escribir(hoja, fila, 2, valor)
         fila += 1
     fila += 1
     encabezado = fila
     for columna, titulo in enumerate(COLUMNAS, start=1):
-        celda = hoja.cell(fila, columna, titulo)
+        celda = escribir(hoja, fila, columna, titulo)
         celda.font = negrita
         celda.fill = PatternFill("solid", fgColor="E3ECE8")
     for item in expediente["certificados"]:
@@ -68,14 +70,14 @@ def expediente_xlsx(expediente: dict, generado_por: str) -> bytes:
         valores = (c.desde, c.hasta, c.dias, c.diagnostico_codigo, item["diagnostico"],
                    TIPOS_ACCIDENTE.get(c.tipo_accidente, c.tipo_accidente), c.profesional, c.resumen)
         for columna, valor in enumerate(valores, start=1):
-            celda = hoja.cell(fila, columna, valor)
+            celda = escribir(hoja, fila, columna, valor)
             if columna <= 2:
                 celda.number_format = "DD/MM/YYYY"
             if columna == len(COLUMNAS):
                 celda.alignment = Alignment(wrap_text=True, vertical="top")
     fila += 1
-    hoja.cell(fila, 2, "Total").font = negrita
-    hoja.cell(fila, 3, expediente["total_dias"]).font = negrita
+    escribir(hoja, fila, 2, "Total").font = negrita
+    escribir(hoja, fila, 3, expediente["total_dias"]).font = negrita
     for columna, ancho in enumerate(ANCHOS, start=1):
         hoja.column_dimensions[get_column_letter(columna)].width = ancho
     hoja.freeze_panes = hoja.cell(encabezado + 1, 1)

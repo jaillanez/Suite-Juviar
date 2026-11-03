@@ -75,3 +75,14 @@ def test_expediente_filtra_periodo_y_valida():
     assert c.get("/expedientes/99/excel").status_code == 404
     rrhh = c.get("/expedientes/10/excel", headers={"X-Perfil-Simulado": "RRHH"})
     assert rrhh.status_code == 403
+
+
+def test_texto_con_igual_no_se_vuelve_formula_y_la_consulta_vacia_se_audita():
+    s, c = preparar()
+    s.cargar("10", "MUESTRA-RESP", date(2026, 8, 1), date(2026, 8, 1), 1, "=HYPERLINK(\"http://x\")",
+             "e.pdf", b"PDF", "=1+1")
+    hoja = load_workbook(BytesIO(c.get("/expedientes/10/excel").content)).active
+    celdas = [celda for fila in hoja.iter_rows() for celda in fila if celda.value in ("=1+1", '=HYPERLINK("http://x")')]
+    assert len(celdas) == 2 and all(celda.data_type == "s" for celda in celdas)
+    assert c.get("/expedientes/77/excel").status_code == 404
+    assert any(x.legajo == "77" and x.accion == "EXPORTACION_EXPEDIENTE" for x in s.repositorio.listar_auditoria())

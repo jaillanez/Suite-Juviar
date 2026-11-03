@@ -77,10 +77,11 @@ class GestionarSalud:
              and (not desde or c.hasta >= desde) and (not hasta or c.desde <= hasta)),
             key=lambda c: (c.desde, c.hasta),
         )
+        # Se registra también la consulta que no encuentra nada.
+        self.auditar(actor, legajo, "EXPORTACION_EXPEDIENTE")
         if not certificados:
             raise LookupError("No hay certificados de ese legajo en el período elegido.")
         persona = self.fuente_personas.obtener(legajo) if self.fuente_personas else None
-        self.auditar(actor, legajo, "EXPORTACION_EXPEDIENTE")
         return {
             "legajo": legajo,
             "persona": persona,
