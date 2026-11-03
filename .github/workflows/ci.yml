@@ -31,7 +31,11 @@ jobs:
       - name: Contratos de importación
         run: cd apps/api && PYTHONPATH=../.. lint-imports
       - run: cd apps/api && ruff check .
+      # Las pruebas que cargan la aplicación entera necesitan saber que es un entorno de prueba.
       - run: cd apps/api && pytest
+        env:
+          SJ_ENTORNO: prueba
+          SJ_CORREO_CV_AUTOMATICO: "0"
 
   sitio-publico:
     runs-on: ubuntu-latest
