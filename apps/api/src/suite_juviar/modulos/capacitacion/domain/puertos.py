@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from .modelos import AnulacionAsistencia, Asistencia, Dictado, Tema
+from .modelos import AnulacionAsistencia, Asistencia, Dictado, FilaPlanilla, PlanillaEscaneada, Tema
 
 
 class RepositorioCapacitacion(Protocol):
@@ -45,8 +45,6 @@ class PadronPersonal(Protocol):
     @property
     def simulada(self) -> bool: ...
 
-    def obtener(self, legajo: str) -> PersonaDelPadron | None: ...
-
     def buscar(self, *, sector: str | None = None, empresa: str | None = None) -> list[PersonaDelPadron]: ...
 
 
@@ -59,3 +57,19 @@ class ConfiguracionAsistencia(Protocol):
 
     @property
     def umbral_supervisor(self) -> float: ...
+
+
+class RepositorioPlanillas(Protocol):
+    def guardar_planilla(self, planilla: PlanillaEscaneada) -> None: ...
+
+    def obtener_planilla(self, planilla_id: str) -> PlanillaEscaneada | None: ...
+
+    def listar_planillas(self) -> list[PlanillaEscaneada]: ...
+
+    def confirmar_firma_papel(self, dictado_id: str, legajo: str) -> None: ...
+
+
+class LectorPlanillas(Protocol):
+    def leer(self, nombre: str, contenido: bytes, esperados: list[FilaPlanilla]) -> tuple[list[FilaPlanilla], str, str]:
+        """Devuelve (filas leídas, motor usado, mensaje para quien revisa)."""
+        ...

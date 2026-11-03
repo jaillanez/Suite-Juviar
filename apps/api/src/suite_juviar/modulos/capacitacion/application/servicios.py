@@ -214,7 +214,8 @@ class ReportesCapacitacion:
             por_legajo.setdefault(legajo, []).append((dictado, asistencia))
         trabajadores = []
         for legajo, registros in por_legajo.items():
-            persona = personas.get(legajo) or (padron.obtener(legajo) if padron else None)
+            # Sólo el personal activo aporta datos de la ficha; el resto, el nombre anotado.
+            persona = personas.get(legajo)
             registros.sort(key=lambda r: r[0].fecha)
             temas = {d.tema_id: self._repositorio.obtener_tema(d.tema_id) for d, _ in registros}
             trabajadores.append({
@@ -311,10 +312,13 @@ class AnularAsistencia:
         return anulacion
 
 
-def planilla_imprimible(tema: str, fecha: date) -> str:
+def planilla_imprimible(tema: str, fecha: date, personas: list[tuple[str, str]] = ()) -> str:
+    """Planilla para firmar a mano; con los convocados ya impresos para poder leerla al escanearla."""
     marca = marca_prueba("DOCUMENTO DE PRUEBA - SIN VALIDEZ LEGAL")
+    filas = "".join(f"{legajo} | {nombre} | | \n" for legajo, nombre in personas)
     return (
         (f"{marca}\n" if marca else "")
         + f"Tema: {tema}\nFecha: {fecha.isoformat()}\n"
         "Legajo | Apellido y nombre | Presente | Firma\n"
+        + filas
     )

@@ -843,6 +843,9 @@ th button {
 .modal-ancho > .titulo-fila:first-child h2 { min-width: 0; overflow-wrap: anywhere; }
 .modal-ancho > .titulo-fila:first-child button { flex: none; }
 @media (max-width: 600px) { .modal-fondo { padding: 10px; } .modal { padding: 18px; } }
+.revision-planilla { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+.revision-planilla td { padding: 6px 8px; }
+.revision-planilla .campo-legajo { width: 6.5rem; }
 @media (max-width: 900px) { .ficha-doble { grid-template-columns: 1fr; } .visor-original { height: 70vh; } }
 .ficha { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 20px; margin: 0; }
 .ficha dt { font-size: .8rem; color: var(--muted); }

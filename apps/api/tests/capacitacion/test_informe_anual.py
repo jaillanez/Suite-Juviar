@@ -125,3 +125,18 @@ def test_informe_valida_anio_y_permiso():
     c = cliente()
     assert c.get("/informe-anual?anio=1800").status_code == 400
     assert c.get("/informe-anual?anio=2026", headers={"X-Perfil-Simulado": "COMPRAS"}).status_code == 403
+
+
+def test_sin_acceso_a_legajos_no_ve_el_padron():
+    c = cliente()
+    tema = c.post("/temas", json={"nombre": "Ergonomía", "horas": 1}).json()["id"]
+    d = _dictado(c, tema, "2026-07-07")
+    _presente(c, d, "100", "Ana anotada")
+    hys = {"X-Perfil-Simulado": "HYS"}
+    informe = c.get("/informe-anual?anio=2026", headers=hys).json()
+    assert informe["padron_sin_permiso"] is True
+    assert informe["sin_capacitacion"] == [] and informe["en_padron"] == 0
+    fila = informe["trabajadores"][0]
+    assert fila["nombre_completo"] == "Ana anotada" and fila["empresa"] == "" and fila["puesto"] == ""
+    assert "Pérez Ana" not in c.get(f"/dictados/{d}/planilla", headers=hys).text
+    assert c.get("/informe-anual?anio=2026").json()["padron_sin_permiso"] is False

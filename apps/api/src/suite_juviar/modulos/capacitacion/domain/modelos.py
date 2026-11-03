@@ -100,3 +100,33 @@ class AnulacionAsistencia:
         _obligatorio("El legajo", self.legajo)
         _obligatorio("El motivo", self.motivo)
         _obligatorio("El actor", self.anulada_por)
+
+
+FIRMADA_EN_PAPEL = "FIRMADA_EN_PAPEL"
+
+
+@dataclass(frozen=True, slots=True)
+class FilaPlanilla:
+    """Una persona tal como se leyó (o se corrigió) en la planilla escaneada."""
+
+    legajo: str
+    nombre_completo: str
+    presente: bool | None  # None: la lectura no pudo decidir; la define quien revisa
+
+
+@dataclass(frozen=True, slots=True)
+class PlanillaEscaneada:
+    id: str
+    dictado_id: str
+    nombre_archivo: str
+    contenido: bytes
+    cargada_en: datetime
+    cargada_por: str
+    filas: tuple[FilaPlanilla, ...]
+    motor: str
+    mensaje: str
+    estado: str = "PENDIENTE"  # PENDIENTE, APROBADA o DESCARTADA
+    revisada_por: str | None = None
+    revisada_en: datetime | None = None
+    motivo_descarte: str | None = None
+    resultado: dict | None = None

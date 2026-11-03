@@ -19,3 +19,4 @@ class CapacitacionSQLite(CapacitacionEnMemoria):
         self.dictados = MapaSQLite(base, "capacitacion.dictados")
         self.asistencias = MapaSQLite(base, "capacitacion.asistencias")
         self.anulaciones = MapaSQLite(base, "capacitacion.anulaciones")
+        self.planillas = MapaSQLite(base, "capacitacion.planillas")
