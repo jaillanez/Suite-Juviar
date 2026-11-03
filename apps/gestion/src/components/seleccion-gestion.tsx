@@ -2,7 +2,7 @@
 
 import { ChangeEvent, FormEvent, ReactNode, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { ErrorVisible, Tabla, Vacio, Ventana, urlDeArchivo } from "./compartidos";
+import { ErrorVisible, Pestanas, Tabla, Vacio, Ventana, urlDeArchivo } from "./compartidos";
 
 type Busqueda = Record<string, unknown> & { id: string; nombre: string; perfil: string; definido_por: string; definido_en: string; edad_minima?: number | null; edad_maxima?: number | null; secundaria_completa?: boolean };
 type Campo = { nombre: string; valor: string; fragmento_fuente?: string; fragmento?: string; verificado: boolean };
@@ -48,6 +48,7 @@ const ENCAJE: Record<string, string> = { ALTO: "Encaja bien", MEDIO: "Puede enca
 const tipoArchivo = (nombre: string) => /\.png$/i.test(nombre) ? "image/png" : /\.jpe?g$/i.test(nombre) ? "image/jpeg" : /\.webp$/i.test(nombre) ? "image/webp" : "application/pdf";
 
 export function SeleccionGestion() {
+  const [pestana, setPestana] = useState<"cvs" | "ia" | "busquedas" | "revision">("cvs");
   const [iaEstado, setIaEstado] = useState<{ disponible: boolean; total: number; leidos: number } | null>(null); const [fichasIA, setFichasIA] = useState<Record<string, FichaIA>>({});
   const [pedido, setPedido] = useState(""); const [candidatos, setCandidatos] = useState<Candidato[] | null>(null); const [sinLeer, setSinLeer] = useState(0); const [buscandoIA, setBuscandoIA] = useState(false); const [errorIA, setErrorIA] = useState(""); const [progresoIA, setProgresoIA] = useState("");
   const [verBajos, setVerBajos] = useState(false); const [incluirMarcados, setIncluirMarcados] = useState(false); const [excluidos, setExcluidos] = useState(0);
@@ -89,11 +90,17 @@ export function SeleccionGestion() {
   const verFicha = { clave: "abrir", titulo: "", valor: (f: Cv) => <button onClick={e => { e.stopPropagation(); abrir(f); }}>Ver ficha</button> } as const;
   return <>{error && <ErrorVisible mensaje={error} />}
     <div className="ayuda-contextual"><strong>Cómo funciona:</strong> subí los currículums que recibís (PDF o foto) y quedan guardados. Cuando necesites a alguien, escribí a quién buscás y la IA te propone candidatos explicando por qué. Marcá a quién contrataste o a quién no volver a convocar, así no vuelven a aparecer. La decisión es siempre de RRHH.</div>
-    <section className="tarjeta"><h2>Período de carga</h2>
+    <section className="tarjeta periodo-compacto"><h3>Período de carga</h3>
       <p className="ayuda">Mostrá sólo los currículums que entraron al sistema entre estas fechas, por ejemplo los de esta temporada. Vale para la lista, las búsquedas y la búsqueda con IA.</p>
       <div className="form-linea"><label>Desde<input type="date" value={desde} max={hasta || undefined} onChange={e => setDesde(e.target.value)} /></label><label>Hasta<input type="date" value={hasta} min={desde || undefined} onChange={e => setHasta(e.target.value)} /></label>{(desde || hasta) && <button onClick={() => { setDesde(""); setHasta(""); }}>Ver todas las fechas</button>}</div>
       {desde && hasta && desde > hasta && <ErrorVisible mensaje="La fecha «Desde» no puede ser posterior a «Hasta»." />}
     </section>
+    <Pestanas activa={pestana} cambiar={setPestana} opciones={[["cvs", "Currículums recibidos"], ["ia", "Buscar con IA"], ["busquedas", "Búsquedas con reglas fijas"], ["revision", `Para revisar a mano (${revision.length})`]] as const} />
+    {pestana === "cvs" && <>
+      <section className="tarjeta"><div className="titulo-fila"><h2>Currículums recibidos</h2>{botonSubir(avisarPagina, false)}</div><p className="ayuda">Todos los currículums cargados. Cada uno se evalúa contra todas las búsquedas abiertas. Tocá uno para ver los datos leídos y el PDF original.</p>{!busqueda && aviso && <div className="aviso-exito" role="status">{aviso}</div>}
+        {cvs.length ? <Tabla etiqueta="Currículums recibidos" filas={cvs} alElegir={f => abrir(f as Cv)} columnas={[{ clave: "nombre", titulo: "Archivo" }, { clave: "cargado_en", titulo: "Cargado", valor: f => f.cargado_en ? new Date(f.cargado_en).toLocaleDateString("es-AR") : "—" }, { clave: "datos_faltantes", titulo: "Datos faltantes", valor: f => faltantes(f) }, { clave: "genero", titulo: "Género", valor: f => genero(f) }, { clave: "estado", titulo: "Estado", valor: f => <span className={`estado estado-cv-${f.estado?.estado ?? "DISPONIBLE"}`}>{ESTADO_CV[f.estado?.estado ?? "DISPONIBLE"]}</span> }, { clave: "campos", titulo: "Datos leídos", valor: f => f.campos?.length ? f.campos.map(c => campo(c.nombre)).join(", ") : "Ninguno" }, verFicha]} /> : <Vacio>{desde || hasta ? "No hay currículums cargados en ese período." : "Todavía no se cargó ningún currículum. Abrí una búsqueda y tocá «Subir currículums»."}</Vacio>}</section>
+    </>}
+    {pestana === "ia" && <>
     <section className="tarjeta buscador-ia"><h2>Buscar candidatos</h2>
       <p className="ayuda">Escribí con tus palabras a quién necesitás. La IA lee los currículums cargados y te propone quiénes encajan, explicando por qué. La decisión es siempre de RRHH.</p>
       {iaEstado && !iaEstado.disponible && <p className="ayuda">La lectura con IA no está habilitada en este servidor.</p>}
@@ -109,13 +116,14 @@ export function SeleccionGestion() {
       {candidatos && excluidos > 0 && <p className="ayuda">No se tuvieron en cuenta {excluidos} currículums marcados como contratados o «no volver a convocar».</p>}
       {candidatos && sinLeer > 0 && <p className="ayuda">Quedaron {sinLeer} currículums sin leer con IA que no entraron en esta búsqueda.</p>}
     </section>
-    <div className="rejilla">
+    </>}
+    {pestana === "busquedas" && <>
       <section className="tarjeta"><div className="titulo-fila"><h2>Búsquedas con reglas fijas</h2><button className="primario" onClick={() => { setErrorCreacion(""); setCreando(true); }}>Nueva búsqueda</button></div>
         {busquedas.length ? <><p className="ayuda">Tocá una búsqueda para subir currículums y ver quién encaja.</p><Tabla etiqueta="Búsquedas" filas={busquedas} alElegir={b => abrirBusqueda(b.id)} columnas={[{ clave: "nombre", titulo: "Puesto" }, { clave: "perfil", titulo: "Perfil", valor: b => perfil(b.perfil) }, { clave: "edad_minima", titulo: "Requisitos", valor: b => requisitos(b) }, { clave: "definido_por", titulo: "Abierta por" }, { clave: "definido_en", titulo: "Fecha", valor: b => new Date(b.definido_en).toLocaleDateString("es-AR") }]} /></> : <Vacio>Todavía no hay búsquedas. Tocá «Nueva búsqueda» para definir el puesto y sus requisitos.</Vacio>}</section>
-      <section className="tarjeta"><div className="titulo-fila"><h2>Currículums recibidos</h2>{botonSubir(avisarPagina, false)}</div><p className="ayuda">Todos los currículums cargados. Cada uno se evalúa contra todas las búsquedas abiertas. Tocá uno para ver los datos leídos y el PDF original.</p>{!busqueda && aviso && <div className="aviso-exito" role="status">{aviso}</div>}
-        {cvs.length ? <Tabla etiqueta="Currículums recibidos" filas={cvs} alElegir={f => abrir(f as Cv)} columnas={[{ clave: "nombre", titulo: "Archivo" }, { clave: "cargado_en", titulo: "Cargado", valor: f => f.cargado_en ? new Date(f.cargado_en).toLocaleDateString("es-AR") : "—" }, { clave: "datos_faltantes", titulo: "Datos faltantes", valor: f => faltantes(f) }, { clave: "genero", titulo: "Género", valor: f => genero(f) }, { clave: "estado", titulo: "Estado", valor: f => <span className={`estado estado-cv-${f.estado?.estado ?? "DISPONIBLE"}`}>{ESTADO_CV[f.estado?.estado ?? "DISPONIBLE"]}</span> }, { clave: "campos", titulo: "Datos leídos", valor: f => f.campos?.length ? f.campos.map(c => campo(c.nombre)).join(", ") : "Ninguno" }, verFicha]} /> : <Vacio>{desde || hasta ? "No hay currículums cargados en ese período." : "Todavía no se cargó ningún currículum. Abrí una búsqueda y tocá «Subir currículums»."}</Vacio>}</section>
+    </>}
+    {pestana === "revision" && <>
       <section className="tarjeta"><div className="titulo-fila"><h2>Para revisar a mano</h2>{revision.length > 0 && <span className="estado estado-revisar">{plural(revision.length, "pendiente", "pendientes")}</span>}</div><p className="ayuda">Currículums en los que el sistema no pudo leer algún dato. Abrilos y completá la revisión mirando el PDF.</p>{revision.length ? <Tabla etiqueta="Para revisar a mano" filas={revision} alElegir={f => abrir(f as Cv)} columnas={[{ clave: "nombre", titulo: "Archivo" }, { clave: "campos_pendientes", titulo: "No se pudo leer", valor: f => f.campos_pendientes?.length ? f.campos_pendientes.map(campo).join(", ") : "—" }, verFicha]} /> : <Vacio>No hay currículums pendientes de revisión.</Vacio>}</section>
-    </div>
+    </>}
     {creando && <Ventana tamano="chica" titulo="Nueva búsqueda" cerrar={() => setCreando(false)}>{errorCreacion && <ErrorVisible mensaje={errorCreacion} />}<p className="ayuda">Definí el puesto y los requisitos. Después vas a poder subir los currículums y ver quién encaja.</p><form className="form-grid seleccion-form" onSubmit={crear}><label className="campo-ancho">Nombre del puesto<input name="nombre" required placeholder="Ej.: Operario de bodega, vendimia 2027" /></label><label className="campo-ancho">Perfil<select name="perfil">{Object.entries(PERFILES).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select></label><label>Edad mínima<input name="edad_minima" type="number" min="0" placeholder="Sin mínimo" /></label><label>Edad máxima<input name="edad_maxima" type="number" min="0" placeholder="Sin máximo" /></label><label className="campo-ancho"><input name="secundaria_completa" type="checkbox" /><span>Exigir secundaria completa</span></label><div className="acciones campo-ancho"><button type="button" onClick={() => setCreando(false)}>Cancelar</button><button className="primario">Crear búsqueda</button></div></form></Ventana>}
     {busqueda && <Ventana tamano="amplia" titulo={abierta ? `Búsqueda: ${abierta.nombre}` : "Búsqueda"} cerrar={cerrarBusqueda}>
       {abierta && <p className="ayuda">{requisitos(abierta)} · abierta por {abierta.definido_por} el {new Date(abierta.definido_en).toLocaleDateString("es-AR")}</p>}
