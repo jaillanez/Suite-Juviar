@@ -6,7 +6,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
 from fastapi.responses import Response
 
-from suite_juviar.plataforma.identidad.api.dependencias import exigir_permiso
+from suite_juviar.plataforma.identidad.api.dependencias import SesionActual, exigir_permiso
 from suite_juviar.plataforma.presentacion import ocultar_marcas_prueba
 
 from ..application.servicios import AnalizarEPP
@@ -16,6 +16,9 @@ from ..domain.modelos import (
     ExportacionNoPermitida,
     FuenteSimuladaEnProduccion,
 )
+from ..domain.puertos import NombresEPP
+from ..infrastructure.excel_informe import informe_xlsx
+from ..infrastructure.simulados import NombresPorCodigo
 
 
 def tabla_de_errores() -> list[tuple[type[BaseException], int]]:
@@ -26,7 +29,8 @@ def tabla_de_errores() -> list[tuple[type[BaseException], int]]:
     ]
 
 
-def crear_router(servicio: AnalizarEPP, entorno: str = "prueba") -> APIRouter:
+def crear_router(servicio: AnalizarEPP, entorno: str = "prueba", nombres: NombresEPP | None = None) -> APIRouter:
+    nombres = nombres or NombresPorCodigo()
     if entorno.lower() == "produccion" and servicio.datos_simulados:
         raise FuenteSimuladaEnProduccion(
             "Analítica EPP no arranca en producción con fuentes simuladas."
@@ -35,8 +39,11 @@ def crear_router(servicio: AnalizarEPP, entorno: str = "prueba") -> APIRouter:
 
     @app.get("/")
     @app.get("/tablero")
-    def pantalla(desde: date, hasta: date, sector: str | None = None, puesto: str | None = None):
+    def pantalla(desde: date, hasta: date, sector: str | None = None, puesto: str | None = None,
+                 elemento: str | None = None):
         metricas = servicio.metricas(desde, hasta)
+        if elemento:
+            metricas = [m for m in metricas if m.elemento_codigo == elemento]
         if sector:
             metricas = [m for m in metricas if m.sector == sector]
         if puesto:
@@ -65,17 +72,24 @@ def crear_router(servicio: AnalizarEPP, entorno: str = "prueba") -> APIRouter:
             raise HTTPException(400, str(exc)) from exc
 
     @app.get("/exportar")
-    def exportar(desde: date, hasta: date) -> Response:
+    def exportar(sesion: SesionActual, desde: date, hasta: date, elemento: str | None = None,
+                 sector: str | None = None, puesto: str | None = None) -> Response:
+        if hasta < desde:
+            raise HTTPException(400, "La fecha hasta no puede ser anterior a la fecha desde.")
         try:
-            contenido = servicio.exportar(desde, hasta)
+            datos = servicio.exportacion(desde, hasta, elemento or None, sector or None, puesto or None)
         except ExportacionNoPermitida as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
-        return Response(contenido, media_type="text/csv")
+        return Response(
+            informe_xlsx(datos, nombres, sesion.actor),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="epp-{desde}-{hasta}.xlsx"'},
+        )
 
     return app
 
 
-def crear_app(servicio: AnalizarEPP, entorno: str = "prueba") -> FastAPI:
+def crear_app(servicio: AnalizarEPP, entorno: str = "prueba", nombres: NombresEPP | None = None) -> FastAPI:
     app = FastAPI(title="Analítica EPP para Compras")
-    app.include_router(crear_router(servicio, entorno))
+    app.include_router(crear_router(servicio, entorno, nombres))
     return app

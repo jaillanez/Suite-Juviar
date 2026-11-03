@@ -8,8 +8,14 @@ from suite_juviar.plataforma.firma.domain.entidades import MetodoFirmaElectronic
 from suite_juviar.plataforma.firma.domain.puertos import MotorDeFirma
 from suite_juviar.plataforma.presentacion import marca_prueba
 
-from ..domain.modelos import AlertaSupervisor, AnulacionAsistencia, Asistencia, Participante
-from ..domain.puertos import ConfiguracionAsistencia, RepositorioCapacitacion
+from ..domain.modelos import (
+    AlertaSupervisor,
+    AnulacionAsistencia,
+    Asistencia,
+    Dictado,
+    Participante,
+)
+from ..domain.puertos import ConfiguracionAsistencia, PadronPersonal, RepositorioCapacitacion
 
 ESPACIO_DOCUMENTOS = UUID("aa1d75e7-1789-4ff5-b7d6-e5c3e040c6ce")
 
@@ -184,6 +190,74 @@ class ReportesCapacitacion:
                                "recapacitar_desde": vencimiento.isoformat(), "dueno_periodicidad": "Higiene y Seguridad"})
         return avisos
 
+    def informe_anual(
+        self,
+        anio: int,
+        padron: PadronPersonal | None,
+        empresa: str | None = None,
+        sector: str | None = None,
+    ) -> dict[str, object]:
+        """Historial del año por trabajador y quiénes del padrón no recibieron ninguna capacitación."""
+        personas = {p.legajo: p for p in (padron.buscar(empresa=empresa, sector=sector) if padron else [])}
+        filtrado = bool(empresa or sector)
+        por_legajo: dict[str, list[tuple[Dictado, Asistencia]]] = {}
+        for asistencia in self._repositorio.todas_las_asistencias():
+            if not asistencia.presente:
+                continue
+            dictado = self._repositorio.obtener_dictado(asistencia.dictado_id)
+            if dictado is None or dictado.fecha.year != anio:
+                continue
+            legajo = asistencia.participante.legajo
+            # Con filtro de empresa o sector sólo entra quien el padrón ubica ahí.
+            if filtrado and legajo not in personas:
+                continue
+            por_legajo.setdefault(legajo, []).append((dictado, asistencia))
+        trabajadores = []
+        for legajo, registros in por_legajo.items():
+            # Sólo el personal activo aporta datos de la ficha; el resto, el nombre anotado.
+            persona = personas.get(legajo)
+            registros.sort(key=lambda r: r[0].fecha)
+            temas = {d.tema_id: self._repositorio.obtener_tema(d.tema_id) for d, _ in registros}
+            trabajadores.append({
+                "legajo": legajo,
+                "nombre_completo": persona.nombre_completo if persona else registros[-1][1].participante.nombre_completo,
+                "empresa": persona.empresa if persona else "",
+                "sector": persona.sector if persona else "",
+                "puesto": persona.puesto if persona else "",
+                # Activo hoy; quien ya no está sigue apareciendo con su historial.
+                "en_padron": legajo in personas,
+                # Un tema suma sus horas una sola vez en el año, aunque se repita.
+                "horas": sum(t.horas for t in temas.values() if t),
+                "capacitaciones": [
+                    {
+                        "fecha": d.fecha.isoformat(),
+                        "tema": t.nombre if (t := temas.get(d.tema_id)) else d.tema_id,
+                        "instructor": d.instructor,
+                        "horas": t.horas if t else None,
+                        "estado_firma": a.estado_firma,
+                    }
+                    for d, a in registros
+                ],
+            })
+        trabajadores.sort(key=lambda t: (t["nombre_completo"].casefold(), t["legajo"]))
+        sin_capacitacion = sorted(
+            (
+                {"legajo": p.legajo, "nombre_completo": p.nombre_completo, "empresa": p.empresa,
+                 "sector": p.sector, "puesto": p.puesto}
+                for p in personas.values() if p.legajo not in por_legajo
+            ),
+            key=lambda p: (p["nombre_completo"].casefold(), p["legajo"]),
+        )
+        return {
+            "anio": anio,
+            "padron_disponible": padron is not None,
+            "padron_simulado": bool(padron and padron.simulada),
+            "en_padron": len(personas),
+            "trabajadores": trabajadores,
+            "sin_capacitacion": sin_capacitacion,
+            "fecha_corte": datetime.now(UTC).date().isoformat(),
+        }
+
     def porcentaje_persona_tema(self, legajo: str, tema_id: str) -> float | None:
         dictados = self._repositorio.dictados_del_tema(tema_id)
         if not any(legajo in d.convocados for d in dictados):
@@ -238,10 +312,13 @@ class AnularAsistencia:
         return anulacion
 
 
-def planilla_imprimible(tema: str, fecha: date) -> str:
+def planilla_imprimible(tema: str, fecha: date, personas: list[tuple[str, str]] = ()) -> str:
+    """Planilla para firmar a mano; con los convocados ya impresos para poder leerla al escanearla."""
     marca = marca_prueba("DOCUMENTO DE PRUEBA - SIN VALIDEZ LEGAL")
+    filas = "".join(f"{legajo} | {nombre} | | \n" for legajo, nombre in personas)
     return (
         (f"{marca}\n" if marca else "")
         + f"Tema: {tema}\nFecha: {fecha.isoformat()}\n"
         "Legajo | Apellido y nombre | Presente | Firma\n"
+        + filas
     )

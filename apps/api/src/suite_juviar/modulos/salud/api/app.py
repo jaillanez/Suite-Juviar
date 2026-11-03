@@ -6,7 +6,7 @@ from dataclasses import asdict
 from datetime import date
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel, Field
 
 from suite_juviar.plataforma.identidad.api.dependencias import SesionActual, exigir_permiso
@@ -21,6 +21,7 @@ from ..domain.modelos import (
     FuenteSimuladaEnProduccion,
     ReporteNominadoProhibido,
 )
+from ..infrastructure.excel_expediente import expediente_xlsx
 
 
 class CertificadoEntrada(BaseModel):
@@ -173,6 +174,22 @@ def crear_router(servicio: GestionarSalud, entorno: str = "prueba") -> APIRouter
         return [asdict(x) for x in servicio.listar_certificados(
             sesion.actor, legajo=legajo, desde=desde, hasta=hasta
         )]
+
+    @app.get("/expedientes/{legajo}/excel", dependencies=[Depends(leer)])
+    def exportar_expediente(legajo: str, sesion: SesionActual, desde: date | None = None,
+                            hasta: date | None = None):
+        if desde and hasta and hasta < desde:
+            raise HTTPException(400, "La fecha hasta no puede ser anterior a la fecha desde.")
+        try:
+            expediente = servicio.expediente_ausentismo(sesion.actor, legajo, desde, hasta)
+        except LookupError as exc:
+            raise HTTPException(404, str(exc)) from exc
+        nombre = "".join(ch for ch in legajo if ch.isalnum()) or "legajo"
+        return Response(
+            expediente_xlsx(expediente, sesion.actor),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="ausentismo-{nombre}.xlsx"'},
+        )
 
     @app.get("/certificados/{certificado_id}", dependencies=[Depends(leer)])
     def consultar(certificado_id: str, sesion: SesionActual):

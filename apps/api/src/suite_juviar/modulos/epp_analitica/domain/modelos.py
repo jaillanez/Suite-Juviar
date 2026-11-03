@@ -34,6 +34,7 @@ class MetricasItem:
     muestra_duracion: int
     duracion_promedio_dias: float | None
     estado_duracion: str
+    elemento_codigo: str = ""
 
 
 @dataclass(frozen=True, slots=True)

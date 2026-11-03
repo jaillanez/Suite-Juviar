@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { api } from "@/lib/api";
+import { api, descargarArchivo } from "@/lib/api";
 import { ErrorVisible, Tabla, Vacio, Ventana } from "./compartidos";
 
 type Metrica = Record<string, unknown> & { item_codigo: string; sector: string; puesto: string; consumo: number; reclamos: Record<string, number>; reclamos_total: number; reclamos_proporcion: number; muestra_entregas: number; muestra_duracion: number; duracion_promedio_dias: number | null; estado_duracion: string };
@@ -20,13 +20,15 @@ function duracion(f: Metrica) { return f.duracion_promedio_dias === null ? `Falt
 export function AnaliticaGestion() {
   const hoy = new Date().toISOString().slice(0, 10);
   const [desde, setDesde] = useState(`${new Date().getFullYear()}-01-01`); const [hasta, setHasta] = useState(hoy);
-  const [sector, setSector] = useState(""); const [puesto, setPuesto] = useState("");
+  const [sector, setSector] = useState(""); const [puesto, setPuesto] = useState(""); const [tipo, setTipo] = useState("");
   const [datos, setDatos] = useState<Tablero | null>(null); const [error, setError] = useState("");
   const [sectores, setSectores] = useState<Opcion[]>([]); const [puestos, setPuestos] = useState<Opcion[]>([]); const [catalogo, setCatalogo] = useState<Elemento[]>([]);
   const [detalle, setDetalle] = useState<Fila | null>(null);
   const [comparacion, setComparacion] = useState<Comparacion | null>(null); const [errorComparar, setErrorComparar] = useState("");
 
-  async function cargar() { setError(""); try { setDatos(await api(`epp-analitica/tablero?desde=${desde}&hasta=${hasta}${sector ? `&sector=${encodeURIComponent(sector)}` : ""}${puesto ? `&puesto=${encodeURIComponent(puesto)}` : ""}`)); } catch (x) { setError(x instanceof Error ? x.message : "No se pudo cargar el tablero."); } }
+  const consulta = () => { const q = new URLSearchParams({ desde, hasta }); if (sector) q.set("sector", sector); if (puesto) q.set("puesto", puesto); if (tipo) q.set("elemento", tipo); return q; };
+  async function cargar() { setError(""); try { setDatos(await api(`epp-analitica/tablero?${consulta()}`)); } catch (x) { setError(x instanceof Error ? x.message : "No se pudo cargar el tablero."); } }
+  async function exportar() { setError(""); try { await descargarArchivo(`epp-analitica/exportar?${consulta()}`, `epp-${desde}-${hasta}.xlsx`); } catch (x) { setError(x instanceof Error ? x.message : "No se pudo exportar."); } }
   useEffect(() => {
     cargar();
     api<Opcion[]>("rrhh-epp/matriz/sectores").then(setSectores).catch(() => null);
@@ -59,13 +61,16 @@ export function AnaliticaGestion() {
     {error && <ErrorVisible mensaje={error} />}
     <section className="tarjeta">
       <p className="ayuda-contextual"><strong>Para qué sirve:</strong> muestra cuántos elementos de protección se entregaron, cuánto duran antes de reponerse y cuántos reclamos hubo, por sector y puesto. Sirve para planificar compras y detectar productos que fallan.</p>
-      <form className="form-linea" onSubmit={filtrar}>
+      <form className="form-linea filtros-envolventes" onSubmit={filtrar}>
         <label>Desde<input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} /></label>
         <label>Hasta<input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} /></label>
         <label>Sector<select value={sector} onChange={(e) => setSector(e.target.value)}><option value="">Todos los sectores</option>{sectores.map((s) => <option key={s.codigo} value={s.codigo}>{s.nombre}</option>)}</select></label>
+        <label>Tipo de elemento<select value={tipo} onChange={(e) => setTipo(e.target.value)}><option value="">Todos los elementos</option>{[...catalogo].sort((a, b) => a.producto.localeCompare(b.producto)).map((el) => <option key={el.codigo} value={el.codigo}>{el.producto}</option>)}</select></label>
         <label>Puesto<select value={puesto} onChange={(e) => setPuesto(e.target.value)}><option value="">Todos los puestos</option>{puestos.map((p) => <option key={p.codigo} value={p.codigo}>{p.nombre}</option>)}</select></label>
         <button className="primario">Ver</button>
+        <button type="button" onClick={exportar} disabled={!datos?.exportacion.habilitada}>Exportar a Excel</button>
       </form>
+      {datos && !datos.exportacion.habilitada && <p className="ayuda">La exportación a Excel se habilita con entregas y precios reales: los datos simulados no se exportan como evidencia.</p>}
     </section>
 
     {datos && <>

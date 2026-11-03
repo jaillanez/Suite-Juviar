@@ -65,7 +65,7 @@ def test_precio_faltante_es_vacio_no_cero_y_exportacion_se_bloquea():
     assert costo.costo is None
     assert costo.faltante == "Falta precio real de Compras"
     with pytest.raises(ExportacionNoPermitida):
-        servicio.exportar(date(2026, 1, 1), date(2026, 12, 31))
+        servicio.exportacion(date(2026, 1, 1), date(2026, 12, 31))
 
 
 def test_pantalla_tiene_franja_visible_y_produccion_se_niega():
