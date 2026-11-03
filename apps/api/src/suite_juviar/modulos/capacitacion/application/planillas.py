@@ -40,10 +40,11 @@ class PlanillasEscaneadas:
             raise ValueError("El archivo supera los 10 MB.")
         filas, motor, mensaje = self._lector.leer(nombre, contenido, esperados)
         planilla = PlanillaEscaneada(
-            id=str(uuid4()), dictado_id=dictado_id, nombre_archivo=nombre, contenido=contenido,
+            id=str(uuid4()), dictado_id=dictado_id, nombre_archivo=nombre,
             cargada_en=datetime.now(UTC), cargada_por=actor, filas=tuple(filas),
             motor=motor, mensaje=mensaje,
         )
+        self._planillas.guardar_archivo_planilla(planilla.id, contenido)
         self._planillas.guardar_planilla(planilla)
         return planilla
 

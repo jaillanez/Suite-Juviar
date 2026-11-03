@@ -80,12 +80,12 @@ false si está vacía o dice ausente, y null si no se puede saber."""
         if not legajo or legajo in filas:
             continue
         firmo = fila.get("firmo")
-        nombre_leido = str(fila.get("nombre_completo") or "").strip()
-        filas[legajo] = FilaPlanilla(
-            legajo,
-            impresos[legajo].nombre_completo if legajo in impresos else nombre_leido,
-            firmo if isinstance(firmo, bool) else None,
-        )
+        if legajo in impresos:
+            filas[legajo] = FilaPlanilla(legajo, impresos[legajo].nombre_completo,
+                                         firmo if isinstance(firmo, bool) else None)
+        else:
+            # Lo que la IA dice que se agregó a mano llega sin marcar: lo decide quien revisa.
+            filas[legajo] = FilaPlanilla(legajo, str(fila.get("nombre_completo") or "").strip(), None)
     # Quien estaba impreso y la IA no devolvió queda para que lo decida quien revisa.
     for legajo, fila in impresos.items():
         filas.setdefault(legajo, FilaPlanilla(legajo, fila.nombre_completo, None))

@@ -119,7 +119,6 @@ class PlanillaEscaneada:
     id: str
     dictado_id: str
     nombre_archivo: str
-    contenido: bytes
     cargada_en: datetime
     cargada_por: str
     filas: tuple[FilaPlanilla, ...]

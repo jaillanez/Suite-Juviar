@@ -134,7 +134,7 @@ def test_con_ia_completa_lo_que_no_devolvio_y_respeta_el_nombre_impreso(monkeypa
     monkeypatch.setenv("SJ_CAPACITACION_IA_API_KEY", "clave")
     respuesta = {"choices": [{"message": {"content": "```json\n" + json.dumps({"filas": [
         {"legajo": "100", "nombre_completo": "Peres Ana", "firmo": True},
-        {"legajo": "777", "nombre_completo": "Nuevo", "firmo": "si"},
+        {"legajo": "777", "nombre_completo": "Nuevo", "firmo": True},
     ]}) + "\n```"}}]}
 
     class Respuesta:

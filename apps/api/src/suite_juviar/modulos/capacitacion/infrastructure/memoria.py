@@ -19,6 +19,8 @@ class CapacitacionEnMemoria:
         self.asistencias: dict[tuple[str, str], Asistencia] = {}
         self.anulaciones: dict[tuple[str, str], AnulacionAsistencia] = {}
         self.planillas: dict[str, PlanillaEscaneada] = {}
+        # La imagen va aparte para que listar la bandeja no cargue todos los archivos.
+        self.archivos_planillas: dict[str, bytes] = {}
 
     def guardar_tema(self, tema: Tema) -> None:
         self.temas[tema.id] = tema
@@ -82,6 +84,12 @@ class CapacitacionEnMemoria:
 
     def guardar_planilla(self, planilla: PlanillaEscaneada) -> None:
         self.planillas[planilla.id] = planilla
+
+    def guardar_archivo_planilla(self, planilla_id: str, contenido: bytes) -> None:
+        self.archivos_planillas[planilla_id] = contenido
+
+    def archivo_planilla(self, planilla_id: str) -> bytes | None:
+        return self.archivos_planillas.get(planilla_id)
 
     def obtener_planilla(self, planilla_id: str) -> PlanillaEscaneada | None:
         return self.planillas.get(planilla_id)

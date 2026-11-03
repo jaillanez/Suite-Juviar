@@ -129,7 +129,7 @@ def crear_router(
             "motivo_descarte": p.motivo_descarte, "resultado": p.resultado,
         }
         if con_archivo:
-            datos["contenido_base64"] = base64.b64encode(p.contenido).decode()
+            datos["contenido_base64"] = base64.b64encode(repo.archivo_planilla(p.id) or b"").decode()
         return datos
 
     @app.get("/temas")
