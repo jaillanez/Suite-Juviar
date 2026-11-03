@@ -31,6 +31,25 @@ class RepositorioCapacitacion(Protocol):
     def todas_las_asistencias(self) -> list[Asistencia]: ...
 
 
+class PersonaDelPadron(Protocol):
+    legajo: str
+    nombre_completo: str
+    empresa: str
+    sector: str
+    puesto: str
+
+
+class PadronPersonal(Protocol):
+    """Personal activo según la fuente maestra de legajos."""
+
+    @property
+    def simulada(self) -> bool: ...
+
+    def obtener(self, legajo: str) -> PersonaDelPadron | None: ...
+
+    def buscar(self, *, sector: str | None = None, empresa: str | None = None) -> list[PersonaDelPadron]: ...
+
+
 class ConfiguracionAsistencia(Protocol):
     @property
     def estado(self) -> str: ...

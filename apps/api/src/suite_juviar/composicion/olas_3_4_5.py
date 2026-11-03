@@ -94,6 +94,8 @@ def construir_routers(rrhh):
         "salud": crear_salud(salud, entorno),
         "turnos": crear_turnos(turnos, entorno),
         "seleccion": crear_seleccion(perfiles_seleccion, entorno, ruta_modulos),
-        "capacitaciones": crear_capacitacion(configuracion_capacitacion, entorno, ruta_modulos),
+        "capacitaciones": crear_capacitacion(
+            configuracion_capacitacion, entorno, ruta_modulos, fuente_legajos
+        ),
         "activos": crear_activos(entorno, ruta_modulos),
     }

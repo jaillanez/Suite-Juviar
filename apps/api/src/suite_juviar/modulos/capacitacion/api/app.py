@@ -25,6 +25,7 @@ from ..application.servicios import (
     planilla_imprimible,
 )
 from ..domain.modelos import Dictado, Participante, Tema
+from ..domain.puertos import PadronPersonal
 from ..infrastructure.sqlite import CapacitacionSQLite
 
 
@@ -61,7 +62,12 @@ class ImportacionEntrada(BaseModel):
     contenido_base64: str
 
 
-def crear_router(configuracion, entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> APIRouter:
+def crear_router(
+    configuracion,
+    entorno: str = "prueba",
+    ruta_base: str = "datos/modulos.sqlite3",
+    padron: PadronPersonal | None = None,
+) -> APIRouter:
     exigir_identidad_configurada(entorno)
     app = APIRouter(dependencies=[Depends(exigir_permiso("capacitacion.gestionar"))])
     repo = CapacitacionSQLite(ruta_base)
@@ -157,6 +163,12 @@ def crear_router(configuracion, entorno: str = "prueba", ruta_base: str = "datos
             "fecha_corte": datetime.now(UTC).date().isoformat(),
         }
 
+    @app.get("/informe-anual")
+    def informe_anual(anio: int, empresa: str | None = None, sector: str | None = None):
+        if not 2000 <= anio <= 2100:
+            raise HTTPException(400, "El año no es válido.")
+        return reportes.informe_anual(anio, padron, empresa or None, sector or None)
+
     @app.post("/historico/importaciones")
     def previsualizar_historico(entrada: ImportacionEntrada):
         try:
@@ -176,7 +188,12 @@ def crear_router(configuracion, entorno: str = "prueba", ruta_base: str = "datos
     return app
 
 
-def crear_app(configuracion, entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> FastAPI:
+def crear_app(
+    configuracion,
+    entorno: str = "prueba",
+    ruta_base: str = "datos/modulos.sqlite3",
+    padron: PadronPersonal | None = None,
+) -> FastAPI:
     app = FastAPI(title="Capacitaciones")
-    app.include_router(crear_router(configuracion, entorno, ruta_base))
+    app.include_router(crear_router(configuracion, entorno, ruta_base, padron))
     return app
