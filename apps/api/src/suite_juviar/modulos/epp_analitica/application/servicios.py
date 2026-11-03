@@ -63,6 +63,7 @@ class AnalizarEPP:
                         sum(duraciones) / len(duraciones) if suficiente else None
                     ),
                     estado_duracion="CALCULADO" if suficiente else "SIN_DATOS_SUFICIENTES",
+                    elemento_codigo=filas[0].elemento_codigo,
                 )
             )
         return salida
@@ -122,12 +123,30 @@ class AnalizarEPP:
             "fecha_corte": hasta.isoformat(),
         }
 
-    def exportar(self, desde: date, hasta: date) -> bytes:
-        movimientos = self.fuente.listar(desde, hasta)
+    def exportacion(self, desde: date, hasta: date, elemento: str | None = None,
+                    sector: str | None = None, puesto: str | None = None) -> dict[str, object]:
+        """Estadísticas de descarte y reemplazo para Excel; nunca con datos simulados."""
+        movimientos = [
+            m for m in self.fuente.listar(desde, hasta)
+            if (not elemento or m.elemento_codigo == elemento)
+            and (not sector or m.sector == sector) and (not puesto or m.puesto == puesto)
+        ]
         if self.datos_simulados or any(m.item_codigo.startswith("SIM-") for m in movimientos):
             raise ExportacionNoPermitida(
                 "Los datos simulados no se pueden exportar como evidencia."
             )
-        lineas = ["DATOS REALES — INFORME DE CONSUMO", "item,cantidad"]
-        lineas.extend(f"{m.item_codigo},{m.consumo}" for m in self.metricas(desde, hasta))
-        return ("\n".join(lineas) + "\n").encode()
+        metricas = [
+            m for m in self.metricas(desde, hasta)
+            if (not elemento or m.elemento_codigo == elemento)
+            and (not sector or m.sector == sector) and (not puesto or m.puesto == puesto)
+        ]
+        reemplazos: dict[tuple[str, str], Counter[str]] = defaultdict(Counter)
+        for m in movimientos:
+            reemplazos[(m.elemento_codigo, m.item_codigo)][m.motivo_entrega.upper()] += m.cantidad
+        return {
+            "desde": desde, "hasta": hasta,
+            "filtros": {"elemento": elemento, "sector": sector, "puesto": puesto},
+            "metricas": metricas,
+            "reemplazos": {clave: dict(motivos) for clave, motivos in sorted(reemplazos.items())},
+            "muestra_minima": self.muestra_minima,
+        }

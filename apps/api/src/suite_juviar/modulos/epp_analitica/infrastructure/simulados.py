@@ -55,3 +55,42 @@ class PreciosSimulados:
 
     def obtener(self, item_codigo: str, fecha: date) -> Decimal | None:
         return None
+
+
+class NombresDesdePuerto:
+    """Nombres del catálogo y de la matriz de RRHH/EPP, leídos sin importar ese módulo."""
+
+    def __init__(self, contenedor):
+        self._catalogo = contenedor.catalogo
+        self._legajos = contenedor.legajos
+
+    def elemento(self, codigo: str) -> str:
+        elemento = self._catalogo.obtener_elemento(codigo)
+        return elemento.producto if elemento else codigo
+
+    def item(self, codigo: str) -> str:
+        item = self._catalogo.obtener_item(codigo)
+        if item is None:
+            return codigo
+        talle = item.talle if item.talle and item.talle != "SIN_DATO" else ""
+        return " · ".join(x for x in (item.marca, item.modelo, f"talle {talle}" if talle else "") if x) or codigo
+
+    def sector(self, codigo: str) -> str:
+        nombre = self._catalogo.nombre_sector(codigo)
+        if nombre and nombre != codigo:
+            return nombre
+        return next((p.sector for p in self._legajos.listar_activos() if p.sector_codigo == codigo and p.sector),
+                    codigo)
+
+    def puesto(self, codigo: str) -> str:
+        return next((p.puesto for p in self._legajos.listar_activos() if p.puesto_codigo == codigo and p.puesto),
+                    codigo)
+
+
+class NombresPorCodigo:
+    """Sin catálogo conectado: se muestra el código tal cual."""
+
+    def elemento(self, codigo: str) -> str:
+        return codigo
+
+    item = sector = puesto = elemento

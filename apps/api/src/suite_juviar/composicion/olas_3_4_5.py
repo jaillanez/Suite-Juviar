@@ -14,6 +14,7 @@ from suite_juviar.modulos.epp_analitica.api.app import crear_router as crear_ana
 from suite_juviar.modulos.epp_analitica.application.servicios import AnalizarEPP
 from suite_juviar.modulos.epp_analitica.infrastructure.simulados import (
     FuenteEntregasDesdePuerto,
+    NombresDesdePuerto,
     PreciosSimulados,
 )
 from suite_juviar.modulos.legajo.api.app import crear_router as crear_legajo
@@ -89,7 +90,7 @@ def construir_routers(rrhh):
             lectura_nocturna.iniciar(correo_rrhh, int(os.getenv("SJ_CORREO_CV_HORA") or "2"))
     return {
         "parametros": crear_router_parametros(correo_rrhh, entorno),
-        "epp-analitica": crear_analitica(analitica, entorno),
+        "epp-analitica": crear_analitica(analitica, entorno, NombresDesdePuerto(rrhh)),
         "legajo": crear_legajo(legajo, entorno),
         "salud": crear_salud(salud, entorno),
         "turnos": crear_turnos(turnos, entorno),

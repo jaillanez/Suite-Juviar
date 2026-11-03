@@ -640,6 +640,9 @@ th button {
 .form-linea label {
   flex: 1;
 }
+.filtros-envolventes { flex-wrap: wrap; }
+.filtros-envolventes label { min-width: 180px; }
+.filtros-envolventes select { width: 100%; min-width: 0; }
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(180px, 1fr));
