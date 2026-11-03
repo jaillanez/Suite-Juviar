@@ -69,6 +69,33 @@ class GestionarSalud:
         self.auditar(actor, legajo, "LISTADO_CERTIFICADOS")
         return filas
 
+    def expediente_ausentismo(self, actor: str, legajo: str, desde: date | None = None,
+                              hasta: date | None = None) -> dict[str, object]:
+        """Licencias del legajo en orden cronológico, para el expediente de los asesores legales."""
+        certificados = sorted(
+            (c for c in self.repositorio.listar() if c.legajo == legajo
+             and (not desde or c.hasta >= desde) and (not hasta or c.desde <= hasta)),
+            key=lambda c: (c.desde, c.hasta),
+        )
+        if not certificados:
+            raise LookupError("No hay certificados de ese legajo en el período elegido.")
+        persona = self.fuente_personas.obtener(legajo) if self.fuente_personas else None
+        self.auditar(actor, legajo, "EXPORTACION_EXPEDIENTE")
+        return {
+            "legajo": legajo,
+            "persona": persona,
+            "desde": desde,
+            "hasta": hasta,
+            "certificados": [
+                {"certificado": c, "diagnostico": (d.descripcion if (d := self.catalogo.obtener(c.diagnostico_codigo))
+                                                   else c.diagnostico_codigo)}
+                for c in certificados
+            ],
+            "total_dias": sum(c.dias for c in certificados),
+            "simulado": bool(getattr(self.catalogo, "simulada", False)
+                             or getattr(self.fuente_personas, "simulada", False)),
+        }
+
     def reporte_agregado(self, incluir_personas: bool = False) -> dict[str, object]:
         if incluir_personas:
             raise ReporteNominadoProhibido("Los reportes de salud nunca son nominados.")

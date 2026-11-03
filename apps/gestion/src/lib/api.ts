@@ -65,3 +65,18 @@ export async function abrirArchivo(ruta: string): Promise<void> {
     throw error;
   }
 }
+
+export async function descargarArchivo(ruta: string, nombre: string): Promise<void> {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? "/backend";
+  const respuesta = await fetch(`${base}/${ruta.replace(/^\//, "")}`, { cache: "no-store", headers: cabecerasSesion() });
+  if (!respuesta.ok) {
+    const cuerpo = await respuesta.json().catch(() => null);
+    throw new ErrorApi(cuerpo?.detail ?? cuerpo?.error ?? "No pudimos descargar el archivo.", respuesta.status);
+  }
+  const url = URL.createObjectURL(await respuesta.blob());
+  const enlace = document.createElement("a");
+  enlace.href = url;
+  enlace.download = nombre;
+  enlace.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
