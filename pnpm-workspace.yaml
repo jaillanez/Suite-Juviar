@@ -2,4 +2,5 @@ packages:
   - "apps/web"
   - "apps/mobile"
   - "apps/gestion"
+  - "apps/tablet"
   - "packages/*"
