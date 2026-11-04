@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Suite Juviar</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; font-family: system-ui, sans-serif; background: #f4f0e7; color: #1d2b25;
+         display: flex; align-items: center; justify-content: center;
+         padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom)); }
+  main { width: 100%; max-width: 620px; }
+  h1 { margin: 0 0 4px; color: #1f5c45; font-size: 30px; }
+  .ayuda { margin: 0 0 24px; color: #5b6b64; }
+  a, button { display: block; width: 100%; text-align: left; text-decoration: none; color: inherit; font: inherit;
+              background: #fff; border: 1px solid #c9d6d0; border-radius: 12px; padding: 20px 22px; margin-bottom: 14px; cursor: pointer; }
+  a:active, button:active { background: #e3ece8; }
+  strong { display: block; font-size: 21px; color: #1f5c45; margin-bottom: 4px; }
+  small { color: #5b6b64; font-size: 15px; }
+  .sedes { display: none; padding-left: 18px; }
+  .sedes.abierto { display: block; }
+  .sedes a { padding: 16px 20px; }
+  .sin-red { display: none; background: #fff4cc; border: 1px solid #e0c35a; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Suite Juviar</h1>
+  <p class="ayuda">Elegí qué vas a usar en esta tablet.</p>
+  <p class="sin-red" id="sinRed">La tablet no tiene internet. Conectala al wifi para entrar.</p>
+  <a href="https://juviar-gestion.duckdns.org/"><strong>Gestión</strong>
+    <small>Firmas presenciales de capacitaciones y EPP, equipos y bombas con la cámara.</small></a>
+  <button id="guardia" type="button"><strong>Guardia del portón</strong>
+    <small>Fila de camiones de cosecha: confirmar llegadas y llamar a báscula.</small></button>
+  <div class="sedes" id="sedes">
+    <a href="https://juviar-bot.duckdns.org/guardia/chimbas"><strong>Chimbas</strong></a>
+    <a href="https://juviar-bot.duckdns.org/guardia/media-agua"><strong>Media Agua</strong></a>
+    <a href="https://juviar-bot.duckdns.org/guardia/lavalle"><strong>Lavalle</strong></a>
+  </div>
+</main>
+<script>
+  document.getElementById("guardia").onclick = () => document.getElementById("sedes").classList.toggle("abierto");
+  const red = () => { document.getElementById("sinRed").style.display = navigator.onLine ? "none" : "block"; };
+  addEventListener("online", red); addEventListener("offline", red); red();
+</script>
+</body>
+</html>

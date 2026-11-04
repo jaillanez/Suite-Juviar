@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { Confirmacion, ErrorVisible, FormularioVentana as Formulario, Tabla, Vacio, Ventana } from "./compartidos";
+import { LectorCamara } from "./lector-camara";
 
 type Tipo = { id: string; nombre: string; prefijo: string };
 type Sector = { id: string; nombre: string; bodega: string; bodega_nombre: string };
@@ -178,6 +179,7 @@ export function ActivosGestion() {
   const [filtroTipo, setFiltroTipo] = useState(""); const [filtroSector, setFiltroSector] = useState(""); const [filtroBodega, setFiltroBodega] = useState("");
   const [error, setError] = useState(""); const [errorLectura, setErrorLectura] = useState("");
   const [abierto, setAbierto] = useState<string | null>(null); const [alta, setAlta] = useState(false);
+  const [camara, setCamara] = useState(false);
   const lector = useRef<HTMLInputElement>(null);
 
   async function cargarCatalogos() {
@@ -202,11 +204,14 @@ export function ActivosGestion() {
   // Los lectores USB y los colectores Zebra escriben el código y mandan Enter, como un teclado.
   async function leer(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); setErrorLectura("");
-    const codigo = String(new FormData(e.currentTarget).get("codigo") || "").trim().toUpperCase();
+    await abrir(String(new FormData(e.currentTarget).get("codigo") || ""));
+    if (lector.current) lector.current.value = "";
+  }
+  async function abrir(leido: string) {
+    const codigo = leido.trim().toUpperCase();
     if (!codigo) return;
     try { await api(`activos/equipos/${encodeURIComponent(codigo)}`); setAbierto(codigo); }
     catch (x) { setErrorLectura(mensaje(x, "No se encontró el equipo.")); }
-    if (lector.current) lector.current.value = "";
   }
 
   const faltaCatalogo = !tipos.length || !sectores.length;
@@ -222,7 +227,7 @@ export function ActivosGestion() {
       <div className="titulo-fila"><div><h2>Equipos</h2><p className="ayuda">Tocá un equipo para ver su ficha, trasladarlo, mandarlo a taller o imprimir la etiqueta.</p></div>
         <button className="primario" disabled={faltaCatalogo} onClick={() => setAlta(true)}>Nuevo equipo</button></div>
       <div className="barra-filtros">
-        <form className="lector-codigo" onSubmit={leer}><label>Leer código<input ref={lector} name="codigo" autoFocus autoComplete="off" placeholder="Escaneá o escribí, ej. BOM-0001" /></label><button>Abrir</button></form>
+        <form className="lector-codigo" onSubmit={leer}><label>Leer código<input ref={lector} name="codigo" autoFocus autoComplete="off" placeholder="Escaneá o escribí, ej. BOM-0001" /></label><button>Abrir</button><button type="button" onClick={() => { setErrorLectura(""); setCamara(true); }}>Leer con la cámara</button></form>
         <label>Tipo<select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)}><option value="">Todos</option>{tipos.map(t => <option key={t.id} value={t.id}>{t.nombre}</option>)}</select></label>
         <label>Bodega<select value={filtroBodega} onChange={e => { setFiltroBodega(e.target.value); setFiltroSector(""); }}><option value="">Todas</option>{Object.entries(BODEGAS).map(([id, n]) => <option key={id} value={id}>{n}</option>)}</select></label>
         <label>Sector<select value={filtroSector} onChange={e => setFiltroSector(e.target.value)}><option value="">Todos</option>{sectores.filter(s => !filtroBodega || s.bodega === filtroBodega).map(s => <option key={s.id} value={s.id}>{filtroBodega ? s.nombre : `${s.nombre} · ${s.bodega_nombre}`}</option>)}</select></label>
@@ -277,6 +282,7 @@ export function ActivosGestion() {
       <SelectorSector sectores={sectores} />
       <p className="ayuda">El código se genera solo y no se repite.</p>
     </Formulario>}
+    {camara && <LectorCamara cerrar={() => setCamara(false)} leido={c => { setCamara(false); void abrir(c); }} />}
     {abierto && <VentanaEquipo key={abierto} codigo={abierto} sectores={sectores} cerrar={() => { setAbierto(null); lector.current?.focus(); }} cambio={() => void cargarEquipos()} />}
   </>;
 }
