@@ -27,7 +27,7 @@
 <main>
   <h1>Suite Juviar</h1>
   <p class="ayuda">Elegí qué vas a usar en esta tablet.</p>
-  <p class="sin-red" id="sinRed">La tablet no tiene internet. Conectala al wifi para entrar.</p>
+  <p class="sin-red" id="sinRed">No hay conexión con el servidor. Revisá que la tablet esté conectada al wifi y volvé a tocar.</p>
   <a href="https://juviar-gestion.duckdns.org/"><strong>Gestión</strong>
     <small>Firmas presenciales de capacitaciones y EPP, equipos y bombas con la cámara.</small></a>
   <button id="guardia" type="button"><strong>Guardia del portón</strong>
@@ -40,8 +40,15 @@
 </main>
 <script>
   document.getElementById("guardia").onclick = () => document.getElementById("sedes").classList.toggle("abierto");
-  const red = () => { document.getElementById("sinRed").style.display = navigator.onLine ? "none" : "block"; };
-  addEventListener("online", red); addEventListener("offline", red); red();
+  // Antes de salir del inicio se comprueba que el servidor responda, así no aparece la página de error de Android.
+  const aviso = document.getElementById("sinRed");
+  document.querySelectorAll("a[href^='https://']").forEach(enlace => enlace.addEventListener("click", async e => {
+    e.preventDefault(); aviso.style.display = "none";
+    try {
+      await fetch(new URL("/", enlace.href), { mode: "no-cors", cache: "no-store", signal: AbortSignal.timeout(8000) });
+      location.href = enlace.href;
+    } catch { aviso.style.display = "block"; scrollTo(0, 0); }
+  }));
 </script>
 </body>
 </html>
