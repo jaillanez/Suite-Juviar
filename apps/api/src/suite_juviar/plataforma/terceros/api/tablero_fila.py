@@ -140,6 +140,24 @@ def buscar_productores(_: PuedeRecibir, q: str = ""):
              "ultima_entrega": f["ultima_entrega"]} for f in filas]
 
 
+@recepcion.get("/vehiculos")
+def buscar_vehiculos(_: PuedeRecibir, q: str = ""):
+    patente = "".join(c for c in q.upper() if c.isalnum())
+    if len(patente) < 2:
+        return []
+    filas = _leer(
+        """SELECT v.patente, v.patente_acoplado, v.ultimo_chofer_dni, v.ultimo_chofer_nombre,
+                  v.ultimo_clientecuit, p.razonsocial
+             FROM fila.vehiculo v LEFT JOIN fila.productor p ON p.clientecuit = v.ultimo_clientecuit
+            WHERE upper(replace(v.patente, ' ', '')) LIKE %(patente)s
+            ORDER BY v.actualizado_en DESC LIMIT 10""",
+        {"patente": f"{patente}%"},
+    )
+    return [{"patente": f["patente"], "patente_acoplado": f["patente_acoplado"],
+             "chofer_dni": f["ultimo_chofer_dni"], "chofer_nombre": f["ultimo_chofer_nombre"],
+             "productor_cuit": f["ultimo_clientecuit"], "productor": f["razonsocial"]} for f in filas]
+
+
 @recepcion.get("/variedades")
 def variedades(_: PuedeRecibir):
     filas = _leer(
