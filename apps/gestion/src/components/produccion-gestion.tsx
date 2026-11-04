@@ -7,7 +7,8 @@ import { ConversacionesBot } from "./simulador-bot";
 
 type Romaneo = { id: string; numero: number; estado: string };
 type Productor = { cuit: string; razon_social: string; codigos: string[]; ultima_entrega: string | null };
-type Vehiculo = { patente: string; patente_acoplado: string | null; chofer_dni: string | null; chofer_nombre: string | null; productor_cuit: string | null; productor: string | null };
+type Vehiculo = { patente: string; patente_acoplado: string | null; chofer: string | null; productor: string | null };
+type DatosVehiculo = { patente: string; patente_acoplado: string | null; chofer_dni: string | null; productor_cuit: string | null; productor: string | null };
 type CamionFila = { id: number; numero_dia: number | null; patente: string; patente_acoplado: string | null; clientecuit: string | null; chofer_dni: string | null; chofer_nombre: string | null; productor: string | null; variedad_declarada: string | null; estado: string };
 const SEDES = [["chimbas", "Chimbas"], ["lavalle", "Lavalle"], ["media-agua", "Media Agua"]] as const;
 const VACIO = { productor_cuit: "", transportista_cuit: "", chofer_dni: "", patente_chasis: "", patente_acoplado: "", variedad: "", finca: "" };
@@ -28,13 +29,16 @@ export function ProduccionGestion({ area = "recepcion" }: { area?: AreaProduccio
   useEffect(() => { if (area !== "recepcion") return; api<string[]>("recepcion-datos/variedades").then(setVariedades).catch(() => setAvisoDatos("No se pudo leer la lista de productores y variedades: cargá los datos a mano.")); }, [area]);
   useEffect(() => { if (area !== "recepcion") return; api<CamionFila[]>(`recepcion-datos/camiones?sede=${sede}`).then(setCamiones).catch(() => setCamiones([])); }, [area, sede, creado]);
   useEffect(() => { const q = busqueda.trim(); if (q.length < 2 || productor) { setResultados([]); return; } const r = setTimeout(() => api<Productor[]>(`recepcion-datos/productores?q=${encodeURIComponent(q)}`).then(setResultados).catch(() => setResultados([])), 250); return () => clearTimeout(r); }, [busqueda, productor]);
-  useEffect(() => { const q = campos.patente_chasis.trim(); if (q.length < 2 || vehiculo) { setVehiculos([]); return; } const r = setTimeout(() => api<Vehiculo[]>(`recepcion-datos/vehiculos?q=${encodeURIComponent(q)}`).then(setVehiculos).catch(() => setVehiculos([])), 250); return () => clearTimeout(r); }, [campos.patente_chasis, vehiculo]);
+  useEffect(() => { const q = campos.patente_chasis.trim(); if (q.replace(/[^0-9A-Z]/gi, "").length < 3 || vehiculo) { setVehiculos([]); return; } const r = setTimeout(() => api<Vehiculo[]>(`recepcion-datos/vehiculos?q=${encodeURIComponent(q)}`).then(setVehiculos).catch(() => setVehiculos([])), 250); return () => clearTimeout(r); }, [campos.patente_chasis, vehiculo]);
   // Sin lista de productores o de variedades no se frena la recepción: se cargan a mano.
   const manual = Boolean(avisoDatos);
-  function elegirVehiculo(v: Vehiculo) {
-    setVehiculo(v); setVehiculos([]);
-    setCampos(c => ({ ...c, patente_chasis: v.patente, patente_acoplado: v.patente_acoplado ?? c.patente_acoplado, chofer_dni: v.chofer_dni ?? c.chofer_dni }));
-    if (v.productor_cuit && !productor) elegirProductor({ cuit: v.productor_cuit, razon_social: v.productor ?? v.productor_cuit, codigos: [], ultima_entrega: null });
+  async function elegirVehiculo(elegido: Vehiculo) {
+    setVehiculo(elegido); setVehiculos([]); poner("patente_chasis", elegido.patente);
+    try {
+      const v = await api<DatosVehiculo>(`recepcion-datos/vehiculos/${encodeURIComponent(elegido.patente)}`);
+      setCampos(c => ({ ...c, patente_acoplado: v.patente_acoplado ?? c.patente_acoplado, chofer_dni: v.chofer_dni ?? c.chofer_dni }));
+      if (v.productor_cuit && !productor) elegirProductor({ cuit: v.productor_cuit, razon_social: v.productor ?? v.productor_cuit, codigos: [], ultima_entrega: null });
+    } catch { setError("No se pudieron leer los datos del camión: completalos a mano."); }
   }
   function elegirProductor(p: Productor) { setProductor(p); poner("productor_cuit", p.cuit); setBusqueda(p.razon_social); setResultados([]); }
   function tomarCamion(c: CamionFila) {
@@ -92,8 +96,8 @@ export function ProduccionGestion({ area = "recepcion" }: { area?: AreaProduccio
         <label>CUIT del productor<input name="productor_cuit" inputMode="numeric" required readOnly={!manual} value={manual ? campos.productor_cuit : cuitLegible(campos.productor_cuit)} onChange={e => poner("productor_cuit", e.target.value)} placeholder={manual ? "" : "Se completa al elegir el productor"} /></label>
         <label>CUIT del transportista<input name="transportista_cuit" inputMode="numeric" required value={campos.transportista_cuit} onChange={e => poner("transportista_cuit", e.target.value)} /></label>
         <label>DNI del chofer<input name="chofer_dni" inputMode="numeric" required value={campos.chofer_dni} onChange={e => poner("chofer_dni", e.target.value)} /></label>
-        <label className="campo-buscable">Patente del camión<input name="patente_chasis" autoCapitalize="characters" autoComplete="off" required value={campos.patente_chasis} onChange={e => { setVehiculo(null); poner("patente_chasis", e.target.value.toUpperCase()); }} placeholder="Escribí al menos 2 caracteres" />
-          {vehiculos.length > 0 && <div className="resultados-busqueda">{vehiculos.map(v => <button type="button" key={v.patente} onClick={() => elegirVehiculo(v)}><strong>{v.patente}{v.patente_acoplado ? ` · acoplado ${v.patente_acoplado}` : ""}</strong><span>{v.chofer_nombre ? `Último chofer: ${v.chofer_nombre}` : "Sin chofer registrado"}{v.productor ? ` · ${v.productor}` : ""}</span></button>)}</div>}
+        <label className="campo-buscable">Patente del camión<input name="patente_chasis" autoCapitalize="characters" autoComplete="off" required value={campos.patente_chasis} onChange={e => { setVehiculo(null); poner("patente_chasis", e.target.value.toUpperCase()); }} placeholder="Escribí al menos 3 caracteres" />
+          {vehiculos.length > 0 && <div className="resultados-busqueda">{vehiculos.map(v => <button type="button" key={v.patente} onClick={() => void elegirVehiculo(v)}><strong>{v.patente}{v.patente_acoplado ? ` · acoplado ${v.patente_acoplado}` : ""}</strong><span>{v.chofer ? `Último chofer: ${v.chofer}` : "Sin chofer registrado"}{v.productor ? ` · ${v.productor}` : ""}</span></button>)}</div>}
           {vehiculo ? <small>Elegido: {vehiculo.patente}. Revisá el acoplado y el chofer.</small> : campos.patente_chasis.trim().length >= 5 && !vehiculos.length && <small>Camión nuevo: completá el acoplado y el chofer.</small>}</label>
         <label>Patente del acoplado<input name="patente_acoplado" autoCapitalize="characters" value={campos.patente_acoplado} onChange={e => poner("patente_acoplado", e.target.value.toUpperCase())} /></label>
         {variedades.length
