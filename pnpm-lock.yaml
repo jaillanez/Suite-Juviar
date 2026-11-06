@@ -24,6 +24,22 @@ importers:
         specifier: ^5.9.0
         version: 5.9.3
 
+  apps/celular:
+    dependencies:
+      '@capacitor/android':
+        specifier: 8.5.1
+        version: 8.5.1(@capacitor/core@8.5.1)
+      '@capacitor/app':
+        specifier: ^8.0.0
+        version: 8.1.2(@capacitor/core@8.5.1)
+      '@capacitor/core':
+        specifier: 8.5.1
+        version: 8.5.1
+    devDependencies:
+      '@capacitor/cli':
+        specifier: 8.5.1
+        version: 8.5.1
+
   apps/gestion:
     dependencies:
       '@suite-juviar/contratos':
@@ -100,22 +116,6 @@ importers:
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
-
-  apps/tablet:
-    dependencies:
-      '@capacitor/android':
-        specifier: 8.5.1
-        version: 8.5.1(@capacitor/core@8.5.1)
-      '@capacitor/app':
-        specifier: ^8.0.0
-        version: 8.1.2(@capacitor/core@8.5.1)
-      '@capacitor/core':
-        specifier: 8.5.1
-        version: 8.5.1
-    devDependencies:
-      '@capacitor/cli':
-        specifier: 8.5.1
-        version: 8.5.1
 
   apps/web:
     dependencies:

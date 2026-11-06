@@ -30,6 +30,11 @@ color:#fff;padding:10px;text-align:center;font-weight:750;z-index:5}.oculto{disp
 @media(max-width:600px){.row{grid-template-columns:1fr}.acciones{display:grid}.espera h1{font-size:10vw}.pantalla-fila{font-size:7vw}}
 @media(prefers-reduced-motion:reduce){.parpadea{animation:none}}
 .tag.uva{background:#f3e3c3;color:#5c3b08;margin-left:8px;vertical-align:.12em}
+.velo{position:fixed;inset:0;background:#17221c99;display:grid;align-items:end;z-index:20;padding:12px}
+.caja{background:var(--card);border-radius:18px;padding:22px 20px calc(20px + env(safe-area-inset-bottom));max-width:640px;width:100%;
+margin:0 auto;max-height:90vh;overflow:auto}.caja h2{margin:0 0 8px}.caja .list button{margin:0;text-align:left;min-height:62px}
+.caja form{padding:0;box-shadow:none;background:transparent}.caja .cancelar{background:transparent;color:var(--ink);border:2px solid #bdc5bd}
+@media(min-width:700px){.velo{align-items:center}}
 ::selection{background:#b5dac3;color:#102018}*{scrollbar-color:#789386 #eee9df}
 """
 
@@ -93,6 +98,28 @@ actualizar();setInterval(actualizar,15000);
     return pagina("Estado del camión", cuerpo, script)
 
 
+# Ventanas en pantalla con botones grandes. Reemplazan a prompt(), confirm() y alert(): esas
+# cajas del navegador confunden a quien no maneja tecnología y obligaban a escribir números.
+DIALOGOS_JS = r"""
+const MOTIVOS={no_responde:'No responde',documentacion_incompleta:'Le falta documentación',problema_mecanico:'Problema mecánico',
+indicacion_de_planta:'Lo pidió la planta',otro:'Otro motivo',patente_no_coincide:'La patente no coincide',
+no_esta_en_porton:'No está en el portón',registro_duplicado:'Está anotado dos veces',datos_incorrectos:'Los datos están mal',
+se_retiro:'Se fue',rechazado_por_planta:'Lo rechazó la planta'};
+const escH=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+function ventana(html){return new Promise(ok=>{caja.innerHTML=html;velo.classList.remove('oculto');
+ const listo=v=>{velo.classList.add('oculto');caja.innerHTML='';ok(v)};
+ caja.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>listo(b.dataset.v));
+ const f=caja.querySelector('form');if(f)f.onsubmit=e=>{e.preventDefault();listo(Object.fromEntries(new FormData(f)))};
+ (caja.querySelector('input')||caja.querySelector('button'))?.focus()})}
+function elegir(titulo,opciones){return ventana(`<h2>${escH(titulo)}</h2><div class="list">${opciones.map(([v,t])=>
+ `<button class="secondary" data-v="${escH(v)}">${escH(t)}</button>`).join('')}</div><button class="cancelar" data-v="">Cancelar</button>`).then(v=>v||null)}
+function pedir(titulo,ayuda,campos){return ventana(`<h2>${escH(titulo)}</h2><p class="muted">${escH(ayuda)}</p><form>${campos.map(([n,et,extra])=>
+ `<label>${escH(et)}<input name="${n}" ${extra} required></label>`).join('')}<button>Seguir</button></form><button class="cancelar" data-v="">Cancelar</button>`).then(v=>typeof v==='object'?v:null)}
+function avisar(texto){return ventana(`<h2>Atención</h2><p>${escH(texto)}</p><button data-v="1">Entendido</button>`)}
+async function esOrganica(){const r=await elegir('¿La carga es orgánica?',[['si','Sí, es orgánica'],['no','No, es común']]);return r===null?null:r==='si'}
+"""
+
+
 def guardia(sede: str, variedades: Iterable[str] = ()) -> str:
     cuerpo = f"""<div id="offline" class="offline oculto">Sin conexión — <span>0</span> acciones por enviar</div>
 <main id="ingreso"><p class="muted">Guardia · {sede.title()}</p><h1>Ingresar</h1>
@@ -110,13 +137,14 @@ def guardia(sede: str, variedades: Iterable[str] = ()) -> str:
 <label for="buscarProductor">Productor</label>
 <input id="buscarProductor" placeholder="Nombre o cuenta, por ejemplo G03436" autocomplete="off">
 <div id="resultadosProductor" class="list"></div><button id="manualProductor" class="secondary">No está en la lista</button>
-<button id="cancelarProductor" class="danger">Cancelar</button></section></main>"""
-    script = f"""
+<button id="cancelarProductor" class="danger">Cancelar</button></section></main>
+<div id="velo" class="velo oculto" role="dialog" aria-modal="true"><div id="caja" class="caja"></div></div>"""
+    script = DIALOGOS_JS + f"""
 const sede='{sede}';let token=sessionStorage.getItem('guardia-token')||'';
 let H={{'content-type':'application/json','x-guardia-token':token}};
 const id=()=>crypto.randomUUID(),ahora=()=>new Date().toISOString();let datos={{pendientes:[],espera:[],llamados:[]}};
 function mostrarApp(){{ingreso.classList.add('oculto');aplicacion.classList.remove('oculto');cargar();copiarProductores()}}
-formIngreso.onsubmit=async e=>{{e.preventDefault();errorIngreso.textContent='';const actual=clave.value;const r=await fetch('/api/guardia/ingreso',{{method:'POST',headers:{{'content-type':'application/json'}},body:JSON.stringify({{usuario:usuario.value,clave:actual}})}});if(!r.ok){{errorIngreso.textContent=(await r.json()).detail;return}}const d=await r.json();if(d.sede!==sede){{errorIngreso.textContent='Este usuario corresponde a '+d.sede;return}}token=d.token;H={{'content-type':'application/json','x-guardia-token':token}};if(d.debe_cambiar_clave){{const nueva=prompt('Ingresá una clave nueva de al menos 6 caracteres');if(!nueva)return;const c=await fetch('/api/guardia/cambiar-clave',{{method:'POST',headers:H,body:JSON.stringify({{actual,nueva}})}});if(!c.ok){{errorIngreso.textContent=(await c.json()).detail;return}}}}sessionStorage.setItem('guardia-token',token);mostrarApp()}};
+formIngreso.onsubmit=async e=>{{e.preventDefault();errorIngreso.textContent='';const actual=clave.value;const r=await fetch('/api/guardia/ingreso',{{method:'POST',headers:{{'content-type':'application/json'}},body:JSON.stringify({{usuario:usuario.value,clave:actual}})}});if(!r.ok){{errorIngreso.textContent=(await r.json()).detail;return}}const d=await r.json();if(d.sede!==sede){{errorIngreso.textContent='Este usuario corresponde a '+d.sede;return}}token=d.token;H={{'content-type':'application/json','x-guardia-token':token}};if(d.debe_cambiar_clave){{const f=await pedir('Elegí tu clave nueva','Es la primera vez que entrás. Elegí una clave que sólo sepas vos, de al menos 6 letras o números.',[['nueva','Clave nueva','type="password" minlength="6" autocomplete="new-password"']]);if(!f)return;const nueva=f.nueva;const c=await fetch('/api/guardia/cambiar-clave',{{method:'POST',headers:H,body:JSON.stringify({{actual,nueva}})}});if(!c.ok){{errorIngreso.textContent=(await c.json()).detail;return}}}}sessionStorage.setItem('guardia-token',token);mostrarApp()}};
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}})[c]);
 function filaHtml(x,acciones=''){{const uva=x.variedad_declarada?`<span class="tag uva" title="Variedad declarada">${{esc(x.variedad_declarada)}}</span>`:'';
  return `<article class="row"><div><strong>${{esc(x.numero_dia)}} ${{esc(x.patente)}}</strong>${{uva}}
@@ -125,13 +153,13 @@ function pintar(){{pendientes.innerHTML=datos.pendientes.map(x=>filaHtml(x,`<but
  fila.innerHTML=datos.espera.map((x,i)=>filaHtml(x,`<span class="tag">${{['','Orgánico','Con turno','Espontáneo'][x.grupo]}}</span><button class="secondary" onclick="llamar(${{x.id}},${{i}})">Llamar</button><button class="danger" onclick="cerrar(${{x.id}},'cancelar')">Sacar de la fila</button>`)).join('')||'<p class="muted">Fila vacía.</p>';
  llamados.innerHTML=datos.llamados.map(x=>filaHtml(x,`<button onclick="accion(${{x.id}},'paso')">Pasó</button><button class="secondary" onclick="accion(${{x.id}},'no_vino')">No vino</button><button class="danger" onclick="cerrar(${{x.id}},'cancelar')">Cancelar</button>`)).join('')||'<p class="muted">Ninguno.</p>';}}
 async function cargar(){{try{{const r=await fetch('/api/guardia/{sede}',{{headers:H}});if(!r.ok)throw 0;datos=await r.json();pintar();offline.classList.add('oculto')}}catch{{offline.classList.remove('oculto')}}}}
-async function enviar(url,body){{if(!navigator.onLine){{await cola(url,body);return}}try{{const r=await fetch(url,{{method:'POST',headers:H,body:JSON.stringify(body)}});if(!r.ok){{alert((await r.json()).detail);return}}await cargar()}}catch{{await cola(url,body)}}}}
-async function confirmar(viaje){{const x=datos.pendientes.find(v=>v.id===viaje);const p=await elegirProductor(x?.variedad_declarada);if(!p)return;await enviar('/api/guardia/viajes/'+viaje+'/confirmar',{{id_cliente:id(),clientecuit:p.clientecuit,clientecodigo:p.codigos?.[0]||null,declara_organica:confirm('¿Carga orgánica?'),productor_revision_manual:!!p.manual,variedad:p.variedad,momento_cliente:ahora()}})}}
-altaDirecta.onclick=async()=>{{const patente=prompt('Patente');if(!patente)return;const p=await elegirProductor();if(!p)return;
- await enviar('/api/guardia/viajes/directo',{{id_cliente:id(),sede,patente,productor:p.razonsocial,telefono:null,clientecuit:p.clientecuit,clientecodigo:p.codigos?.[0]||null,declara_organica:confirm('¿Carga orgánica?'),momento_cliente:ahora(),productor_revision_manual:!!p.manual,variedad:p.variedad}})}};
+async function enviar(url,body){{if(!navigator.onLine){{await cola(url,body);return}}try{{const r=await fetch(url,{{method:'POST',headers:H,body:JSON.stringify(body)}});if(!r.ok){{await avisar((await r.json()).detail);return}}await cargar()}}catch{{await cola(url,body)}}}}
+async function confirmar(viaje){{const x=datos.pendientes.find(v=>v.id===viaje);const p=await elegirProductor(x?.variedad_declarada);if(!p)return;const organica=await esOrganica();if(organica===null)return;await enviar('/api/guardia/viajes/'+viaje+'/confirmar',{{id_cliente:id(),clientecuit:p.clientecuit,clientecodigo:p.codigos?.[0]||null,declara_organica:organica,productor_revision_manual:!!p.manual,variedad:p.variedad,momento_cliente:ahora()}})}}
+altaDirecta.onclick=async()=>{{const f=await pedir('Camión sin celular','Escribí la patente del camión.',[['patente','Patente','autocapitalize="characters" autocomplete="off" minlength="5"']]);if(!f)return;const patente=f.patente.trim().toUpperCase();const p=await elegirProductor();if(!p)return;const organica=await esOrganica();if(organica===null)return;
+ await enviar('/api/guardia/viajes/directo',{{id_cliente:id(),sede,patente,productor:p.razonsocial,telefono:null,clientecuit:p.clientecuit,clientecodigo:p.codigos?.[0]||null,declara_organica:organica,momento_cliente:ahora(),productor_revision_manual:!!p.manual,variedad:p.variedad}})}};
 const motivosSalto=['no_responde','documentacion_incompleta','problema_mecanico','indicacion_de_planta','otro'];
 const motivosCierre=['patente_no_coincide','no_esta_en_porton','registro_duplicado','datos_incorrectos','se_retiro','rechazado_por_planta','problema_mecanico','indicacion_de_planta','otro'];
-function elegirMotivo(opciones,titulo){{const lista=opciones.map((m,i)=>`${{i+1}}. ${{m.replaceAll('_',' ')}}`).join('\\n');const n=Number(prompt(titulo+'\\n'+lista));return opciones[n-1]||null}}
+function elegirMotivo(opciones,titulo){{return elegir(titulo,opciones.map(m=>[m,MOTIVOS[m]||m]))}}
 async function llamar(viaje,pos){{let motivo=null;if(pos>0){{motivo=elegirMotivo(motivosSalto,'Elegí por qué se saltea el orden');if(!motivo)return}}await accion(viaje,'llamar',motivo)}}
 async function cerrar(viaje,accionCierre){{const motivo=elegirMotivo(motivosCierre,accionCierre==='rechazar'?'Elegí por qué se rechaza':'Elegí por qué se saca de la fila');if(motivo)await accion(viaje,accionCierre,motivo)}}
 async function accion(viaje,a,motivo=null){{await enviar('/api/guardia/viajes/'+viaje+'/'+a,{{id_cliente:id(),momento_cliente:ahora(),motivo}})}}
@@ -139,7 +167,7 @@ siguiente.onclick=()=>datos.espera[0]&&accion(datos.espera[0].id,'llamar');
 async function db(){{return new Promise((ok,no)=>{{const q=indexedDB.open('fila-offline',2);q.onupgradeneeded=()=>{{if(!q.result.objectStoreNames.contains('acciones'))q.result.createObjectStore('acciones',{{keyPath:'id'}});if(!q.result.objectStoreNames.contains('productores'))q.result.createObjectStore('productores',{{keyPath:'clientecuit'}})}};q.onsuccess=()=>ok(q.result);q.onerror=no}})}}
 async function copiarProductores(){{try{{const r=await fetch('/api/guardia/'+sede+'/productores-copia',{{headers:H}});if(!r.ok)return;const xs=await r.json(),d=await db(),tx=d.transaction('productores','readwrite'),s=tx.objectStore('productores');s.clear();xs.forEach(x=>s.put(x))}}catch{{}}}}
 async function buscarLocal(q){{const d=await db();return new Promise(ok=>{{const x=d.transaction('productores').objectStore('productores').getAll();x.onsuccess=()=>{{const ts=q.toUpperCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').split(/\\s+/).filter(t=>t.length>1);ok(ts.length?x.result.filter(p=>ts.every(t=>(p.busqueda||'').split(' ').includes(t))||p.codigos?.includes(q.toUpperCase())).slice(0,20):[])}}}})}}
-function elegirProductor(variedadPrevia=''){{return new Promise(entregar=>{{const resolve=p=>entregar(p&&{{...p,variedad:variedadGuardia.value.trim().slice(0,{MAX_VARIEDAD})||null}});variedadGuardia.value=variedadPrevia||'';selectorProductor.classList.remove('oculto');buscarProductor.value='';resultadosProductor.innerHTML='';let timer;buscarProductor.oninput=()=>{{clearTimeout(timer);timer=setTimeout(async()=>{{const q=buscarProductor.value.trim();let xs=[];try{{if(navigator.onLine){{const r=await fetch('/api/guardia/'+sede+'/productores?q='+encodeURIComponent(q),{{headers:H}});if(r.ok)xs=await r.json()}}else xs=await buscarLocal(q)}}catch{{xs=await buscarLocal(q)}}resultadosProductor.innerHTML=xs.map((p,i)=>`<button data-i="${{i}}" class="secondary"><strong>${{p.razonsocial}}</strong><br><small>${{(p.codigos||[]).join(', ')}}</small></button>`).join('');resultadosProductor.querySelectorAll('button').forEach(b=>b.onclick=()=>{{selectorProductor.classList.add('oculto');resolve(xs[Number(b.dataset.i)])}})}} ,180)}};manualProductor.onclick=()=>{{const c=prompt('CUIT real');if(!c)return;const n=prompt('Razón social');if(!n)return;selectorProductor.classList.add('oculto');resolve({{clientecuit:c,razonsocial:n,codigos:[],manual:true}})}};cancelarProductor.onclick=()=>{{selectorProductor.classList.add('oculto');resolve(null)}};buscarProductor.focus()}})}}
+function elegirProductor(variedadPrevia=''){{return new Promise(entregar=>{{const resolve=p=>entregar(p&&{{...p,variedad:variedadGuardia.value.trim().slice(0,{MAX_VARIEDAD})||null}});variedadGuardia.value=variedadPrevia||'';selectorProductor.classList.remove('oculto');buscarProductor.value='';resultadosProductor.innerHTML='';let timer;buscarProductor.oninput=()=>{{clearTimeout(timer);timer=setTimeout(async()=>{{const q=buscarProductor.value.trim();let xs=[];try{{if(navigator.onLine){{const r=await fetch('/api/guardia/'+sede+'/productores?q='+encodeURIComponent(q),{{headers:H}});if(r.ok)xs=await r.json()}}else xs=await buscarLocal(q)}}catch{{xs=await buscarLocal(q)}}resultadosProductor.innerHTML=xs.map((p,i)=>`<button data-i="${{i}}" class="secondary"><strong>${{p.razonsocial}}</strong><br><small>${{(p.codigos||[]).join(', ')}}</small></button>`).join('');resultadosProductor.querySelectorAll('button').forEach(b=>b.onclick=()=>{{selectorProductor.classList.add('oculto');resolve(xs[Number(b.dataset.i)])}})}} ,180)}};manualProductor.onclick=async()=>{{const f=await pedir('Productor que no está en la lista','Pedile al chofer los datos del productor.',[['cuit','CUIT (11 números)','inputmode="numeric" pattern="[0-9-]{{11,13}}"'],['nombre','Nombre o razón social','autocapitalize="words"']]);if(!f)return;selectorProductor.classList.add('oculto');resolve({{clientecuit:f.cuit.replace(/\\D/g,''),razonsocial:f.nombre.trim(),codigos:[],manual:true}})}};cancelarProductor.onclick=()=>{{selectorProductor.classList.add('oculto');resolve(null)}};buscarProductor.focus()}})}}
 async function cola(url,body){{const d=await db(),tx=d.transaction('acciones','readwrite');tx.objectStore('acciones').put({{id:body.id_cliente,url,body}});await estadoCola()}}
 async function estadoCola(){{const d=await db(),tx=d.transaction('acciones');const q=tx.objectStore('acciones').count();q.onsuccess=()=>{{offline.querySelector('span').textContent=q.result;offline.classList.toggle('oculto',navigator.onLine&&q.result===0)}}}}
 async function sincronizar(){{if(!navigator.onLine)return;const d=await db(),tx=d.transaction('acciones','readonly'),q=tx.objectStore('acciones').getAll();q.onsuccess=async()=>{{for(const a of q.result){{const r=await fetch(a.url,{{method:'POST',headers:H,body:JSON.stringify(a.body)}});if(r.ok){{const t=d.transaction('acciones','readwrite');t.objectStore('acciones').delete(a.id)}}}}await estadoCola();await cargar()}}}}

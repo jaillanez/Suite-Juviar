@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">Suite Juviar</string>
     <string name="title_activity_main">Suite Juviar</string>
-    <string name="package_name">ar.com.juviar.tablet</string>
-    <string name="custom_url_scheme">ar.com.juviar.tablet</string>
+    <string name="package_name">ar.com.juviar.celular</string>
+    <string name="custom_url_scheme">ar.com.juviar.celular</string>
 </resources>
