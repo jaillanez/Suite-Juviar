@@ -1,5 +1,5 @@
 export type Empresa = "ENAV" | "JUBIAR";
-export type Perfil = "SUPERADMIN" | "RRHH" | "MEDICO" | "HYS" | "COMPRAS" | "SUPERVISOR" | "MANTENIMIENTO" | "BODEGA" | "CAMPO" | "BASCULA";
+export type Perfil = "SUPERADMIN" | "RRHH" | "MEDICO" | "HYS" | "COMPRAS" | "SUPERVISOR" | "MANTENIMIENTO" | "BODEGA" | "CAMPO" | "BASCULA" | "DEPOSITO";
 export type Seccion = "inicio" | "produccion" | "fila" | "bot" | "epp" | "analitica" | "seleccion" | "capacitaciones" | "legajo" | "salud" | "turnos" | "contactos" | "configuracion" | "usuarios" | "parametros" | "cosecha" | "personal" | "activos";
 
 export const todasLasSecciones: Seccion[] = [
@@ -18,6 +18,8 @@ export const perfiles: Record<Perfil, { nombre: string; secciones: Seccion[] }> 
   BODEGA: { nombre: "Administración de bodega", secciones: ["inicio", "produccion", "fila", "cosecha", "bot", "contactos", "configuracion"] },
   CAMPO: { nombre: "Recepción de campo", secciones: ["inicio", "produccion", "configuracion"] },
   BASCULA: { nombre: "Operación de báscula", secciones: ["inicio", "produccion", "configuracion"] },
+  // Entrega EPP desde el celular (/celular); en la computadora sólo ve su cuenta.
+  DEPOSITO: { nombre: "Depósito (entrega de EPP)", secciones: ["inicio", "configuracion"] },
 };
 
 export const nombres: Record<Seccion, string> = {

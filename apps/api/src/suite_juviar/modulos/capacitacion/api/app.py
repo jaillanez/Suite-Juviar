@@ -199,6 +199,14 @@ def crear_router(
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
 
+    @app.get("/dictados/{dictado_id}/convocados")
+    def convocados(dictado_id: str, sesion: SesionActual):
+        """La misma lista que la planilla impresa, para tomar la firma en el celular."""
+        dictado = repo.obtener_dictado(dictado_id)
+        if dictado is None:
+            raise HTTPException(404, "Dictado inexistente")
+        return [{"legajo": f.legajo, "nombre_completo": f.nombre_completo} for f in esperados(dictado, sesion)]
+
     @app.get("/dictados/{dictado_id}/planilla", response_class=PlainTextResponse)
     def planilla(dictado_id: str, sesion: SesionActual):
         dictado = repo.obtener_dictado(dictado_id)

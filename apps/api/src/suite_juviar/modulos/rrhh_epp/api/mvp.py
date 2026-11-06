@@ -170,9 +170,18 @@ def crear_router(contenedor: Contenedor | None = None) -> APIRouter:
 
     def usuario_actual(
         request: Request,
+        sesion: SesionActual,
         x_legajo_usuario: str | None = Header(default=None, alias="X-Legajo-Usuario"),
     ) -> ActorOperativo:
-        # Con ingreso real (un servidor accesible) el legajo declarado nunca vale desde afuera.
+        if not sesion.identidad_simulada:
+            # Ingreso real: quien registra es el usuario de Gestión; cada ruta exige su permiso.
+            return ActorOperativo(
+                legajo=sesion.actor,
+                nombre_completo=sesion.actor,
+                empresa=sesion.empresa,
+                perfil=PerfilAcceso.DEPOSITO,
+            )
+        # Con identidad simulada, el legajo declarado nunca vale desde afuera.
         if (c.entorno != "prueba" or not identidad_es_simulada()) and not _solicitud_es_exclusivamente_local(
             request
         ):

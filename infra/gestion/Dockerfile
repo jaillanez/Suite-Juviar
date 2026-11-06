@@ -10,7 +10,7 @@ COPY packages ./packages
 COPY apps/gestion ./apps/gestion
 COPY apps/web/package.json ./apps/web/package.json
 COPY apps/mobile/package.json ./apps/mobile/package.json
-COPY apps/tablet/package.json ./apps/tablet/package.json
+COPY apps/celular/package.json ./apps/celular/package.json
 RUN pnpm install --frozen-lockfile --filter "@suite-juviar/gestion..."
 ARG COMMIT=local
 ENV NEXT_TELEMETRY_DISABLED=1 \

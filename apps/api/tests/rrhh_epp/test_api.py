@@ -306,3 +306,34 @@ def test_el_servidor_conserva_el_sello_real_de_la_tablet(cliente, contenedor):
     guardada = contenedor.entregas.obtener("tablet-20260906-0002")
     assert guardada is not None
     assert guardada.firma_trabajador.sello_tiempo == sello
+
+
+def test_con_ingreso_real_registra_quien_entro_a_gestion(contenedor):
+    """Desde el celular no se declara legajo: el operador es el usuario de la sesión."""
+    from fastapi.testclient import TestClient
+
+    from suite_juviar.modulos.rrhh_epp.api.mvp import crear_app
+    from suite_juviar.plataforma.identidad.api.dependencias import (
+        PERMISOS_POR_PERFIL,
+        resolver_sesion,
+    )
+    from suite_juviar.plataforma.identidad.domain.sesion import Sesion
+
+    def sesion_de(perfil):
+        return lambda: Sesion("deposito1@juviar.com.ar", "ENAV", PERMISOS_POR_PERFIL[perfil], False)
+
+    app = crear_app(contenedor)
+    cliente = TestClient(app, base_url="http://192.168.1.20", client=("192.168.1.30", 50000))
+    app.dependency_overrides[resolver_sesion] = sesion_de("DEPOSITO")
+    assert cliente.get("/legajos?q=Funes").status_code == 200
+    r = cliente.post("/entregas", json={
+        "legajo": "1103",
+        "items": [{"codigo": "62", "item_codigo": "SIM-62-01", "cantidad": 1}],
+        "metodo_firma": "TRAZO_TABLET",
+        "evidencia_firma": "data:image/png;base64,AAAA",
+    })
+    assert r.status_code == 200, r.text
+    assert "deposito1@juviar.com.ar" in cliente.get(f"/constancias/{r.json()['id']}").text
+
+    app.dependency_overrides[resolver_sesion] = sesion_de("MANTENIMIENTO")
+    assert cliente.get("/legajos?q=Funes").status_code == 403

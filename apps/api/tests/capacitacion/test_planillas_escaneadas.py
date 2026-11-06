@@ -153,3 +153,12 @@ def test_con_ia_completa_lo_que_no_devolvio_y_respeta_el_nombre_impreso(monkeypa
     assert motor == "deepseek"
     assert filas == [FilaPlanilla("100", "Pérez Ana", True), FilaPlanilla("777", "Nuevo", None),
                      FilaPlanilla("200", "Gómez Luis", None)]
+
+
+def test_convocados_para_firmar_en_el_celular():
+    c, dictado = preparar()
+    c.post(f"/dictados/{dictado}/asistencias", json={"legajo": "300", "nombre_completo": "Díaz Carla", "presente": True})
+    assert c.get(f"/dictados/{dictado}/convocados").json() == [
+        {"legajo": "100", "nombre_completo": "Pérez Ana"}, {"legajo": "200", "nombre_completo": "Gómez Luis"},
+        {"legajo": "300", "nombre_completo": "Díaz Carla"}]
+    assert c.get("/dictados/nada/convocados").status_code == 404
