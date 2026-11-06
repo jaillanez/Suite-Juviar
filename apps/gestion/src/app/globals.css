@@ -242,6 +242,7 @@ select {
   background: #fff;
   color: var(--tinta);
 }
+input[readonly] { background: #f1f4f2; color: #4f5d56; }
 .ayuda {
   font-size: 0.875rem;
   color: var(--muted);

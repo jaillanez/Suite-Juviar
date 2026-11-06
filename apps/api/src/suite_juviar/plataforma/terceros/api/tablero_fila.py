@@ -140,6 +140,51 @@ def buscar_productores(_: PuedeRecibir, q: str = ""):
              "ultima_entrega": f["ultima_entrega"]} for f in filas]
 
 
+def _patente(texto: str) -> str:
+    return "".join(c for c in texto.upper() if c.isalnum())
+
+
+def _chofer_abreviado(nombre: str | None) -> str | None:
+    partes = (nombre or "").split()
+    return f"{partes[0]} {partes[1][0]}." if len(partes) > 1 else (partes[0] if partes else None)
+
+
+@recepcion.get("/vehiculos")
+def buscar_vehiculos(_: PuedeRecibir, q: str = ""):
+    """Camiones que pasaron por la fila en el último año. La lista no trae el DNI del chofer."""
+    patente = _patente(q)
+    if len(patente) < 3:
+        return []
+    filas = _leer(
+        """SELECT v.patente, v.patente_acoplado, v.ultimo_chofer_nombre, p.razonsocial
+             FROM fila.vehiculo v LEFT JOIN fila.productor p ON p.clientecuit = v.ultimo_clientecuit
+            WHERE upper(replace(v.patente, ' ', '')) LIKE %(patente)s
+              AND v.actualizado_en > now() - interval '1 year'
+            ORDER BY v.actualizado_en DESC LIMIT 8""",
+        {"patente": f"{patente}%"},
+    )
+    return [{"patente": f["patente"], "patente_acoplado": f["patente_acoplado"],
+             "chofer": _chofer_abreviado(f["ultimo_chofer_nombre"]), "productor": f["razonsocial"]}
+            for f in filas]
+
+
+@recepcion.get("/vehiculos/{patente}")
+def datos_vehiculo(patente: str, _: PuedeRecibir):
+    """Al elegir un camión: el acoplado, el último chofer y el productor para abrir el romaneo."""
+    filas = _leer(
+        """SELECT v.patente, v.patente_acoplado, v.ultimo_chofer_dni, v.ultimo_clientecuit, p.razonsocial
+             FROM fila.vehiculo v LEFT JOIN fila.productor p ON p.clientecuit = v.ultimo_clientecuit
+            WHERE upper(replace(v.patente, ' ', '')) = %(patente)s
+              AND v.actualizado_en > now() - interval '1 year'""",
+        {"patente": _patente(patente)},
+    )
+    if not filas:
+        raise HTTPException(404, "No hay datos de ese camión.")
+    f = filas[0]
+    return {"patente": f["patente"], "patente_acoplado": f["patente_acoplado"], "chofer_dni": f["ultimo_chofer_dni"],
+            "productor_cuit": f["ultimo_clientecuit"], "productor": f["razonsocial"]}
+
+
 @recepcion.get("/variedades")
 def variedades(_: PuedeRecibir):
     filas = _leer(

@@ -67,3 +67,33 @@ def test_turnos_exige_permiso_y_conexion(monkeypatch):
     assert cliente.post("/turnos-bodega", headers={"X-Perfil-Simulado": "BODEGA"}, json={
         "sede": "chimbas", "fecha": "2026-11-02", "cuit": "abc", "camiones": 1, "kg_por_camion": 11000,
     }).status_code == 422
+
+
+def test_busca_camiones_por_patente_sin_dni_y_lo_da_al_elegir(monkeypatch):
+    consultas = []
+
+    def leer(consulta, parametros):
+        consultas.append(parametros)
+        if "ultimo_chofer_dni" in consulta:
+            return [] if parametros["patente"] == "ZZ999ZZ" else [{
+                "patente": "AB123CD", "patente_acoplado": "AC456EF", "ultimo_chofer_dni": "30111222",
+                "ultimo_clientecuit": "20123456789", "razonsocial": "Finca Los Álamos"}]
+        return [{"patente": "AB123CD", "patente_acoplado": "AC456EF", "ultimo_chofer_nombre": "Juan Pérez",
+                 "razonsocial": "Finca Los Álamos"}]
+
+    monkeypatch.setattr(tablero_fila, "_leer", leer)
+    app = FastAPI()
+    app.include_router(tablero_fila.recepcion)
+    cliente = TestClient(app)
+    bascula = {"X-Perfil-Simulado": "BASCULA"}
+    assert cliente.get("/recepcion-datos/vehiculos?q=ab", headers=bascula).json() == []
+    lista = cliente.get("/recepcion-datos/vehiculos?q=ab 1", headers=bascula).json()
+    assert consultas == [{"patente": "AB1%"}]
+    assert lista == [{"patente": "AB123CD", "patente_acoplado": "AC456EF", "chofer": "Juan P.",
+                      "productor": "Finca Los Álamos"}]
+    elegido = cliente.get("/recepcion-datos/vehiculos/ab123cd", headers=bascula).json()
+    assert elegido == {"patente": "AB123CD", "patente_acoplado": "AC456EF", "chofer_dni": "30111222",
+                       "productor_cuit": "20123456789", "productor": "Finca Los Álamos"}
+    assert cliente.get("/recepcion-datos/vehiculos/zz999zz", headers=bascula).status_code == 404
+    assert cliente.get("/recepcion-datos/vehiculos?q=ab12",
+                       headers={"X-Perfil-Simulado": "MEDICO"}).status_code == 403
