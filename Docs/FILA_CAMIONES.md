@@ -33,3 +33,26 @@ El bot y los avisos proactivos continúan apagados hasta obtener credenciales y
 plantilla de Chattigo. Lavalle y Media Agua no se habilitan hasta que sus vistas
 Oracle existan y autoricen la IP del VPS. La capacidad y los certificados
 orgánicos deben cargarlos la bodega antes de ofrecer turnos.
+
+## Ofertas de uva de la temporada (infra/038)
+
+El bot ya no reserva días. En "Ofrecer uva" el productor elige la bodega y dice
+cuántos kilos ofrece de cada variedad para toda la temporada. La oferta queda
+pendiente en Gestión → Turnos de cosecha → Ofertas de la temporada, donde la
+bodega:
+
+- compara lo ofrecido con lo entregado en los últimos años (parámetro, 3 por
+  defecto) y ve la alerta cuando el total supera el promedio más el margen;
+- filtra por productores constantes, sólo del último año o sin entregas;
+- asigna los días corridos sin domingos con los kilos por día de ese productor
+  (quedan guardados para la próxima vez). Pasarse de la capacidad del día se
+  avisa pero no bloquea;
+- detiene una oferta por falta de grado (semanas configurables) o la desestima;
+- carga ofertas de productores nuevos con CUIT y nombre (alta preliminar).
+
+Al asignar se crean los turnos de cada día en `fila.turno` (los que ven el
+guardia y Báscula) y se encola un aviso en `fila.aviso_productor`; el worker del
+bot lo envía. Con Chattigo real, un aviso fuera de la ventana de 24 h necesita
+plantilla aprobada.
+
+Aplicar `infra/038_ofertas_uva.sql` en la DMZ antes de desplegar el bot y Gestión.

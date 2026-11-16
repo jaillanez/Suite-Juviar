@@ -1,49 +1,41 @@
 """Diálogo del bot. Función pura: no sabe de WhatsApp ni de bases.
 
 Reproduce el recorrido que el productor ya conoce —cuenta, estadísticas o
-reporte, período— y agrega la gestión de contactos y el pedido de turnos.
+reporte, período— y agrega la gestión de contactos y la oferta de uva de la temporada.
 Guarda dónde quedó cada teléfono para que "Últimos 3 meses" se entienda después
 de "Ver estadísticas".
 
-Los turnos se leen y se reservan a través de ``Turnos`` (inyectado): el diálogo no
-sabe de SQL, y las reglas del cupo las aplica la base.
+Las ofertas y los turnos se leen y se guardan a través de ``Turnos`` (inyectado): el
+diálogo no sabe de SQL. El bot no da días: la bodega los asigna desde Gestión.
 """
 from __future__ import annotations
 
 import unicodedata
 from dataclasses import dataclass, field, replace
-from datetime import date, timedelta
+from datetime import date
 
 from .periodos import Periodo, cosecha_de, interpretar
 from .turnos import (
-    CAMIONES_MAX,
-    DIAS_A_MIRAR,
-    DIAS_MAXIMOS,
-    DIAS_OFRECIDOS,
-    KG_MAX_CAMION,
-    KG_MIN_CAMION,
-    KG_POR_DEFECTO,
+    KG_MAX_OFERTA,
+    KG_MIN_OFERTA,
     NOMBRE_SEDE,
     SEDES,
+    VARIEDADES_MOSTRADAS,
     Borrador,
-    TurnoRechazado,
+    OfertaRechazada,
     Turnos,
     dia_corto,
     dia_largo,
-    entero_escrito,
-    fecha_escrita,
     kilos_escritos,
     miles,
     motivo_en_palabras,
-    toneladas,
 )
 
 MENU, PERIODO, CUENTA = "menu", "periodo", "cuenta"
 ESTADISTICAS, REPORTE, CONTACTOS = "estadisticas", "reporte", "contactos"
-PEDIR_TURNO, MIS_TURNOS, CAMBIAR_CUENTA = "pedir_turno", "mis_turnos", "cambiar_cuenta"
-TURNO_CUENTA, TURNO_SEDE, TURNO_DIA = "turno_cuenta", "turno_sede", "turno_dia"
-TURNO_CAMIONES, TURNO_KG = "turno_camiones", "turno_kg"
-TURNO_ORGANICA, TURNO_CONFIRMAR = "turno_organica", "turno_confirmar"
+OFRECER_UVA, MIS_TURNOS, CAMBIAR_CUENTA = "ofrecer_uva", "mis_turnos", "cambiar_cuenta"
+OFERTA_CUENTA, OFERTA_SEDE, OFERTA_VARIEDAD = "oferta_cuenta", "oferta_sede", "oferta_variedad"
+OFERTA_KG, OFERTA_ORGANICA, OFERTA_CONFIRMAR = "oferta_kg", "oferta_organica", "oferta_confirmar"
 TAREA_TURNOS = "pedir_turnos"
 
 NO_REGISTRADO = (
@@ -52,7 +44,7 @@ NO_REGISTRADO = (
     "que te invite."
 )
 SIN_PERMISO_INFORMES = (
-    "Este número puede pedir turnos, pero no ver entregas.\n"
+    "Este número puede ofrecer uva y ver sus turnos, pero no ver entregas.\n"
     "Si necesitás los informes, pedíselo a quien administra los contactos."
 )
 CADUCADO = "Pasó un rato desde tu última consulta. Empecemos de nuevo."
@@ -61,7 +53,7 @@ MINUTOS_SESION = 30
 _ETIQUETAS = {
     ESTADISTICAS: "Ver estadísticas",
     REPORTE: "Descargar reporte",
-    PEDIR_TURNO: "Pedir turno",
+    OFRECER_UVA: "Ofrecer uva",
     MIS_TURNOS: "Mis turnos",
     CONTACTOS: "Mis contactos",
     CAMBIAR_CUENTA: "Cambiar de cuenta",
@@ -86,7 +78,7 @@ class Estado:
     paso: str = MENU
     cuenta: str | None = None      # clientecuit elegido
     pedido: str | None = None      # estadisticas | reporte
-    turno: Borrador | None = None  # pedido de turno en curso
+    turno: Borrador | None = None  # oferta de uva en curso
 
 
 @dataclass
@@ -117,7 +109,7 @@ class _Contexto:
     def menu(self) -> list[str]:
         claves = [ESTADISTICAS, REPORTE] if self.informes else []
         if self.cuentas_turno:
-            claves += [PEDIR_TURNO, MIS_TURNOS]
+            claves += [OFRECER_UVA, MIS_TURNOS]
         claves.append(CONTACTOS)
         if len(self.cuentas) > 1:
             claves.append(CAMBIAR_CUENTA)
@@ -171,7 +163,7 @@ def responder(
     hoy_turnos: date | None = None,
 ) -> Respuesta:
     """``hoy`` es la fecha de las estadísticas (puede estar simulada);
-    ``hoy_turnos`` es la fecha real de San Juan, la única que vale para turnos."""
+    ``hoy_turnos`` es la fecha real de San Juan, la única que vale para ofertas y turnos."""
     if not cuentas:
         return Respuesta(NO_REGISTRADO)
     cuentas_turno = (
@@ -197,10 +189,10 @@ def responder(
             return _menu(elegida or cuentas[0], ctx)
         return _pedir_cuenta(cuentas)
 
-    if estado.paso == TURNO_CUENTA and cuentas_turno:
+    if estado.paso == OFERTA_CUENTA and cuentas_turno:
         indice = _opcion_elegida(t, [c.como_opcion() for c in cuentas_turno])
         if indice is None:
-            return _pedir_cuenta_turno(cuentas_turno)
+            return _pedir_cuenta_oferta(cuentas_turno)
         return _pedir_sede(cuentas_turno[indice])
 
     if estado.paso == CUENTA or elegida is None:
@@ -213,12 +205,17 @@ def responder(
             elegida = cuentas[indice]
             return _menu(elegida, ctx)
 
+    # Una sesión del pedido de turno por día (anterior a las ofertas) vuelve al menú.
     if estado.paso.startswith("turno_"):
+        return _menu(elegida, ctx)
+    if estado.paso.startswith("oferta_"):
         if elegida not in cuentas_turno or ctx.turnos is None:
             return _menu(elegida, ctx)
         if t in {"cancelar", "salir"}:
-            return _menu(elegida, ctx, "Listo, no pedí ningún turno.")
-        return _paso_turno(texto, t, elegida, estado.paso, estado.turno or Borrador(), ctx)
+            return _menu(elegida, ctx, "Listo, no envié ninguna oferta.")
+        if estado.turno is None:
+            return _pedir_sede(elegida)
+        return _paso_oferta(texto, t, elegida, estado.paso, estado.turno, ctx)
 
     if estado.paso == PERIODO and estado.pedido and ctx.informes:
         periodo = interpretar(texto, hoy)
@@ -245,8 +242,8 @@ def responder(
         return _pedir_periodo(Estado(PERIODO, elegida.clientecuit, ESTADISTICAS), hoy)
     if clave == REPORTE:
         return _pedir_periodo(Estado(PERIODO, elegida.clientecuit, REPORTE), hoy)
-    if clave == PEDIR_TURNO and cuentas_turno:
-        return _iniciar_turno(elegida, ctx)
+    if clave == OFRECER_UVA and cuentas_turno:
+        return _iniciar_oferta(elegida, ctx)
     if clave == MIS_TURNOS and cuentas_turno:
         return _mis_turnos(elegida, ctx)
     if clave == CONTACTOS:
@@ -267,7 +264,9 @@ def _clave_por_palabras(t: str) -> str | None:
     if "reporte" in t or "pdf" in t:
         return REPORTE
     if "turno" in t:
-        return MIS_TURNOS if "mis" in t.split() else PEDIR_TURNO
+        return MIS_TURNOS
+    if "ofrecer" in t or "oferta" in t:
+        return OFRECER_UVA
     if "contacto" in t:
         return CONTACTOS
     return None
@@ -284,218 +283,149 @@ def _opcion_elegida(texto: str, opciones: list[str]) -> int | None:
     return None
 
 
-# --- Pedir turno -----------------------------------------------------------------
+# --- Ofrecer uva ------------------------------------------------------------------
 
 
-def _estado_turno(cuenta: Cuenta, paso: str, borrador: Borrador) -> Estado:
+def _con_aviso(aviso: str, texto: str) -> str:
+    return f"{aviso}\n{texto}" if aviso else texto
+
+
+def _estado_oferta(cuenta: Cuenta, paso: str, borrador: Borrador) -> Estado:
     return Estado(paso, cuenta.clientecuit, None, borrador)
 
 
-def _iniciar_turno(elegida: Cuenta, ctx: _Contexto) -> Respuesta:
-    # La cuenta del menú ya la eligió; sólo se pregunta si esa no puede pedir turnos.
+def _iniciar_oferta(elegida: Cuenta, ctx: _Contexto) -> Respuesta:
+    # La cuenta del menú ya la eligió; sólo se pregunta si esa no puede ofrecer.
     if elegida in ctx.cuentas_turno:
         return _pedir_sede(elegida)
     if len(ctx.cuentas_turno) == 1:
         return _pedir_sede(ctx.cuentas_turno[0])
-    return _pedir_cuenta_turno(ctx.cuentas_turno)
+    return _pedir_cuenta_oferta(ctx.cuentas_turno)
 
 
-def _pedir_cuenta_turno(cuentas_turno: list[Cuenta]) -> Respuesta:
+def _pedir_cuenta_oferta(cuentas_turno: list[Cuenta]) -> Respuesta:
     if not cuentas_turno:
-        return Respuesta(texto="Este número no tiene permiso para pedir turnos.")
+        return Respuesta(texto="Este número no tiene permiso para ofrecer uva.")
     return Respuesta(
-        texto="¿Para qué cuenta es el turno?",
+        texto="¿Para qué cuenta es la oferta?",
         opciones=[c.como_opcion() for c in cuentas_turno],
-        estado=Estado(TURNO_CUENTA, cuentas_turno[0].clientecuit),
+        estado=Estado(OFERTA_CUENTA, cuentas_turno[0].clientecuit),
     )
 
 
 def _pedir_sede(cuenta: Cuenta, aviso: str = "") -> Respuesta:
-    texto = f"Turno para {_nombre(cuenta)} ({cuenta.codigo}).\n¿En qué bodega vas a descargar?"
+    texto = (f"Oferta de uva de {_nombre(cuenta)} ({cuenta.codigo}) para toda la temporada.\n"
+             "¿En qué bodega vas a entregar?")
     return Respuesta(
-        texto=f"{aviso}\n{texto}" if aviso else texto,
+        texto=_con_aviso(aviso, texto),
         opciones=[nombre for _, nombre in SEDES],
-        estado=_estado_turno(cuenta, TURNO_SEDE, Borrador()),
+        estado=_estado_oferta(cuenta, OFERTA_SEDE, Borrador()),
     )
 
 
-def _pedir_dia(cuenta: Cuenta, borrador: Borrador, ctx: _Contexto, aviso: str = "") -> Respuesta:
-    assert ctx.turnos is not None and borrador.sede is not None
-    hoy = ctx.hoy_turnos
-    libres = ctx.turnos.libres(borrador.sede, hoy, hoy + timedelta(days=DIAS_A_MIRAR - 1))
-    minimo = _kilos_necesarios(borrador)
-    dias = [
-        (dia, kg) for dia, kg in sorted(libres.items()) if hoy <= dia and kg >= minimo
-    ][:DIAS_OFRECIDOS]
-    sede = NOMBRE_SEDE[borrador.sede]
-    if dias:
-        texto = f"¿Qué día? Estos son los próximos días con lugar en {sede}."
+def _lineas(borrador: Borrador) -> str:
+    return "\n".join(f"• {v}: {miles(kg)} kg" for v, kg in borrador.lineas)
+
+
+def _pedir_variedad(cuenta: Cuenta, borrador: Borrador, ctx: _Contexto, aviso: str = "") -> Respuesta:
+    assert ctx.turnos is not None
+    ya = {_normalizar(v) for v, _ in borrador.lineas}
+    opciones = [v for v in ctx.turnos.variedades(cuenta.clientecuit)
+                if _normalizar(v) not in ya][:VARIEDADES_MOSTRADAS]
+    if borrador.lineas:
+        texto = (f"Anotado hasta ahora:\n{_lineas(borrador)}\n"
+                 "¿Ofrecés otra variedad? Si no, elegí «Listo, no hay más».")
+        extra = ["Listo, no hay más"]
     else:
-        texto = f"En {sede} no quedan días con lugar en las próximas dos semanas."
-    texto += '\nTambién podés escribir la fecha, por ejemplo "30/10".'
+        texto = "¿Qué variedad ofrecés? Después te pregunto por las otras."
+        extra = []
+    texto += "\nSi no está en la lista, escribí el nombre."
     return Respuesta(
-        texto=f"{aviso}\n{texto}" if aviso else texto,
-        opciones=[f"{dia_corto(dia, hoy)} — {toneladas(kg)} libres" for dia, kg in dias]
-        + ["Otra bodega"],
-        estado=_estado_turno(
-            cuenta, TURNO_DIA, replace(borrador, fecha=None, dias=tuple(d for d, _ in dias))
-        ),
-    )
-
-
-def _kilos_necesarios(borrador: Borrador) -> int:
-    """Lo mínimo que tiene que quedar libre: un camión, o el pedido entero si ya lo dijo."""
-    if borrador.camiones and borrador.kg_por_camion:
-        return borrador.camiones * borrador.kg_por_camion
-    return KG_MIN_CAMION
-
-
-def _pedir_camiones(cuenta: Cuenta, borrador: Borrador, libres: int, aviso: str = "") -> Respuesta:
-    assert borrador.fecha is not None and borrador.sede is not None
-    texto = (
-        f"{NOMBRE_SEDE[borrador.sede]}, {dia_largo(borrador.fecha)}: "
-        f"quedan {toneladas(libres)} libres.\n"
-        f"¿Cuántos camiones vas a mandar? Escribí un número del 1 al {CAMIONES_MAX}."
-    )
-    return Respuesta(
-        texto=f"{aviso}\n{texto}" if aviso else texto,
-        estado=_estado_turno(cuenta, TURNO_CAMIONES, borrador),
+        texto=_con_aviso(aviso, texto),
+        opciones=opciones + extra,
+        estado=_estado_oferta(cuenta, OFERTA_VARIEDAD,
+                              replace(borrador, variedad=None, opciones=tuple(opciones))),
     )
 
 
 def _pedir_kg(cuenta: Cuenta, borrador: Borrador, aviso: str = "") -> Respuesta:
-    sugerido = borrador.kg_sugerido or KG_POR_DEFECTO
-    texto = (
-        f"¿Cuántos kilos trae cada camión, más o menos? Calculamos {miles(sugerido)} kg.\n"
-        f"Si es otro valor, escribilo (entre {miles(KG_MIN_CAMION)} y "
-        f"{miles(KG_MAX_CAMION)} kg)."
-    )
-    return Respuesta(
-        texto=f"{aviso}\n{texto}" if aviso else texto,
-        opciones=[f"Sí, {miles(sugerido)} kg por camión"],
-        estado=_estado_turno(cuenta, TURNO_KG, replace(borrador, kg_sugerido=sugerido)),
-    )
+    texto = (f"¿Cuántos kilos de {borrador.variedad} ofrecés para toda la temporada?\n"
+             'Escribilo en kilos o en toneladas, por ejemplo "80.000" o "80 t".')
+    return Respuesta(texto=_con_aviso(aviso, texto), estado=_estado_oferta(cuenta, OFERTA_KG, borrador))
 
 
 def _pedir_organica(cuenta: Cuenta, borrador: Borrador, aviso: str = "") -> Respuesta:
-    texto = "¿La uva de estos camiones es orgánica?"
     return Respuesta(
-        texto=f"{aviso}\n{texto}" if aviso else texto,
+        texto=_con_aviso(aviso, "¿Esta uva es orgánica?"),
         opciones=["Sí, orgánica", "No"],
-        estado=_estado_turno(cuenta, TURNO_ORGANICA, borrador),
+        estado=_estado_oferta(cuenta, OFERTA_ORGANICA, borrador),
     )
 
 
 def _resumen(cuenta: Cuenta, borrador: Borrador, aviso: str = "") -> Respuesta:
-    assert borrador.sede and borrador.fecha and borrador.camiones and borrador.kg_por_camion
-    total = borrador.camiones * borrador.kg_por_camion
-    camiones = "camión" if borrador.camiones == 1 else "camiones"
+    assert borrador.sede and borrador.lineas
     texto = (
-        "Revisá el pedido:\n"
+        "Revisá tu oferta:\n"
         f"Cuenta: {_nombre(cuenta)} ({cuenta.codigo})\n"
         f"Bodega: {NOMBRE_SEDE[borrador.sede]}\n"
-        f"Día: {dia_largo(borrador.fecha)}\n"
-        f"Camiones: {borrador.camiones} {camiones} de {miles(borrador.kg_por_camion)} kg "
-        f"({miles(total)} kg en total)\n"
-        f"Uva orgánica: {'sí' if borrador.organica else 'no'}\n"
-        "¿Pido el turno?"
+        f"{_lineas(borrador)}\n"
+        f"Total: {miles(borrador.total)} kg\n"
+        + (f"Uva orgánica: {'sí' if borrador.organica else 'no'}\n" if borrador.organica is not None else "")
+        + "La bodega la revisa y te avisa por acá qué días te toca entregar.\n¿La envío?"
     )
     return Respuesta(
-        texto=f"{aviso}\n{texto}" if aviso else texto,
-        opciones=["Sí, pedir el turno", "No, cancelar"],
-        estado=_estado_turno(cuenta, TURNO_CONFIRMAR, borrador),
+        texto=_con_aviso(aviso, texto),
+        opciones=["Sí, enviar la oferta", "No, cancelar"],
+        estado=_estado_oferta(cuenta, OFERTA_CONFIRMAR, borrador),
     )
 
 
-def _despues_del_dia(cuenta: Cuenta, borrador: Borrador, libres: int, ctx: _Contexto) -> Respuesta:
-    # Si vuelve a elegir día después de un rechazo, no se le preguntan de nuevo los camiones.
-    if borrador.camiones and borrador.kg_por_camion:
-        return _despues_de_los_kilos(cuenta, borrador, ctx)
-    return _pedir_camiones(cuenta, borrador, libres)
-
-
-def _despues_de_los_kilos(cuenta: Cuenta, borrador: Borrador, ctx: _Contexto) -> Respuesta:
-    assert ctx.turnos is not None and borrador.fecha is not None
-    if ctx.turnos.tiene_organico(cuenta.clientecuit, borrador.fecha):
+def _terminar_variedades(cuenta: Cuenta, borrador: Borrador, ctx: _Contexto) -> Respuesta:
+    assert ctx.turnos is not None
+    if ctx.turnos.tiene_organico(cuenta.clientecuit, ctx.hoy_turnos):
         return _pedir_organica(cuenta, borrador)
-    return _resumen(cuenta, replace(borrador, organica=False))
+    return _resumen(cuenta, replace(borrador, organica=None))
 
 
-def _elegir_fecha(
-    cuenta: Cuenta, borrador: Borrador, fecha: date, ctx: _Contexto
-) -> Respuesta:
-    assert ctx.turnos is not None and borrador.sede is not None
-    hoy = ctx.hoy_turnos
-    sede = NOMBRE_SEDE[borrador.sede]
-    if fecha < hoy:
-        return _pedir_dia(cuenta, borrador, ctx, "Ese día ya pasó.")
-    if fecha > hoy + timedelta(days=DIAS_MAXIMOS):
-        return _pedir_dia(
-            cuenta, borrador, ctx,
-            f"Los turnos se piden con hasta {DIAS_MAXIMOS} días de anticipación.",
-        )
-    libres = ctx.turnos.libres(borrador.sede, fecha, fecha).get(fecha)
-    if libres is None:
-        return _pedir_dia(
-            cuenta, borrador, ctx,
-            f"Para el {dia_largo(fecha)} la bodega todavía no definió el cupo de {sede}.",
-        )
-    if libres < KG_MIN_CAMION:
-        return _pedir_dia(
-            cuenta, borrador, ctx, f"El {dia_largo(fecha)} ya no queda lugar en {sede}."
-        )
-    if libres < _kilos_necesarios(borrador):
-        return _pedir_dia(
-            cuenta, borrador, ctx,
-            f"El {dia_largo(fecha)} quedan {toneladas(libres)} libres en {sede}: "
-            "no alcanza para tu pedido.",
-        )
-    return _despues_del_dia(cuenta, replace(borrador, fecha=fecha, dias=()), libres, ctx)
+def _variedad_escrita(texto: str | None) -> str | None:
+    limpio = " ".join((texto or "").split())
+    if not 2 <= len(limpio) <= 60 or not any(c.isalpha() for c in limpio):
+        return None
+    return limpio[0].upper() + limpio[1:]
 
 
-def _paso_turno(
+def _paso_oferta(
     texto: str | None, t: str, cuenta: Cuenta, paso: str, borrador: Borrador, ctx: _Contexto
 ) -> Respuesta:
     assert ctx.turnos is not None
-    if paso == TURNO_SEDE or borrador.sede is None:
+    if paso == OFERTA_SEDE or borrador.sede is None:
         indice = _opcion_elegida(t, [nombre for _, nombre in SEDES])
         if indice is None:
-            return _pedir_sede(cuenta, "No entendí la bodega." if paso == TURNO_SEDE else "")
-        return _pedir_dia(cuenta, Borrador(sede=SEDES[indice][0]), ctx)
+            return _pedir_sede(cuenta, "No entendí la bodega.")
+        return _pedir_variedad(cuenta, replace(borrador, sede=SEDES[indice][0]), ctx)
 
-    if paso == TURNO_DIA or borrador.fecha is None:
-        opciones = [str(i) for i in range(1, len(borrador.dias) + 2)]
-        if t in opciones and int(t) == len(borrador.dias) + 1 or t == "otra bodega":
-            return _pedir_sede(cuenta)
-        if t in opciones:
-            return _elegir_fecha(cuenta, borrador, borrador.dias[int(t) - 1], ctx)
-        fecha = fecha_escrita(texto, ctx.hoy_turnos)
-        if fecha is None:
-            return _pedir_dia(cuenta, borrador, ctx, "No entendí el día.")
-        return _elegir_fecha(cuenta, borrador, fecha, ctx)
+    if paso == OFERTA_VARIEDAD:
+        opciones = list(borrador.opciones) + (["Listo, no hay más"] if borrador.lineas else [])
+        indice = _opcion_elegida(t, opciones)
+        if t in {"listo", "no", "ninguna"} or (borrador.lineas and indice == len(opciones) - 1):
+            if not borrador.lineas:
+                return _pedir_variedad(cuenta, borrador, ctx, "Todavía no anotaste ninguna variedad.")
+            return _terminar_variedades(cuenta, borrador, ctx)
+        variedad = opciones[indice] if indice is not None else _variedad_escrita(texto)
+        if variedad is None:
+            return _pedir_variedad(cuenta, borrador, ctx, "No entendí la variedad.")
+        return _pedir_kg(cuenta, replace(borrador, variedad=variedad))
 
-    if paso == TURNO_CAMIONES:
-        camiones = entero_escrito(texto)
-        if camiones is None or not 1 <= camiones <= CAMIONES_MAX:
-            libres = ctx.turnos.libres(borrador.sede, borrador.fecha, borrador.fecha).get(
-                borrador.fecha, 0
-            )
-            return _pedir_camiones(
-                cuenta, borrador, libres, f"Tiene que ser un número entre 1 y {CAMIONES_MAX}."
-            )
-        sugerido = min(max(ctx.turnos.kg_estimado(cuenta.clientecuit), KG_MIN_CAMION), KG_MAX_CAMION)
-        return _pedir_kg(cuenta, replace(borrador, camiones=camiones, kg_sugerido=sugerido))
+    if paso == OFERTA_KG and borrador.variedad:
+        kilos = kilos_escritos(texto)
+        if kilos is None or not KG_MIN_OFERTA <= kilos <= KG_MAX_OFERTA:
+            return _pedir_kg(cuenta, borrador,
+                             f"No me cerró ese valor: tiene que ser de {miles(KG_MIN_OFERTA)} kg en adelante.")
+        otras = tuple(linea for linea in borrador.lineas
+                      if _normalizar(linea[0]) != _normalizar(borrador.variedad))
+        return _pedir_variedad(cuenta, replace(borrador, lineas=otras + ((borrador.variedad, kilos),)), ctx)
 
-    if paso == TURNO_KG:
-        if t == "1" or t in _SI or t.startswith("si,"):
-            kilos: int | None = borrador.kg_sugerido or KG_POR_DEFECTO
-        else:
-            kilos = kilos_escritos(texto)
-        if kilos is None or not KG_MIN_CAMION <= kilos <= KG_MAX_CAMION:
-            return _pedir_kg(cuenta, borrador, "No me cerró ese valor.")
-        return _despues_de_los_kilos(cuenta, replace(borrador, kg_por_camion=kilos), ctx)
-
-    if paso == TURNO_ORGANICA:
+    if paso == OFERTA_ORGANICA:
         indice = _opcion_elegida(t, ["Sí, orgánica", "No"])
         if indice == 0 or t in _SI or t == "organica":
             return _resumen(cuenta, replace(borrador, organica=True))
@@ -503,63 +433,76 @@ def _paso_turno(
             return _resumen(cuenta, replace(borrador, organica=False))
         return _pedir_organica(cuenta, borrador, "Respondé 1 (sí) o 2 (no).")
 
-    if paso == TURNO_CONFIRMAR:
-        indice = _opcion_elegida(t, ["Sí, pedir el turno", "No, cancelar"])
+    if paso == OFERTA_CONFIRMAR and borrador.lineas:
+        indice = _opcion_elegida(t, ["Sí, enviar la oferta", "No, cancelar"])
         if indice == 1 or t in _NO:
-            return _menu(cuenta, ctx, "Listo, no pedí ningún turno.")
+            return _menu(cuenta, ctx, "Listo, no envié ninguna oferta.")
         if indice != 0 and t not in _SI:
-            return _resumen(cuenta, borrador, "Respondé 1 para pedir el turno o 2 para cancelar.")
-        return _reservar(cuenta, borrador, ctx)
+            return _resumen(cuenta, borrador, "Respondé 1 para enviar la oferta o 2 para cancelar.")
+        return _enviar(cuenta, borrador, ctx)
 
     return _menu(cuenta, ctx)
 
 
-def _reservar(cuenta: Cuenta, borrador: Borrador, ctx: _Contexto) -> Respuesta:
-    assert ctx.turnos is not None
-    assert borrador.sede and borrador.fecha and borrador.camiones and borrador.kg_por_camion
+def _enviar(cuenta: Cuenta, borrador: Borrador, ctx: _Contexto) -> Respuesta:
+    assert ctx.turnos is not None and borrador.sede
     try:
-        turno = ctx.turnos.reservar(
-            cuenta.clientecuit,
-            cuenta.codigo,
-            borrador.sede,
-            borrador.fecha,
-            borrador.camiones,
-            borrador.kg_por_camion,
-            bool(borrador.organica),
-        )
-    except TurnoRechazado as exc:
-        aviso = f"No pude pedir el turno: {motivo_en_palabras(str(exc))}\nElegí otro día."
-        return _pedir_dia(cuenta, borrador, ctx, aviso)
-    camiones = "camión" if turno.camiones == 1 else "camiones"
+        # El mismo pedido y variedad no se duplican: si se reintenta, la base devuelve la misma.
+        for variedad, kg in borrador.lineas:
+            ctx.turnos.ofrecer(borrador.pedido, cuenta.clientecuit, cuenta.codigo, borrador.sede,
+                               variedad, kg, bool(borrador.organica))
+    except OfertaRechazada as exc:
+        return _menu(cuenta, ctx, f"No pude enviar la oferta: {motivo_en_palabras(str(exc))}")
     aviso = (
-        f"¡Listo! Turno N° {turno.id} pedido.\n"
-        f"{NOMBRE_SEDE.get(turno.sede, turno.sede)}, {dia_largo(turno.fecha)}: "
-        f"{turno.camiones} {camiones} de {miles(turno.kg_por_camion)} kg"
-        + (", uva orgánica" if turno.organica else "")
-        + '.\nLo podés ver cuando quieras en "Mis turnos".'
+        f"¡Listo! Tu oferta de {miles(borrador.total)} kg para {NOMBRE_SEDE[borrador.sede]} quedó enviada.\n"
+        'La bodega te va a avisar por acá los días. Mientras tanto la ves en "Mis turnos".'
     )
     return _menu(cuenta, ctx, aviso)
+
+
+_ESTADO_OFERTA = {
+    "pendiente": "esperando que la bodega asigne los días",
+    "asignada": "con días asignados",
+}
 
 
 def _mis_turnos(elegida: Cuenta, ctx: _Contexto) -> Respuesta:
     assert ctx.turnos is not None
     hoy = ctx.hoy_turnos
-    proximos = ctx.turnos.proximos([c.clientecuit for c in ctx.cuentas_turno], hoy)
-    if not proximos:
-        return _menu(elegida, ctx, "No tenés turnos pedidos de hoy en adelante.")
+    cuits = [c.clientecuit for c in ctx.cuentas_turno]
     varias = len(ctx.cuentas_turno) > 1
-    lineas = []
-    for turno in proximos:
-        camiones = "camión" if turno.camiones == 1 else "camiones"
-        linea = (
-            f"• {dia_corto(turno.fecha, hoy)} — {NOMBRE_SEDE.get(turno.sede, turno.sede)} — "
-            f"{turno.camiones} {camiones} de {miles(turno.kg_por_camion)} kg"
-        )
-        if turno.organica:
-            linea += ", orgánica"
-        if turno.camiones_usados:
-            linea += f" (ya llegaron {turno.camiones_usados})"
-        if varias and turno.codigo:
-            linea += f" — {turno.codigo}"
-        lineas.append(linea)
-    return _menu(elegida, ctx, "Tus próximos turnos:\n" + "\n".join(lineas))
+    ofertas = ctx.turnos.ofertas(cuits)
+    proximos = ctx.turnos.proximos(cuits, hoy)
+    if not ofertas and not proximos:
+        return _menu(elegida, ctx, "No tenés ofertas ni turnos de hoy en adelante.")
+    partes = []
+    if ofertas:
+        lineas = []
+        for o in ofertas:
+            if o.estado == "detenida":
+                estado = ("postergada por falta de grado"
+                          + (f" hasta el {dia_largo(o.detenida_hasta)}" if o.detenida_hasta else ""))
+            else:
+                estado = _ESTADO_OFERTA.get(o.estado, o.estado)
+            linea = f"• {o.variedad}, {miles(o.kg)} kg en {NOMBRE_SEDE.get(o.sede, o.sede)}: {estado}"
+            if varias and o.codigo:
+                linea += f" — {o.codigo}"
+            lineas.append(linea)
+        partes.append("Tus ofertas:\n" + "\n".join(lineas))
+    if proximos:
+        lineas = []
+        for turno in proximos:
+            camiones = "camión" if turno.camiones == 1 else "camiones"
+            linea = (
+                f"• {dia_corto(turno.fecha, hoy)} — {NOMBRE_SEDE.get(turno.sede, turno.sede)} — "
+                f"{turno.camiones} {camiones} de {miles(turno.kg_por_camion)} kg"
+            )
+            if turno.organica:
+                linea += ", orgánica"
+            if turno.camiones_usados:
+                linea += f" (ya llegaron {turno.camiones_usados})"
+            if varias and turno.codigo:
+                linea += f" — {turno.codigo}"
+            lineas.append(linea)
+        partes.append("Tus próximos días:\n" + "\n".join(lineas))
+    return _menu(elegida, ctx, "\n\n".join(partes))

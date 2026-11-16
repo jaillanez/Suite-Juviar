@@ -12,7 +12,7 @@ from psycopg.types.json import Jsonb
 from .archivos import Archivo
 from .dialogo import MINUTOS_SESION, Cuenta, Estado
 from .meta import MensajeEntrante
-from .turnos import KG_POR_DEFECTO, Borrador, TurnoRechazado, TurnoVigente
+from .turnos import Borrador, OfertaRechazada, OfertaVigente, TurnoVigente
 
 
 class RepositorioWebhook:
@@ -237,6 +237,16 @@ class RepositorioBot:
                 (error[:1000], maximo, maximo, id_),
             )
 
+    # --- Avisos de la bodega al productor (asignación de días, postergación) ------------
+
+    def tomar_avisos(self, lote: int = 10) -> list[dict]:
+        with self._conexion() as conexion:
+            return conexion.execute("SELECT * FROM fila.tomar_avisos(%s)", (lote,)).fetchall()
+
+    def marcar_aviso(self, id_: int, wamid: str | None, error: str | None) -> None:
+        with self._conexion() as conexion:
+            conexion.execute("SELECT fila.marcar_aviso(%s,%s,%s)", (id_, wamid, error))
+
     def registrar_consulta(self, clientecuit: str, recurso: str, filas: int) -> None:
         with self._conexion() as conexion:
             conexion.execute(
@@ -248,10 +258,10 @@ class RepositorioBot:
 
 
 class TurnosBot:
-    """Lecturas de cupo y reserva de turnos para un teléfono.
+    """Ofertas de uva y turnos de un teléfono.
 
-    La reserva pasa por ``fila.reservar_turno_whatsapp``: la base fija el canal y
-    deja el teléfono como actor, y aplica las mismas reglas que Gestión.
+    La oferta pasa por ``fila.ofrecer_uva_whatsapp``: la base fija el canal, deja el
+    teléfono como actor y comprueba que ese teléfono pueda ofrecer para la cuenta.
     """
 
     def __init__(self, dsn: str, telefono: str) -> None:
@@ -261,49 +271,56 @@ class TurnosBot:
     def _conexion(self) -> psycopg.Connection:
         return psycopg.connect(self._dsn, row_factory=dict_row, autocommit=True)
 
-    def libres(self, sede: str, desde: date, hasta: date) -> dict[date, int]:
-        with self._conexion() as conexion:
-            filas = conexion.execute(
-                """SELECT d.dia,
-                          COALESCE(c.kg_dia, g.kg_dia) AS capacidad,
-                          (SELECT COALESCE(sum(t.camiones::bigint * t.kg_por_camion), 0)
-                             FROM fila.turno t
-                            WHERE t.sede = %(sede)s AND t.fecha = d.dia
-                              AND t.estado = 'activo') AS reservado
-                   FROM generate_series(%(desde)s::date, %(hasta)s::date,
-                                        interval '1 day') AS s(momento)
-                   CROSS JOIN LATERAL (SELECT s.momento::date AS dia) d
-                   LEFT JOIN fila.capacidad c ON c.sede = %(sede)s AND c.fecha = d.dia
-                   LEFT JOIN fila.capacidad g ON g.sede = %(sede)s AND g.fecha IS NULL
-                   ORDER BY d.dia""",
-                {"sede": sede, "desde": desde, "hasta": hasta},
-            ).fetchall()
-        return {
-            f["dia"]: max(int(f["capacidad"]) - int(f["reservado"]), 0)
-            for f in filas
-            if f["capacidad"] is not None
-        }
-
     def tiene_organico(self, clientecuit: str, fecha: date) -> bool:
         with self._conexion() as conexion:
-            fila = conexion.execute(
+            return conexion.execute(
                 """SELECT 1 FROM fila.productor_organico
                    WHERE clientecuit=%s AND (vence IS NULL OR vence >= %s)""",
                 (clientecuit, fecha),
-            ).fetchone()
-        return fila is not None
+            ).fetchone() is not None
 
-    def kg_estimado(self, clientecuit: str) -> int:
-        """Promedio de los últimos netos, redondeado a la centena (como la fila)."""
+    def variedades(self, clientecuit: str) -> list[str]:
         with self._conexion() as conexion:
-            fila = conexion.execute(
-                """SELECT round(avg(neto), -2)::integer AS kg FROM (
-                       SELECT neto FROM consulta.descarga_publica
-                       WHERE clientecuit=%s AND estado='descargado' AND neto > 0
-                       ORDER BY fecha DESC NULLS LAST LIMIT 30) ultimas""",
+            filas = conexion.execute(
+                """SELECT initcap(btrim(variedad)) AS variedad FROM consulta.descarga_publica
+                   WHERE clientecuit=%s AND estado='descargado' AND neto > 0
+                     AND variedad IS NOT NULL AND btrim(variedad) <> ''
+                     AND fecha > now() - interval '3 years'
+                   GROUP BY 1 ORDER BY sum(neto) DESC LIMIT 12""",
                 (clientecuit,),
-            ).fetchone()
-        return fila["kg"] or KG_POR_DEFECTO
+            ).fetchall()
+        return [f["variedad"] for f in filas]
+
+    def ofrecer(
+        self, pedido: str, clientecuit: str, codigo: str, sede: str, variedad: str, kg: int,
+        organica: bool,
+    ) -> OfertaVigente:
+        try:
+            with self._conexion() as conexion:
+                fila = conexion.execute(
+                    """SELECT id,sede,clientecuit,clientecodigo,variedad,kg,estado,detenida_hasta
+                       FROM fila.ofrecer_uva_whatsapp(%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    (pedido, sede, clientecuit, codigo, variedad, kg, organica, self._telefono),
+                ).fetchone()
+        except psycopg.errors.RaiseException as exc:
+            # Sólo las reglas (P0001) se le muestran al productor; el resto se reintenta.
+            raise OfertaRechazada(exc.diag.message_primary or "") from exc
+        return _oferta(fila)
+
+    def ofertas(self, clientecuits: list[str]) -> list[OfertaVigente]:
+        if not clientecuits:
+            return []
+        with self._conexion() as conexion:
+            filas = conexion.execute(
+                """SELECT id,sede,clientecuit,clientecodigo,variedad,kg,estado,detenida_hasta
+                   FROM fila.oferta
+                   WHERE clientecuit = ANY(%s) AND estado <> 'desestimada'
+                     AND temporada = (SELECT max(temporada) FROM fila.oferta
+                                       WHERE clientecuit = ANY(%s))
+                   ORDER BY creado_en, id LIMIT 20""",
+                (clientecuits, clientecuits),
+            ).fetchall()
+        return [_oferta(f) for f in filas]
 
     def proximos(self, clientecuits: list[str], desde: date) -> list[TurnoVigente]:
         if not clientecuits:
@@ -319,29 +336,12 @@ class TurnosBot:
             ).fetchall()
         return [_turno(f) for f in filas]
 
-    def reservar(
-        self,
-        clientecuit: str,
-        codigo: str,
-        sede: str,
-        fecha: date,
-        camiones: int,
-        kg_por_camion: int,
-        organica: bool,
-    ) -> TurnoVigente:
-        try:
-            with self._conexion() as conexion:
-                fila = conexion.execute(
-                    """SELECT id,sede,fecha,clientecuit,clientecodigo,camiones,camiones_usados,
-                              kg_por_camion,declara_organica
-                       FROM fila.reservar_turno_whatsapp(%s,%s,%s,%s,%s,%s,%s,%s)""",
-                    (sede, fecha, clientecuit, codigo, camiones, kg_por_camion, organica,
-                     self._telefono),
-                ).fetchone()
-        except psycopg.errors.RaiseException as exc:
-            # Sólo las reglas (P0001) se le muestran al productor; el resto se reintenta.
-            raise TurnoRechazado(exc.diag.message_primary or "") from exc
-        return _turno(fila)
+
+def _oferta(f: dict) -> OfertaVigente:
+    return OfertaVigente(
+        id=f["id"], sede=f["sede"], clientecuit=f["clientecuit"], codigo=f["clientecodigo"],
+        variedad=f["variedad"], kg=f["kg"], estado=f["estado"], detenida_hasta=f["detenida_hasta"],
+    )
 
 
 def _turno(f: dict) -> TurnoVigente:

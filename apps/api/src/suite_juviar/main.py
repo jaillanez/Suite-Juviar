@@ -35,6 +35,7 @@ from suite_juviar.plataforma.terceros.api.conversaciones_bot import (
     router as conversaciones_bot_router,
 )
 from suite_juviar.plataforma.terceros.api.guardias import router as guardias_router
+from suite_juviar.plataforma.terceros.api.ofertas_uva import router as ofertas_uva_router
 from suite_juviar.plataforma.terceros.api.personal_bot import router as personal_bot_router
 from suite_juviar.plataforma.terceros.api.simulador_bot import router as simulador_bot_router
 from suite_juviar.plataforma.terceros.api.tablero_fila import configurar as configurar_tablero_fila
@@ -80,6 +81,7 @@ app.include_router(guardias_router, prefix="/api/v1")
 configurar_tablero_fila(os.getenv("SJ_FILA_DSN_DMZ_LECTURA", "").strip())
 app.include_router(tablero_fila_router, prefix="/api/v1")
 app.include_router(recepcion_datos_router, prefix="/api/v1")
+app.include_router(ofertas_uva_router, prefix="/api/v1")
 app.include_router(turnos_bodega_router, prefix="/api/v1")
 app.include_router(simulador_bot_router, prefix="/api/v1")
 app.include_router(conversaciones_bot_router, prefix="/api/v1")

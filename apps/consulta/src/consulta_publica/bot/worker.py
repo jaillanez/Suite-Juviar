@@ -178,7 +178,27 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
             log.warning("envío falló (intento %s): %s", pendiente.intentos + 1, exc)
             continue
         bot.cerrar(pendiente.id, "respondido", respuesta=texto, wamid_salida=wamid)
-    return len(pendientes)
+    return len(pendientes) + enviar_avisos(bot, salida)
+
+
+def enviar_avisos(bot, salida) -> int:
+    """Avisos que dejó la bodega al asignar o postergar días (infra/038)."""
+    if not hasattr(bot, "tomar_avisos"):
+        return 0
+    try:
+        avisos = bot.tomar_avisos()
+    except psycopg.Error as exc:  # base sin infra/038 todavía: no frena las respuestas
+        log.warning("no se pudieron leer los avisos: %s", exc.__class__.__name__)
+        return 0
+    for aviso in avisos:
+        try:
+            wamid = salida.enviar_texto(aviso["telefono"], aviso["texto"])
+        except (ErrorChattigo, transporte.ErrorTransporte, RuntimeError, ValueError, OSError) as exc:
+            bot.marcar_aviso(aviso["id"], None, str(exc))
+            log.warning("aviso %s no salió: %s", aviso["id"], exc)
+            continue
+        bot.marcar_aviso(aviso["id"], wamid, None)
+    return len(avisos)
 
 
 def _procesar_legacy(bot, consultas, salida, pendientes, hoy, maximo_hora: int) -> int:
