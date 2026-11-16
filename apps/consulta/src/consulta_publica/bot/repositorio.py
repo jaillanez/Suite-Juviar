@@ -58,7 +58,7 @@ class RepositorioBot:
         self._dsn = dsn
 
     def _conexion(self) -> psycopg.Connection:
-        return psycopg.connect(self._dsn, row_factory=dict_row, autocommit=True)
+        return psycopg.connect(self._dsn, row_factory=dict_row, autocommit=True, connect_timeout=10)
 
     def tomar(self, lote: int = 20) -> list[Pendiente]:
         with self._conexion() as conexion:

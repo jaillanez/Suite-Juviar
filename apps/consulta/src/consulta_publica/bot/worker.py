@@ -202,14 +202,17 @@ def enviar_avisos(bot, salida) -> int:
             wamid, error = None, str(exc)
             log.warning("aviso %s no salió: %s", aviso["id"], exc)
         # Si ya salió y no se puede anotar, se insiste: si no, se reenviaría al vencer la reserva.
-        for intento in range(3):
+        # Una falla sin anotar no hace falta reintentarla: igual espera la reserva.
+        intentos = 3 if error is None else 1
+        for intento in range(intentos):
             try:
                 bot.marcar_aviso(aviso["id"], wamid, error)
                 break
             except psycopg.Error as exc:
                 log.warning("no se pudo marcar el aviso %s (intento %s): %s",
                             aviso["id"], intento + 1, exc.__class__.__name__)
-                time.sleep(0.5 * (intento + 1))
+                if intento + 1 < intentos and _seguir:
+                    time.sleep(0.5 * (intento + 1))
     return enviados
 
 

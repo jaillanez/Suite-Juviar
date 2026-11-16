@@ -246,3 +246,22 @@ def test_si_no_se_puede_marcar_el_aviso_se_insiste_y_sigue_con_los_demas(monkeyp
     assert enviar_avisos(bot, salida) == 2
     assert salida.textos == ["Te asignamos los días", "Otro"]
     assert [m[0] for m in bot.marcas] == [1, 2] and bot.fallas == 2
+
+
+class BotQueNuncaMarca(BotConAvisos):
+    def __init__(self):
+        super().__init__()
+        self.llamadas = []
+
+    def marcar_aviso(self, id_, wamid, error):
+        self.llamadas.append(id_)
+        raise psycopg.OperationalError("caída")
+
+
+def test_marcar_se_insiste_solo_si_salio_y_sin_esperar_despues_del_ultimo(monkeypatch):
+    esperas = []
+    monkeypatch.setattr("consulta_publica.bot.worker.time.sleep", esperas.append)
+    bot = BotQueNuncaMarca()
+    assert enviar_avisos(bot, SalidaQueFallaUnaVez()) == 1
+    assert bot.llamadas == [1, 1, 1, 2]   # el que falló al enviar se anota una sola vez
+    assert esperas == [0.5, 1.0]
