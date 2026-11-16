@@ -38,6 +38,15 @@ class Falso:
     def reservar_turno(self, datos):
         return {"id": 1, **datos}
 
+    def sede_viaje(self, viaje_id):
+        return "chimbas" if viaje_id == 4 else None
+
+    def guardar_foto(self, viaje_id, contenido, tipo, actor):
+        self.fotos = getattr(self, "fotos", []) + [(viaje_id, len(contenido), tipo, actor)]
+
+    def sesion_organica(self, sede, abrir, actor):
+        return {"recibe": True, "abierta": abrir}
+
 
 def cliente(monkeypatch):
     monkeypatch.setenv("FILA_GUARDIA_TOKEN", GUARDIA_TOKEN)
@@ -172,3 +181,28 @@ def test_accion_desconocida_no_llega_al_repositorio(monkeypatch):
         },
     )
     assert respuesta.status_code == 404
+
+
+JPEG = b"\xff\xd8\xff\xe0" + b"0" * 2000
+
+
+def test_foto_de_patente_se_guarda_si_es_una_imagen(monkeypatch):
+    c, falso = cliente(monkeypatch)
+    h = {"x-guardia-token": GUARDIA_TOKEN, "content-type": "image/jpeg"}
+    assert c.post("/api/guardia/viajes/4/foto", content=JPEG, headers=h).status_code == 204
+    assert [f[:3] for f in falso.fotos] == [(4, len(JPEG), "image/jpeg")]
+    assert c.post("/api/guardia/viajes/4/foto", content=b"<html>" * 400, headers=h).status_code == 422
+    assert c.post("/api/guardia/viajes/4/foto", content=JPEG[:500], headers=h).status_code == 422
+    assert c.post("/api/guardia/viajes/4/foto", content=b"\xff\xd8\xff" + b"0" * 3_000_000,
+                  headers=h).status_code == 413
+    assert c.post("/api/guardia/viajes/5/foto", content=JPEG, headers=h).status_code == 404
+    assert c.post("/api/guardia/viajes/4/foto", content=JPEG).status_code == 403
+
+
+def test_sesion_organica_desde_la_guardia(monkeypatch):
+    c, _ = cliente(monkeypatch)
+    h = {"x-guardia-token": GUARDIA_TOKEN}
+    assert c.post("/api/guardia/chimbas/organica/abrir", headers=h).json() == {"recibe": True, "abierta": True}
+    assert c.post("/api/guardia/chimbas/organica/cerrar", headers=h).json()["abierta"] is False
+    assert c.post("/api/guardia/chimbas/organica/borrar", headers=h).status_code == 404
+    assert c.post("/api/guardia/chimbas/organica/abrir").status_code == 403

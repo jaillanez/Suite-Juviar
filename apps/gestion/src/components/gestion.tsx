@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { Empresa, gruposMenu, nombres, puedeEntrar, Perfil, perfiles, Seccion } from "@/lib/acceso";
 import { api, ErrorApi } from "@/lib/api";
 import { UsuariosGestion } from "./usuarios-gestion";
+import { ConfigOrganica } from "./sesion-organica";
 import { ResumenFila, TableroFila } from "./tablero-fila";
 import { CalendarioCosecha } from "./calendario-cosecha";
 import { OfertasUva } from "./ofertas-uva";
@@ -95,11 +96,12 @@ function PrimerIngreso({ listo }: { listo: (yo: Yo) => void }) {
 }
 
 function TurnosCosecha() {
-  const [pestana, setPestana] = useState<"ofertas" | "calendario">("ofertas");
+  const [pestana, setPestana] = useState<"ofertas" | "calendario" | "organica">("ofertas");
+  const descripcion = { ofertas: "Lo que ofrece cada productor para la temporada y los días que le asigna la bodega.", calendario: "Cuántos kilos recibe cada bodega por día y qué productores vienen. Tocá un día para anotar.", organica: "Cuándo se recibe sólo uva orgánica en cada bodega y quién abre y cierra la sesión." }[pestana];
   return <>
-    <Encabezado titulo="Turnos de cosecha" descripcion={pestana === "ofertas" ? "Lo que ofrece cada productor para la temporada y los días que le asigna la bodega." : "Cuántos kilos recibe cada bodega por día y qué productores vienen. Tocá un día para anotar."} />
-    <Pestanas activa={pestana} cambiar={setPestana} opciones={[["ofertas", "Ofertas de la temporada"], ["calendario", "Calendario"]] as const} />
-    {pestana === "ofertas" ? <OfertasUva /> : <CalendarioCosecha />}
+    <Encabezado titulo="Turnos de cosecha" descripcion={descripcion} />
+    <Pestanas activa={pestana} cambiar={setPestana} opciones={[["ofertas", "Ofertas de la temporada"], ["calendario", "Calendario"], ["organica", "Sesión orgánica"]] as const} />
+    {pestana === "ofertas" ? <OfertasUva /> : pestana === "calendario" ? <CalendarioCosecha /> : <ConfigOrganica />}
   </>;
 }
 
@@ -147,13 +149,13 @@ function Personal() {
   return <><Encabezado titulo="Personal en el bot" descripcion="Celulares del personal y de los mandos medios de Juviar-ENAV que el bot reconoce." /><PersonalBot /></>;
 }
 
-function Produccion({ area }: { area: "recepcion" | "fila" | "bot" }) {
+function Produccion({ area, perfil }: { area: "recepcion" | "fila" | "bot"; perfil?: Perfil }) {
   const textos = {
     recepcion: ["Recepción", "Ingreso de camiones y apertura de romaneos."],
     fila: ["Fila de camiones", "Llamados, confirmaciones y pantalla de espera del portón."],
     bot: ["Conversaciones del bot", "Lo que la gente le escribe al bot de WhatsApp y lo que el bot le responde."],
   } as const;
-  return <><Encabezado titulo={textos[area][0]} descripcion={textos[area][1]} />{area === "fila" && <TableroFila />}<ProduccionGestion area={area} /></>;
+  return <><Encabezado titulo={textos[area][0]} descripcion={textos[area][1]} />{area === "fila" && <TableroFila puedeOperarOrganica={perfil === "BASCULA" || perfil === "SUPERADMIN"} />}<ProduccionGestion area={area} /></>;
 }
 
 function Configuracion({ sesion, guardar }: { sesion: { empresa: Empresa; perfil: Perfil }; guardar: (empresa: Empresa, perfil: Perfil) => void }) {
@@ -189,7 +191,7 @@ function Contenido({ seccion, sesion, guardar, actualizar }: { seccion: Seccion;
   if (seccion === "activos") return <><Encabezado titulo="Equipos y activos" descripcion="Bombas, maquinarias y demás bienes de planta: ubicación, traslados, reparaciones externas y etiquetas con código de barras." /><ActivosGestion /></>;
   if (seccion === "cosecha") return <TurnosCosecha />;
   if (seccion === "configuracion" && sesion.real) return <ConfiguracionReal sesion={sesion} actualizar={actualizar} />;
-  if (seccion === "inicio") return <Inicio empresa={sesion.empresa} nombre={sesion.nombre} perfil={sesion.perfil} />; if (seccion === "produccion") return <Produccion area="recepcion" />; if (seccion === "fila") return <Produccion area="fila" />; if (seccion === "bot") return <Produccion area="bot" />; if (seccion === "epp") return <Epp />; if (seccion === "analitica") return <Analitica />; if (seccion === "seleccion") return <Seleccion />; if (seccion === "capacitaciones") return <Capacitaciones />; if (seccion === "legajo") return <Legajo />; if (seccion === "salud") return <Salud />; if (seccion === "turnos") return <Turnos />; if (seccion === "contactos") return <Contactos />; if (seccion === "personal") return <Personal />; if (seccion === "configuracion") return <Configuracion sesion={sesion} guardar={guardar} />; return <Pendiente seccion={seccion} />;
+  if (seccion === "inicio") return <Inicio empresa={sesion.empresa} nombre={sesion.nombre} perfil={sesion.perfil} />; if (seccion === "produccion") return <Produccion area="recepcion" />; if (seccion === "fila") return <Produccion area="fila" perfil={sesion.perfil} />; if (seccion === "bot") return <Produccion area="bot" />; if (seccion === "epp") return <Epp />; if (seccion === "analitica") return <Analitica />; if (seccion === "seleccion") return <Seleccion />; if (seccion === "capacitaciones") return <Capacitaciones />; if (seccion === "legajo") return <Legajo />; if (seccion === "salud") return <Salud />; if (seccion === "turnos") return <Turnos />; if (seccion === "contactos") return <Contactos />; if (seccion === "personal") return <Personal />; if (seccion === "configuracion") return <Configuracion sesion={sesion} guardar={guardar} />; return <Pendiente seccion={seccion} />;
 }
 
 function AccesoDenegado({ perfil, seccion }: { perfil: Perfil; seccion: Seccion }) {

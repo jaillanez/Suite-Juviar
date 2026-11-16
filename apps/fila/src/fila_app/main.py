@@ -286,6 +286,54 @@ def alta_directa(
         raise HTTPException(409, str(exc)) from exc
 
 
+FOTO_MAXIMA = 3_000_000
+FOTO_MINIMA = 1_000
+
+
+def tipo_de_imagen(contenido: bytes) -> str | None:
+    """Reconoce la foto por sus primeros bytes, no por lo que dice el pedido."""
+    if contenido.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if contenido.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if contenido[:4] == b"RIFF" and contenido[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+@app.post("/api/guardia/viajes/{viaje_id}/foto", status_code=204)
+async def foto_patente(viaje_id: int, request: Request, sesion: Guardia, repositorio: GuardiaRepoDep):
+    sede = repositorio.sede_viaje(viaje_id)
+    if not sede:
+        raise HTTPException(404, "viaje inexistente")
+    if not sesion.puede_operar(sede):
+        raise HTTPException(403, "la sesión no corresponde a esta sede")
+    largo = request.headers.get("content-length")
+    if largo and largo.isdigit() and int(largo) > FOTO_MAXIMA:
+        raise HTTPException(413, "la foto es demasiado grande")
+    contenido = b""
+    async for parte in request.stream():
+        contenido += parte
+        if len(contenido) > FOTO_MAXIMA:
+            raise HTTPException(413, "la foto es demasiado grande")
+    tipo = tipo_de_imagen(contenido)
+    if len(contenido) < FOTO_MINIMA or not tipo:
+        raise HTTPException(422, "no llegó una foto válida")
+    repositorio.guardar_foto(viaje_id, contenido, tipo, sesion.actor)
+
+
+@app.post("/api/guardia/{sede}/organica/{accion}")
+def sesion_organica(sede: str, accion: str, sesion: Guardia, repositorio: GuardiaRepoDep):
+    if accion not in {"abrir", "cerrar"}:
+        raise HTTPException(404)
+    if not sesion.puede_operar(sede):
+        raise HTTPException(403, "la sesión no corresponde a esta sede")
+    try:
+        return repositorio.sesion_organica(sede, accion == "abrir", sesion.actor)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
 @app.post("/api/guardia/viajes/{viaje_id}/{accion}")
 def accionar(
     viaje_id: int,

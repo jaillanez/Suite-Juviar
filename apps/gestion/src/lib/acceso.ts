@@ -17,7 +17,7 @@ export const perfiles: Record<Perfil, { nombre: string; secciones: Seccion[] }> 
   MANTENIMIENTO: { nombre: "Mantenimiento", secciones: ["inicio", "activos", "configuracion"] },
   BODEGA: { nombre: "Administración de bodega", secciones: ["inicio", "produccion", "fila", "cosecha", "bot", "contactos", "configuracion"] },
   CAMPO: { nombre: "Recepción de campo", secciones: ["inicio", "produccion", "configuracion"] },
-  BASCULA: { nombre: "Operación de báscula", secciones: ["inicio", "produccion", "configuracion"] },
+  BASCULA: { nombre: "Operación de báscula", secciones: ["inicio", "produccion", "fila", "configuracion"] },
   // Entrega EPP desde el celular (/celular); en la computadora sólo ve su cuenta.
   DEPOSITO: { nombre: "Depósito (entrega de EPP)", secciones: ["inicio", "configuracion"] },
 };
