@@ -1,11 +1,17 @@
-from datetime import date, datetime
+from datetime import date
 
 import psycopg
 from consulta_publica.api.archivos import configurar, router
-from consulta_publica.bot.conversacion import ZONA
-from consulta_publica.bot.dialogo import PERIODO, TURNO_DIA, TURNO_SEDE, Cuenta, Estado
+from consulta_publica.bot.dialogo import (
+    OFERTA_SEDE,
+    OFERTA_VARIEDAD,
+    PERIODO,
+    Cuenta,
+    Estado,
+)
 from consulta_publica.bot.repositorio import Pendiente
-from consulta_publica.bot.worker import procesar_una_vez
+from consulta_publica.bot.turnos import Borrador
+from consulta_publica.bot.worker import enviar_avisos, procesar_una_vez
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -106,14 +112,14 @@ def test_archivo_vencido_devuelve_404():
 
 class TurnosQueAnotan:
     def __init__(self, falla=None):
-        self.desde = []
+        self.consultas = []
         self.falla = falla
 
-    def libres(self, sede, desde, hasta):
+    def variedades(self, clientecuit):
         if self.falla:
             raise self.falla
-        self.desde.append(desde)
-        return {desde: 150_000}
+        self.consultas.append(clientecuit)
+        return ["Cereza", "Malbec"]
 
 
 class BotConTurnos(Bot):
@@ -130,7 +136,7 @@ class BotConTurnos(Bot):
         return {"pedir_turnos"}
 
     def estado_y_caducidad(self, _):
-        return Estado(TURNO_SEDE, "20-1"), False
+        return Estado(OFERTA_SEDE, "20-1", None, Borrador()), False
 
     def guardar_estado(self, _, estado):
         self.estados.append(estado)
@@ -143,15 +149,15 @@ class BotConTurnos(Bot):
         self.reintentos.append(args)
 
 
-def test_turnos_usan_la_fecha_real_aunque_haya_fecha_simulada(monkeypatch):
+def test_la_oferta_elige_bodega_y_muestra_las_variedades_del_productor(monkeypatch):
     monkeypatch.setenv("BOT_PUBLIC_BASE_URL", "https://juviar-bot.duckdns.org")
     monkeypatch.setattr("consulta_publica.bot.transporte.fecha_hoy", lambda: date(2026, 3, 17))
     turnos = TurnosQueAnotan()
     bot, salida = BotConTurnos(turnos), Salida()
     procesar_una_vez(bot, Consultas(), salida)
-    assert turnos.desde == [datetime.now(ZONA).date()]
-    assert bot.estados[-1].paso == TURNO_DIA and bot.estados[-1].turno.sede == "chimbas"
-    assert "— 150 t libres" in salida.textos[0]
+    assert turnos.consultas == ["20-1"]
+    assert bot.estados[-1].paso == OFERTA_VARIEDAD and bot.estados[-1].turno.sede == "chimbas"
+    assert "1 — Cereza" in salida.textos[0]
 
 
 def test_falla_de_la_base_en_el_dialogo_se_reintenta(monkeypatch):
@@ -173,7 +179,7 @@ def test_si_no_se_guarda_la_sesion_no_se_reintenta_el_mensaje(monkeypatch):
     monkeypatch.setattr("consulta_publica.bot.transporte.fecha_hoy", lambda: date(2026, 3, 17))
     bot, salida = BotQueNoGuardaSesion(TurnosQueAnotan()), Salida()
     procesar_una_vez(bot, Consultas(), salida)
-    assert bot.reintentos == [] and "— 150 t libres" in salida.textos[0]
+    assert bot.reintentos == [] and "1 — Cereza" in salida.textos[0]
 
 
 class BotConPersonal(Bot):
@@ -193,3 +199,69 @@ def test_personal_recibe_saludo_con_nombre_y_no_entra_al_menu(monkeypatch):
     assert procesar_una_vez(bot, Consultas(), salida) == 1
     assert salida.textos == ["Hola, Juan (Mando medio, ENAV).\nTodavía no hay consultas habilitadas para vos."]
     assert bot.cierres[0][0][1] == "respondido"
+
+
+class BotConAvisos:
+    def __init__(self):
+        self.marcas = []
+
+    def tomar_avisos(self):
+        return [{"id": 1, "telefono": "5492640000000", "texto": "Te asignamos los días"},
+                {"id": 2, "telefono": "5492641111111", "texto": "Otro"}]
+
+    def marcar_aviso(self, id_, wamid, error):
+        self.marcas.append((id_, wamid, error))
+
+
+class SalidaQueFallaUnaVez(Salida):
+    def enviar_texto(self, telefono, texto):
+        if telefono.endswith("1111111"):
+            raise OSError("sin red")
+        return super().enviar_texto(telefono, texto)
+
+
+def test_avisos_de_la_bodega_se_envian_y_se_marcan():
+    bot, salida = BotConAvisos(), SalidaQueFallaUnaVez()
+    assert enviar_avisos(bot, salida) == 1  # el que falló no cuenta
+    assert salida.textos == ["Te asignamos los días"]
+    assert bot.marcas[0][0] == 1 and bot.marcas[0][2] is None
+    assert bot.marcas[1] == (2, None, "sin red")
+
+
+class BotQueMarcaAlTercerIntento(BotConAvisos):
+    def __init__(self):
+        super().__init__()
+        self.fallas = 0
+
+    def marcar_aviso(self, id_, wamid, error):
+        if id_ == 1 and self.fallas < 2:
+            self.fallas += 1
+            raise psycopg.OperationalError("caída")
+        super().marcar_aviso(id_, wamid, error)
+
+
+def test_si_no_se_puede_marcar_el_aviso_se_insiste_y_sigue_con_los_demas(monkeypatch):
+    monkeypatch.setattr("consulta_publica.bot.worker.time.sleep", lambda _: None)
+    bot, salida = BotQueMarcaAlTercerIntento(), Salida()
+    assert enviar_avisos(bot, salida) == 2
+    assert salida.textos == ["Te asignamos los días", "Otro"]
+    assert [m[0] for m in bot.marcas] == [1, 2] and bot.fallas == 2
+
+
+class BotQueNuncaMarca(BotConAvisos):
+    def __init__(self):
+        super().__init__()
+        self.llamadas = []
+
+    def marcar_aviso(self, id_, wamid, error):
+        self.llamadas.append(id_)
+        raise psycopg.OperationalError("caída")
+
+
+def test_marcar_se_insiste_solo_si_salio_y_sin_esperar_despues_del_ultimo(monkeypatch):
+    esperas = []
+    monkeypatch.setattr("consulta_publica.bot.worker.time.sleep", esperas.append)
+    bot = BotQueNuncaMarca()
+    assert enviar_avisos(bot, SalidaQueFallaUnaVez()) == 1
+    assert bot.llamadas == [1, 1, 1, 2]   # el que falló al enviar se anota una sola vez
+    assert esperas == [0.5, 1.0]

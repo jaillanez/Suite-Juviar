@@ -7,7 +7,8 @@ import { api, ErrorApi } from "@/lib/api";
 import { UsuariosGestion } from "./usuarios-gestion";
 import { ResumenFila, TableroFila } from "./tablero-fila";
 import { CalendarioCosecha } from "./calendario-cosecha";
-import { ErrorVisible } from "./compartidos";
+import { OfertasUva } from "./ofertas-uva";
+import { ErrorVisible, Pestanas } from "./compartidos";
 import { EppGestion } from "./epp-gestion";
 import { SeleccionGestion } from "./seleccion-gestion";
 import { CapacitacionesGestion } from "./capacitaciones-gestion";
@@ -91,6 +92,15 @@ function FormularioClave({ listo, titulo }: { listo: (yo: Yo) => void; titulo: s
 
 function PrimerIngreso({ listo }: { listo: (yo: Yo) => void }) {
   return <main className="ingreso"><section className="ingreso-marca"><span className="isotipo">SJ</span><p>Suite Juviar</p><h1>Elegí tu contraseña.</h1><p className="bajada">Es tu primer ingreso: reemplazá la contraseña que te dieron por una que sólo sepas vos.</p></section><FormularioClave titulo="Contraseña nueva" listo={listo} /></main>;
+}
+
+function TurnosCosecha() {
+  const [pestana, setPestana] = useState<"ofertas" | "calendario">("ofertas");
+  return <>
+    <Encabezado titulo="Turnos de cosecha" descripcion={pestana === "ofertas" ? "Lo que ofrece cada productor para la temporada y los días que le asigna la bodega." : "Cuántos kilos recibe cada bodega por día y qué productores vienen. Tocá un día para anotar."} />
+    <Pestanas activa={pestana} cambiar={setPestana} opciones={[["ofertas", "Ofertas de la temporada"], ["calendario", "Calendario"]] as const} />
+    {pestana === "ofertas" ? <OfertasUva /> : <CalendarioCosecha />}
+  </>;
 }
 
 function Encabezado({ titulo, descripcion }: { titulo: string; descripcion: string }) {
@@ -177,7 +187,7 @@ function Contenido({ seccion, sesion, guardar, actualizar }: { seccion: Seccion;
   if (seccion === "usuarios") return <Usuarios />;
   if (seccion === "parametros") return <><Encabezado titulo="Parámetros" descripcion="Casillas de Gmail de RRHH de las que el sistema trae los CV cada noche e impresora de etiquetas." /><ParametrosGestion /></>;
   if (seccion === "activos") return <><Encabezado titulo="Equipos y activos" descripcion="Bombas, maquinarias y demás bienes de planta: ubicación, traslados, reparaciones externas y etiquetas con código de barras." /><ActivosGestion /></>;
-  if (seccion === "cosecha") return <><Encabezado titulo="Turnos de cosecha" descripcion="Cuántos kilos recibe cada bodega por día y qué productores vienen. Tocá un día para anotar." /><CalendarioCosecha /></>;
+  if (seccion === "cosecha") return <TurnosCosecha />;
   if (seccion === "configuracion" && sesion.real) return <ConfiguracionReal sesion={sesion} actualizar={actualizar} />;
   if (seccion === "inicio") return <Inicio empresa={sesion.empresa} nombre={sesion.nombre} perfil={sesion.perfil} />; if (seccion === "produccion") return <Produccion area="recepcion" />; if (seccion === "fila") return <Produccion area="fila" />; if (seccion === "bot") return <Produccion area="bot" />; if (seccion === "epp") return <Epp />; if (seccion === "analitica") return <Analitica />; if (seccion === "seleccion") return <Seleccion />; if (seccion === "capacitaciones") return <Capacitaciones />; if (seccion === "legajo") return <Legajo />; if (seccion === "salud") return <Salud />; if (seccion === "turnos") return <Turnos />; if (seccion === "contactos") return <Contactos />; if (seccion === "personal") return <Personal />; if (seccion === "configuracion") return <Configuracion sesion={sesion} guardar={guardar} />; return <Pendiente seccion={seccion} />;
 }

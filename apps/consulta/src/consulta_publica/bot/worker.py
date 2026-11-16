@@ -178,7 +178,42 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
             log.warning("envío falló (intento %s): %s", pendiente.intentos + 1, exc)
             continue
         bot.cerrar(pendiente.id, "respondido", respuesta=texto, wamid_salida=wamid)
-    return len(pendientes)
+    return len(pendientes) + enviar_avisos(bot, salida)
+
+
+def enviar_avisos(bot, salida) -> int:
+    """Avisos que dejó la bodega al asignar o postergar días (infra/038).
+
+    Devuelve cuántos salieron: los que fallan esperan 10 minutos y no cuentan como trabajo
+    hecho, así el ciclo principal no se queda girando sin pausa."""
+    if not hasattr(bot, "tomar_avisos"):
+        return 0
+    try:
+        avisos = bot.tomar_avisos()
+    except psycopg.Error as exc:  # base sin infra/038 todavía: no frena las respuestas
+        log.warning("no se pudieron leer los avisos: %s", exc.__class__.__name__)
+        return 0
+    enviados = 0
+    for aviso in avisos:
+        try:
+            wamid, error = salida.enviar_texto(aviso["telefono"], aviso["texto"]), None
+            enviados += 1
+        except (ErrorChattigo, transporte.ErrorTransporte, RuntimeError, ValueError, OSError) as exc:
+            wamid, error = None, str(exc)
+            log.warning("aviso %s no salió: %s", aviso["id"], exc)
+        # Si ya salió y no se puede anotar, se insiste: si no, se reenviaría al vencer la reserva.
+        # Una falla sin anotar no hace falta reintentarla: igual espera la reserva.
+        intentos = 3 if error is None else 1
+        for intento in range(intentos):
+            try:
+                bot.marcar_aviso(aviso["id"], wamid, error)
+                break
+            except psycopg.Error as exc:
+                log.warning("no se pudo marcar el aviso %s (intento %s): %s",
+                            aviso["id"], intento + 1, exc.__class__.__name__)
+                if intento + 1 < intentos and _seguir:
+                    time.sleep(0.5 * (intento + 1))
+    return enviados
 
 
 def _procesar_legacy(bot, consultas, salida, pendientes, hoy, maximo_hora: int) -> int:
