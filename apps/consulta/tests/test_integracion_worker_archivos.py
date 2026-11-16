@@ -222,18 +222,27 @@ class SalidaQueFallaUnaVez(Salida):
 
 def test_avisos_de_la_bodega_se_envian_y_se_marcan():
     bot, salida = BotConAvisos(), SalidaQueFallaUnaVez()
-    assert enviar_avisos(bot, salida) == 2
+    assert enviar_avisos(bot, salida) == 1  # el que falló no cuenta
     assert salida.textos == ["Te asignamos los días"]
     assert bot.marcas[0][0] == 1 and bot.marcas[0][2] is None
     assert bot.marcas[1] == (2, None, "sin red")
 
 
-class BotQueNoMarca(BotConAvisos):
+class BotQueMarcaAlTercerIntento(BotConAvisos):
+    def __init__(self):
+        super().__init__()
+        self.fallas = 0
+
     def marcar_aviso(self, id_, wamid, error):
-        raise psycopg.OperationalError("caída")
+        if id_ == 1 and self.fallas < 2:
+            self.fallas += 1
+            raise psycopg.OperationalError("caída")
+        super().marcar_aviso(id_, wamid, error)
 
 
-def test_si_no_se_puede_marcar_el_aviso_sigue_con_los_demas():
-    salida = Salida()
-    assert enviar_avisos(BotQueNoMarca(), salida) == 2
+def test_si_no_se_puede_marcar_el_aviso_se_insiste_y_sigue_con_los_demas(monkeypatch):
+    monkeypatch.setattr("consulta_publica.bot.worker.time.sleep", lambda _: None)
+    bot, salida = BotQueMarcaAlTercerIntento(), Salida()
+    assert enviar_avisos(bot, salida) == 2
     assert salida.textos == ["Te asignamos los días", "Otro"]
+    assert [m[0] for m in bot.marcas] == [1, 2] and bot.fallas == 2

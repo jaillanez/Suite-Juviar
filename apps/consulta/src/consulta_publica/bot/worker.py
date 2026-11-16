@@ -182,7 +182,10 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
 
 
 def enviar_avisos(bot, salida) -> int:
-    """Avisos que dejó la bodega al asignar o postergar días (infra/038)."""
+    """Avisos que dejó la bodega al asignar o postergar días (infra/038).
+
+    Devuelve cuántos salieron: los que fallan esperan 10 minutos y no cuentan como trabajo
+    hecho, así el ciclo principal no se queda girando sin pausa."""
     if not hasattr(bot, "tomar_avisos"):
         return 0
     try:
@@ -190,18 +193,24 @@ def enviar_avisos(bot, salida) -> int:
     except psycopg.Error as exc:  # base sin infra/038 todavía: no frena las respuestas
         log.warning("no se pudieron leer los avisos: %s", exc.__class__.__name__)
         return 0
+    enviados = 0
     for aviso in avisos:
         try:
             wamid, error = salida.enviar_texto(aviso["telefono"], aviso["texto"]), None
+            enviados += 1
         except (ErrorChattigo, transporte.ErrorTransporte, RuntimeError, ValueError, OSError) as exc:
             wamid, error = None, str(exc)
             log.warning("aviso %s no salió: %s", aviso["id"], exc)
-        try:
-            bot.marcar_aviso(aviso["id"], wamid, error)
-        except psycopg.Error as exc:
-            # Queda tomado: no se reenvía hasta que venza la reserva (infra/038).
-            log.warning("no se pudo marcar el aviso %s: %s", aviso["id"], exc.__class__.__name__)
-    return len(avisos)
+        # Si ya salió y no se puede anotar, se insiste: si no, se reenviaría al vencer la reserva.
+        for intento in range(3):
+            try:
+                bot.marcar_aviso(aviso["id"], wamid, error)
+                break
+            except psycopg.Error as exc:
+                log.warning("no se pudo marcar el aviso %s (intento %s): %s",
+                            aviso["id"], intento + 1, exc.__class__.__name__)
+                time.sleep(0.5 * (intento + 1))
+    return enviados
 
 
 def _procesar_legacy(bot, consultas, salida, pendientes, hoy, maximo_hora: int) -> int:

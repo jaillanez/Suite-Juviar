@@ -394,7 +394,8 @@ END $$;
 
 -- El worker del bot toma los avisos pendientes y marca el resultado. Tomar un aviso lo
 -- reserva por 10 minutos (aunque haya dos workers o se corte a mitad del envío no sale dos
--- veces en ese lapso); si el envío falla se libera para reintentar, hasta 5 intentos.
+-- veces en ese lapso). Si el envío falla queda reservado igual: se reintenta a los 10 minutos,
+-- hasta 5 intentos.
 CREATE OR REPLACE FUNCTION fila.tomar_avisos(p_lote integer)
 RETURNS TABLE (id bigint, telefono text, texto text)
 LANGUAGE sql SECURITY DEFINER SET search_path = fila, pg_temp AS $$
@@ -414,7 +415,6 @@ RETURNS void
 LANGUAGE sql SECURITY DEFINER SET search_path = fila, pg_temp AS $$
     UPDATE fila.aviso_productor
        SET enviado_en = CASE WHEN p_error IS NULL THEN now() END,
-           tomado_en = CASE WHEN p_error IS NULL THEN tomado_en END,
            wamid = left(p_wamid, 200), ultimo_error = left(p_error, 300)
      WHERE id = p_id AND enviado_en IS NULL;
 $$;
