@@ -616,7 +616,16 @@ class RepositorioFila:
             return self._estado_organica(cn, sede)
 
     def guardar_foto(self, viaje_id: int, contenido: bytes, tipo: str, actor: str) -> None:
+        """Sólo para camiones que siguen en la fila; volver a sacarla queda en los eventos."""
         with self.conexion() as cn:
+            viaje = cn.execute(
+                "SELECT estado FROM fila.viaje WHERE id=%s FOR UPDATE", (viaje_id,)
+            ).fetchone()
+            if not viaje or viaje["estado"] not in {"pendiente", "en_espera", "llamado", "en_bascula"}:
+                raise ValueError("ese camión ya no está en la fila")
+            anterior = cn.execute(
+                "SELECT tomada_por, tomada_en FROM fila.foto_patente WHERE viaje_id=%s", (viaje_id,)
+            ).fetchone()
             cn.execute(
                 """INSERT INTO fila.foto_patente (viaje_id,contenido,tipo,tomada_por)
                    VALUES (%s,%s,%s,%s)
@@ -627,7 +636,11 @@ class RepositorioFila:
             cn.execute(
                 """INSERT INTO fila.evento (viaje_id,tipo,actor,detalle)
                    VALUES (%s,'foto_patente',%s,%s)""",
-                (viaje_id, actor, Jsonb({"bytes": len(contenido)})),
+                (viaje_id, actor, Jsonb({
+                    "bytes": len(contenido),
+                    "reemplaza": {"tomada_por": anterior["tomada_por"],
+                                  "tomada_en": anterior["tomada_en"].isoformat()} if anterior else None,
+                })),
             )
 
     def reservar_turno(self, datos: dict[str, Any]) -> dict[str, Any]:
