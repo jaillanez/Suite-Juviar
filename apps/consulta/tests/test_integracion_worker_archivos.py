@@ -226,3 +226,14 @@ def test_avisos_de_la_bodega_se_envian_y_se_marcan():
     assert salida.textos == ["Te asignamos los días"]
     assert bot.marcas[0][0] == 1 and bot.marcas[0][2] is None
     assert bot.marcas[1] == (2, None, "sin red")
+
+
+class BotQueNoMarca(BotConAvisos):
+    def marcar_aviso(self, id_, wamid, error):
+        raise psycopg.OperationalError("caída")
+
+
+def test_si_no_se_puede_marcar_el_aviso_sigue_con_los_demas():
+    salida = Salida()
+    assert enviar_avisos(BotQueNoMarca(), salida) == 2
+    assert salida.textos == ["Te asignamos los días", "Otro"]

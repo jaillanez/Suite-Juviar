@@ -25,6 +25,7 @@ router = APIRouter(prefix="/turnos-bodega/ofertas", tags=["turnos de cosecha"])
 MES_INICIO_COSECHA = 12  # la temporada 2027 empieza el 1/12/2026 (igual que el bot)
 KG_MIN_CAMION, KG_MAX_CAMION, KG_CAMION_DEFECTO = 1_000, 40_000, 11_000
 CAMIONES_MAX = 50
+DIAS_MAX = 120  # el mismo tope que la base
 NOMBRES = {"chimbas": "Chimbas", "lavalle": "Lavalle", "media-agua": "Media Agua"}
 _DIAS = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 
@@ -66,6 +67,8 @@ def repartir(kg: int, kg_dia: int, inicio: date, kg_camion: int) -> list[dict[st
         raise ValueError("Los kilos por día tienen que ser al menos 1.000.")
     kg_camion = min(max(kg_camion, KG_MIN_CAMION), KG_MAX_CAMION)
     cantidad = max(1, math.ceil(kg / kg_dia))
+    if cantidad > DIAS_MAX:
+        raise ValueError(f"El reparto da más de {DIAS_MAX} días: subí los kilos por día.")
     por_dia = [kg_dia] * (cantidad - 1) + [kg - kg_dia * (cantidad - 1)]
     if len(por_dia) > 1 and por_dia[-1] < KG_MIN_CAMION:
         resto = por_dia.pop()

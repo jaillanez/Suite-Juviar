@@ -59,6 +59,8 @@ def test_rechaza_dias_imposibles():
         repartir(10_000, 500, LUNES, 10_000)
     with pytest.raises(ValueError):
         repartir(3_000_000, 2_000_000, LUNES, 10_000)  # más de 50 camiones en un día
+    with pytest.raises(ValueError, match="120 días"):
+        repartir(50_000_000, 1_000, LUNES, 1_000)  # se corta antes de armar la lista
 
 
 def test_pasarse_de_la_capacidad_avisa_pero_no_impide():

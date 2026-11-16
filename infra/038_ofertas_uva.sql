@@ -77,13 +77,16 @@ CREATE TABLE IF NOT EXISTS fila.aviso_productor (
     enviado_en timestamptz,
     wamid text,
     intentos integer NOT NULL DEFAULT 0,
+    tomado_en timestamptz,
     ultimo_error text
 );
+ALTER TABLE fila.aviso_productor ADD COLUMN IF NOT EXISTS tomado_en timestamptz;
 CREATE INDEX IF NOT EXISTS ix_aviso_pendiente ON fila.aviso_productor (creado_en) WHERE enviado_en IS NULL;
 
 
--- Teléfonos a los que se avisa: el que hizo la oferta, o si la cargó la bodega, los que
--- tienen permiso de pedir turnos para ese productor.
+-- Teléfonos a los que se avisa: el que hizo la oferta si todavía puede pedir turnos para ese
+-- productor; si no (o si la cargó la bodega), todos los que hoy tienen ese permiso. Nunca un
+-- teléfono dado de baja o al que le quitaron el permiso.
 CREATE OR REPLACE FUNCTION fila._encolar_aviso(p_oferta fila.oferta, p_texto text)
 RETURNS integer
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = fila, pg_temp AS $$
@@ -92,16 +95,18 @@ BEGIN
     IF p_texto IS NULL OR btrim(p_texto) = '' THEN
         RETURN 0;
     END IF;
+    WITH habilitados AS (
+        SELECT tp.telefono FROM consulta.telefono_productor tp
+         WHERE tp.clientecuit = p_oferta.clientecuit AND tp.activo
+           AND 'pedir_turnos' = ANY(tp.tareas) AND tp.telefono ~ '^[0-9]{8,20}$'
+    ), destino AS (
+        SELECT telefono FROM habilitados WHERE telefono = p_oferta.telefono
+        UNION
+        SELECT telefono FROM habilitados
+         WHERE NOT EXISTS (SELECT 1 FROM habilitados h WHERE h.telefono = p_oferta.telefono)
+    )
     INSERT INTO fila.aviso_productor (oferta_id, telefono, texto)
-    SELECT p_oferta.id, t.telefono, left(p_texto, 3000)
-      FROM (
-          SELECT p_oferta.telefono AS telefono WHERE p_oferta.telefono IS NOT NULL
-          UNION
-          SELECT tp.telefono FROM consulta.telefono_productor tp
-           WHERE p_oferta.telefono IS NULL AND tp.clientecuit = p_oferta.clientecuit
-             AND tp.activo AND 'pedir_turnos' = ANY(tp.tareas)
-      ) t
-     WHERE t.telefono ~ '^[0-9]{8,20}$';
+    SELECT p_oferta.id, telefono, left(p_texto, 3000) FROM destino;
     GET DIAGNOSTICS v_n = ROW_COUNT;
     RETURN v_n;
 END $$;
@@ -387,22 +392,29 @@ BEGIN
 END $$;
 
 
--- El worker del bot toma los avisos pendientes y marca el resultado.
+-- El worker del bot toma los avisos pendientes y marca el resultado. Tomar un aviso lo
+-- reserva por 10 minutos (aunque haya dos workers o se corte a mitad del envío no sale dos
+-- veces en ese lapso); si el envío falla se libera para reintentar, hasta 5 intentos.
 CREATE OR REPLACE FUNCTION fila.tomar_avisos(p_lote integer)
 RETURNS TABLE (id bigint, telefono text, texto text)
 LANGUAGE sql SECURITY DEFINER SET search_path = fila, pg_temp AS $$
-    SELECT a.id, a.telefono, a.texto FROM fila.aviso_productor a
-     WHERE a.enviado_en IS NULL AND a.intentos < 5
-     ORDER BY a.creado_en LIMIT LEAST(GREATEST(p_lote, 1), 50)
-     FOR UPDATE SKIP LOCKED;
+    UPDATE fila.aviso_productor a
+       SET tomado_en = now(), intentos = a.intentos + 1
+     WHERE a.id IN (
+        SELECT x.id FROM fila.aviso_productor x
+         WHERE x.enviado_en IS NULL AND x.intentos < 5
+           AND (x.tomado_en IS NULL OR x.tomado_en < now() - interval '10 minutes')
+         ORDER BY x.creado_en LIMIT LEAST(GREATEST(p_lote, 1), 50)
+         FOR UPDATE SKIP LOCKED)
+    RETURNING a.id, a.telefono, a.texto;
 $$;
 
 CREATE OR REPLACE FUNCTION fila.marcar_aviso(p_id bigint, p_wamid text, p_error text)
 RETURNS void
 LANGUAGE sql SECURITY DEFINER SET search_path = fila, pg_temp AS $$
     UPDATE fila.aviso_productor
-       SET intentos = intentos + 1,
-           enviado_en = CASE WHEN p_error IS NULL THEN now() END,
+       SET enviado_en = CASE WHEN p_error IS NULL THEN now() END,
+           tomado_en = CASE WHEN p_error IS NULL THEN tomado_en END,
            wamid = left(p_wamid, 200), ultimo_error = left(p_error, 300)
      WHERE id = p_id AND enviado_en IS NULL;
 $$;

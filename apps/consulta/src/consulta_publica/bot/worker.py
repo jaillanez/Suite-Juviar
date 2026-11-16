@@ -192,12 +192,15 @@ def enviar_avisos(bot, salida) -> int:
         return 0
     for aviso in avisos:
         try:
-            wamid = salida.enviar_texto(aviso["telefono"], aviso["texto"])
+            wamid, error = salida.enviar_texto(aviso["telefono"], aviso["texto"]), None
         except (ErrorChattigo, transporte.ErrorTransporte, RuntimeError, ValueError, OSError) as exc:
-            bot.marcar_aviso(aviso["id"], None, str(exc))
+            wamid, error = None, str(exc)
             log.warning("aviso %s no salió: %s", aviso["id"], exc)
-            continue
-        bot.marcar_aviso(aviso["id"], wamid, None)
+        try:
+            bot.marcar_aviso(aviso["id"], wamid, error)
+        except psycopg.Error as exc:
+            # Queda tomado: no se reenvía hasta que venza la reserva (infra/038).
+            log.warning("no se pudo marcar el aviso %s: %s", aviso["id"], exc.__class__.__name__)
     return len(avisos)
 
 
