@@ -19,7 +19,9 @@ PERMISOS_POR_PERFIL: dict[str, frozenset[str]] = {
         "epp.catalogo.leer", "epp.stock.leer", "epp.stock.editar",
     }),
     "CAMPO": frozenset({"suite.acceder", "recepcion.romaneo.crear"}),
-    "BASCULA": frozenset({"suite.acceder", "recepcion.romaneo.crear"}),
+    "BASCULA": frozenset({
+        "suite.acceder", "recepcion.romaneo.crear", "fila.tablero.leer", "fila.organica.operar",
+    }),
     "BODEGA": frozenset({
         "suite.acceder", "fila.contactos.gestionar", "fila.tablero.leer", "fila.turnos.gestionar", "bot.simulador.usar",
         "bot.conversaciones.leer",

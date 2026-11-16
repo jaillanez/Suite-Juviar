@@ -13,6 +13,13 @@ from modulos.fila.cupo import validar as validar_cupo
 from modulos.fila.estados import MINUTOS_VENCE_PENDIENTE
 from modulos.fila.estados import validar as validar_estado
 from modulos.fila.orden import EnEspera, elegir_llamado, grupo, ordenar, posicion
+from modulos.fila.organica import (
+    EstadoOrganica,
+    bloqueo,
+    certificados_con_prioridad,
+    es_organico,
+    recibida_como,
+)
 from modulos.fila.patente import normalizar
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
@@ -263,28 +270,38 @@ class RepositorioFila:
                 viaje["adelante"] = max((viaje["posicion"] or 1) - 1, 0)
         return dict(viaje)
 
-    def _fila(self, cn, sede: str) -> tuple[list[EnEspera], frozenset[str]]:
-        filas = cn.execute(
-            """SELECT v.id,v.clientecuit,v.declara_organica,v.confirmado_en,
-                      (v.turno_id IS NOT NULL) con_turno
-               FROM fila.viaje v WHERE v.sede=%s AND v.estado='en_espera'""",
-            (sede,),
-        ).fetchall()
-        certificados = frozenset(
+    def _estado_organica(self, cn, sede: str) -> dict[str, Any]:
+        fila = cn.execute("SELECT * FROM fila.estado_organica(%s)", (sede,)).fetchone()
+        return dict(fila) if fila else {"recibe": False, "abierta": False, "prioridad": False}
+
+    def _certificados(self, cn) -> frozenset[str]:
+        return frozenset(
             fila["clientecuit"]
             for fila in cn.execute(
                 """SELECT clientecuit FROM fila.productor_organico
                    WHERE vence IS NULL OR vence >= current_date"""
             ).fetchall()
         )
+
+    def _fila(self, cn, sede: str) -> tuple[list[EnEspera], frozenset[str]]:
+        """Camiones en espera y productores cuya orgánica pasa adelante en este momento."""
+        filas = cn.execute(
+            """SELECT v.id,v.clientecuit,v.declara_organica,v.confirmado_en,
+                      (v.turno_id IS NOT NULL) con_turno
+               FROM fila.viaje v WHERE v.sede=%s AND v.estado='en_espera'""",
+            (sede,),
+        ).fetchall()
+        estado = EstadoOrganica.desde_fila(self._estado_organica(cn, sede))
+        certificados = certificados_con_prioridad(estado, self._certificados(cn))
         return [EnEspera(**dict(fila)) for fila in filas], certificados
 
     def tablero(self, sede: str) -> dict[str, list[dict[str, Any]]]:
         self.expirar()
         with self.conexion() as cn:
             pendientes = cn.execute(
-                """SELECT id,patente,productor_texto,variedad_declarada,registrado_en
-                   FROM fila.viaje
+                """SELECT id,patente,productor_texto,variedad_declarada,registrado_en,
+                          EXISTS (SELECT 1 FROM fila.foto_patente f WHERE f.viaje_id=v.id) foto
+                   FROM fila.viaje v
                    WHERE sede=%s AND estado='pendiente' ORDER BY registrado_en""",
                 (sede,),
             ).fetchall()
@@ -294,26 +311,35 @@ class RepositorioFila:
                 for f in cn.execute(
                     """SELECT id,numero_dia,patente,productor_texto,variedad_declarada,
                               confirmado_en,clientecuit,declara_organica,
-                              (turno_id IS NOT NULL) con_turno
-                       FROM fila.viaje WHERE sede=%s AND estado='en_espera'""",
+                              (turno_id IS NOT NULL) con_turno,
+                              EXISTS (SELECT 1 FROM fila.foto_patente f WHERE f.viaje_id=v.id) foto
+                       FROM fila.viaje v WHERE sede=%s AND estado='en_espera'""",
                     (sede,),
                 ).fetchall()
             }
+            todos_certificados = self._certificados(cn)
             espera = []
             for elemento in ordenar(fila, certificados):
                 dato = por_id[elemento.id]
                 dato["grupo"] = grupo(elemento, certificados)
+                dato["organico"] = es_organico(
+                    dato["declara_organica"], dato["clientecuit"], todos_certificados
+                )
                 espera.append(dato)
             llamados = cn.execute(
-                """SELECT id,numero_dia,patente,productor_texto,variedad_declarada,llamado_en
-                   FROM fila.viaje
+                """SELECT id,numero_dia,patente,productor_texto,variedad_declarada,llamado_en,
+                          recibida_como,
+                          EXISTS (SELECT 1 FROM fila.foto_patente f WHERE f.viaje_id=v.id) foto
+                   FROM fila.viaje v
                    WHERE sede=%s AND estado='llamado' ORDER BY llamado_en""",
                 (sede,),
             ).fetchall()
+            organica = self._estado_organica(cn, sede)
         return {
             "pendientes": [dict(f) for f in pendientes],
             "espera": espera,
             "llamados": [dict(f) for f in llamados],
+            "organica": organica,
         }
 
     def confirmar(
@@ -523,6 +549,18 @@ class RepositorioFila:
                 raise ValueError("sólo se puede cancelar un camión de la fila")
             validar_estado(viaje["estado"], destino)
             detalle: dict[str, Any] = {}
+            recibida = None
+            if accion in {"llamar", "paso"}:
+                estado = EstadoOrganica.desde_fila(self._estado_organica(cn, viaje["sede"]))
+                organico = es_organico(
+                    viaje["declara_organica"], viaje["clientecuit"], self._certificados(cn)
+                )
+                if accion == "paso" and viaje["recibida_como"] == "organica":
+                    organico = True  # lo llamaron como orgánico dentro de la sesión
+                mensaje = bloqueo(estado, organico)
+                if mensaje:
+                    raise ValueError(mensaje)
+                recibida = recibida_como(estado, organico)
             if accion == "llamar":
                 fila, certificados = self._fila(cn, viaje["sede"])
                 elegido, salteados = elegir_llamado(fila, certificados, viaje_id, motivo)
@@ -541,15 +579,15 @@ class RepositorioFila:
                         ),
                     )
             campos = {
-                "llamar": "llamado_en=%s,llamado_por=%s",
+                "llamar": "llamado_en=%s,llamado_por=%s,recibida_como=%s",
                 "paso": "en_bascula_en=%s",
-                "no_vino": "llamado_en=NULL,llamado_por=NULL",
+                "no_vino": "llamado_en=NULL,llamado_por=NULL,recibida_como=NULL",
                 "rechazar": "cerrado_en=%s,motivo_cierre=%s",
                 "cancelar": "cerrado_en=%s,motivo_cierre=%s",
             }
             parametros: tuple[Any, ...]
             if accion == "llamar":
-                parametros = (destino, momento_cliente, actor, viaje_id)
+                parametros = (destino, momento_cliente, actor, recibida, viaje_id)
             elif accion == "paso":
                 parametros = (destino, momento_cliente, viaje_id)
             elif accion in {"rechazar", "cancelar"}:
@@ -567,6 +605,30 @@ class RepositorioFila:
                 (id_cliente, viaje_id, accion, actor, motivo, Jsonb(detalle), momento_cliente),
             )
         return dict(actualizado)
+
+    def sesion_organica(self, sede: str, abrir: bool, actor: str) -> dict[str, Any]:
+        funcion = "abrir_sesion_organica" if abrir else "cerrar_sesion_organica"
+        with self.conexion() as cn:
+            try:
+                cn.execute(f"SELECT * FROM fila.{funcion}(%s,%s,'guardia')", (sede, actor))
+            except psycopg.errors.RaiseException as exc:
+                raise ValueError(exc.diag.message_primary or "no se pudo cambiar la sesión") from exc
+            return self._estado_organica(cn, sede)
+
+    def guardar_foto(self, viaje_id: int, contenido: bytes, tipo: str, actor: str) -> None:
+        with self.conexion() as cn:
+            cn.execute(
+                """INSERT INTO fila.foto_patente (viaje_id,contenido,tipo,tomada_por)
+                   VALUES (%s,%s,%s,%s)
+                   ON CONFLICT (viaje_id) DO UPDATE SET contenido=EXCLUDED.contenido,
+                       tipo=EXCLUDED.tipo, tomada_por=EXCLUDED.tomada_por, tomada_en=now()""",
+                (viaje_id, contenido, tipo, actor),
+            )
+            cn.execute(
+                """INSERT INTO fila.evento (viaje_id,tipo,actor,detalle)
+                   VALUES (%s,'foto_patente',%s,%s)""",
+                (viaje_id, actor, Jsonb({"bytes": len(contenido)})),
+            )
 
     def reservar_turno(self, datos: dict[str, Any]) -> dict[str, Any]:
         fecha = date.fromisoformat(datos["fecha"])

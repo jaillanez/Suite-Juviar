@@ -18,3 +18,17 @@ def test_los_motivos_se_eligen_con_botones_y_palabras_simples():
     assert 'id="velo"' in html
     assert "No responde" in script and "La patente no coincide" in script
     assert "¿La carga es orgánica?" in script
+
+
+def test_los_motivos_se_esperan_antes_de_enviar():
+    _, script = _script()
+    assert "motivo=await elegirMotivo(motivosSalto" in script
+    assert "const motivo=await elegirMotivo(motivosCierre" in script
+
+
+def test_sesion_organica_y_foto_de_patente():
+    html, script = _script()
+    assert 'id="organica"' in html and 'capture="environment"' in html
+    assert "Abrir sesión orgánica" in script and "Cerrar sesión orgánica" in script
+    assert "se recibe como convencional" in script
+    assert "Foto patente" in script and "/foto'" in script

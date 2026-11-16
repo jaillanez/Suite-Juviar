@@ -12,7 +12,7 @@ from typing import Annotated, Any
 from zoneinfo import ZoneInfo
 
 import psycopg
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from psycopg.rows import dict_row
 from pydantic import BaseModel, Field
 
@@ -40,9 +40,10 @@ def sedes() -> list[str]:
 Autorizado = Annotated[object, Depends(exigir_permiso("fila.tablero.leer"))]
 
 CONSULTA = """
-SELECT v.sede, v.numero_dia, v.patente, v.productor_texto, v.estado, v.declara_organica,
+SELECT v.id, v.sede, v.numero_dia, v.patente, v.productor_texto, v.estado, v.declara_organica,
        v.variedad_declarada, v.registrado_en, v.confirmado_en, v.llamado_en,
-       v.en_bascula_en, v.cerrado_en,
+       v.en_bascula_en, v.cerrado_en, v.recibida_como,
+       EXISTS (SELECT 1 FROM fila.foto_patente f WHERE f.viaje_id = v.id) AS foto,
        d.variedad AS variedad_bascula, d.neto, d.azucar
   FROM fila.viaje v
   LEFT JOIN consulta.descarga_publica d ON d.id_suite = v.descarga_id
@@ -57,7 +58,15 @@ def _del_dia(momento: datetime | None, hoy: date) -> bool:
     return momento is not None and momento.astimezone(ZONA).date() == hoy
 
 
-def armar_tablero(filas: list[dict[str, Any]], hoy: date, lista_sedes: list[str]) -> dict[str, Any]:
+ESTADO_ORGANICA = """
+SELECT s.sede, e.recibe, e.abierta, e.origen, e.desde, e.hasta, e.abierta_por, e.abierta_desde,
+       e.prioridad, e.quien_abre, e.modo_franjas
+  FROM unnest(%(sedes)s::text[]) AS s(sede), fila.estado_organica(s.sede) e
+"""
+
+
+def armar_tablero(filas: list[dict[str, Any]], hoy: date, lista_sedes: list[str],
+                  organica: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:
     """Agrupa los viajes por bodega, con los números del día. Sin base: se prueba suelto."""
     por_sede: dict[str, list[dict[str, Any]]] = {s: [] for s in lista_sedes}
     for fila in filas:
@@ -74,8 +83,12 @@ def armar_tablero(filas: list[dict[str, Any]], hoy: date, lista_sedes: list[str]
             "llamados": sum(v["estado"] == "llamado" for v in viajes),
             "en_bascula": sum(v["estado"] == "en_bascula" for v in viajes),
             "descargados_hoy": sum(v["estado"] == "descargado" for v in del_dia),
+            "organica": (organica or {}).get(sede),
             "camiones": [
                 {
+                    "id": v.get("id"),
+                    "foto": bool(v.get("foto")),
+                    "recibida_como": v.get("recibida_como"),
                     "numero": v["numero_dia"],
                     "patente": v["patente"],
                     "productor": v["productor_texto"],
@@ -103,9 +116,28 @@ def tablero(_: Autorizado):
     try:
         with psycopg.connect(_dsn, row_factory=dict_row, connect_timeout=5) as cn:
             filas = cn.execute(CONSULTA, {"activos": list(ACTIVOS), "hoy": hoy, "sedes": sedes()}).fetchall()
+            organica = {e["sede"]: dict(e) for e in cn.execute(ESTADO_ORGANICA, {"sedes": sedes()}).fetchall()}
     except psycopg.Error as exc:
         raise HTTPException(503, "No se pudo leer la fila de camiones.") from exc
-    return armar_tablero([dict(f) for f in filas], hoy, sedes())
+    return armar_tablero([dict(f) for f in filas], hoy, sedes(), organica)
+
+
+@router.get("/fotos/{viaje_id}")
+def foto_patente(viaje_id: int, _: Autorizado):
+    """Foto de la patente que sacó el guardia; no se guarda en el navegador."""
+    if not _dsn:
+        raise HTTPException(503, "El tablero de la fila no está conectado.")
+    try:
+        with psycopg.connect(_dsn, row_factory=dict_row, connect_timeout=5) as cn:
+            fila = cn.execute(
+                "SELECT contenido, tipo FROM fila.foto_patente WHERE viaje_id = %s", (viaje_id,)
+            ).fetchone()
+    except psycopg.Error as exc:
+        raise HTTPException(503, "No se pudo leer la foto.") from exc
+    if not fila:
+        raise HTTPException(404, "Ese camión no tiene foto de patente.")
+    return Response(content=bytes(fila["contenido"]), media_type=fila["tipo"],
+                    headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
 
 
 # --- Datos reales para Recepción (misma base y mismo rol de sólo lectura) ------------------

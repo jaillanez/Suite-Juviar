@@ -30,6 +30,9 @@ color:#fff;padding:10px;text-align:center;font-weight:750;z-index:5}.oculto{disp
 @media(max-width:600px){.row{grid-template-columns:1fr}.acciones{display:grid}.espera h1{font-size:10vw}.pantalla-fila{font-size:7vw}}
 @media(prefers-reduced-motion:reduce){.parpadea{animation:none}}
 .tag.uva{background:#f3e3c3;color:#5c3b08;margin-left:8px;vertical-align:.12em}
+.tag.org,.tag.conv{display:inline-block;white-space:nowrap;margin-left:8px;vertical-align:.12em}.tag.org{background:#12633d;color:#fff}.tag.conv{background:#e4e8e3}
+.organica{margin:0 0 18px;border-left:8px solid #bdc5bd}.organica.abierta{border-color:var(--green);background:#e8f4ec}
+.organica strong{font-size:1.2rem}.organica p{margin:6px 0 0}.organica button{margin-top:14px}
 .velo{position:fixed;inset:0;background:#17221c99;display:grid;align-items:end;z-index:20;padding:12px}
 .caja{background:var(--card);border-radius:18px;padding:22px 20px calc(20px + env(safe-area-inset-bottom));max-width:640px;width:100%;
 margin:0 auto;max-height:90vh;overflow:auto}.caja h2{margin:0 0 8px}.caja .list button{margin:0;text-align:left;min-height:62px}
@@ -127,6 +130,8 @@ def guardia(sede: str, variedades: Iterable[str] = ()) -> str:
 <label for="clave">Clave</label><div class="con-ojo"><input id="clave" type="password" autocomplete="current-password" required><button type="button" class="ojo" aria-label="Mostrar clave" aria-pressed="false" onclick="const c=document.getElementById('clave');const ver=c.type==='password';c.type=ver?'text':'password';this.setAttribute('aria-pressed',ver);this.setAttribute('aria-label',ver?'Ocultar clave':'Mostrar clave')"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
 <button>Entrar</button><p id="errorIngreso" role="alert"></p></form></main>
 <main id="aplicacion" class="oculto"><p class="muted">Guardia · {sede.title()}</p><h1>Fila del portón</h1>
+<section id="organica" class="panel organica oculto" aria-live="polite"></section>
+<input id="camaraPatente" type="file" accept="image/*" capture="environment" class="oculto">
 <button id="altaDirecta" class="secondary">+ Camión sin celular</button><h2>Por confirmar</h2><div id="pendientes" class="list"></div>
 <h2>Fila</h2><button id="siguiente">Llamar siguiente</button><div id="fila" class="list"></div>
 <h2>Llamados</h2><div id="llamados" class="list"></div>
@@ -147,9 +152,27 @@ function mostrarApp(){{ingreso.classList.add('oculto');aplicacion.classList.remo
 formIngreso.onsubmit=async e=>{{e.preventDefault();errorIngreso.textContent='';const actual=clave.value;const r=await fetch('/api/guardia/ingreso',{{method:'POST',headers:{{'content-type':'application/json'}},body:JSON.stringify({{usuario:usuario.value,clave:actual}})}});if(!r.ok){{errorIngreso.textContent=(await r.json()).detail;return}}const d=await r.json();if(d.sede!==sede){{errorIngreso.textContent='Este usuario corresponde a '+d.sede;return}}token=d.token;H={{'content-type':'application/json','x-guardia-token':token}};if(d.debe_cambiar_clave){{const f=await pedir('Elegí tu clave nueva','Es la primera vez que entrás. Elegí una clave que sólo sepas vos, de al menos 6 letras o números.',[['nueva','Clave nueva','type="password" minlength="6" autocomplete="new-password"']]);if(!f)return;const nueva=f.nueva;const c=await fetch('/api/guardia/cambiar-clave',{{method:'POST',headers:H,body:JSON.stringify({{actual,nueva}})}});if(!c.ok){{errorIngreso.textContent=(await c.json()).detail;return}}}}sessionStorage.setItem('guardia-token',token);mostrarApp()}};
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}})[c]);
 function filaHtml(x,acciones=''){{const uva=x.variedad_declarada?`<span class="tag uva" title="Variedad declarada">${{esc(x.variedad_declarada)}}</span>`:'';
- return `<article class="row"><div><strong>${{esc(x.numero_dia)}} ${{esc(x.patente)}}</strong>${{uva}}
+ const org=x.recibida_como==='organica'?'<span class="tag org">Entra como orgánica</span>':x.recibida_como==='convencional'?'<span class="tag conv">Entra como convencional</span>':x.organico&&x.grupo!==1?'<span class="tag org">Orgánica</span>':'';
+ acciones=`<button class="secondary" onclick="foto(${{x.id}})">${{x.foto?'Foto ✓':'Foto patente'}}</button>`+acciones;
+ return `<article class="row"><div><strong>${{esc(x.numero_dia)}} ${{esc(x.patente)}}</strong>${{uva}}${{org}}
 <div class="muted">${{esc(x.productor_texto)}}</div></div><div class="acciones">${{acciones}}</div></article>`}}
-function pintar(){{pendientes.innerHTML=datos.pendientes.map(x=>filaHtml(x,`<button onclick="confirmar(${{x.id}})">Confirmar</button><button class="danger" onclick="cerrar(${{x.id}},'rechazar')">Rechazar</button>`)).join('')||'<p class="muted">Ninguno.</p>';
+const horaCorta=v=>v?new Date(v).toLocaleTimeString('es-AR',{{hour:'2-digit',minute:'2-digit',hourCycle:'h23'}}):'';
+function pintarOrganica(){{const o=datos.organica||{{}};organica.classList.toggle('oculto',!o.recibe);if(!o.recibe)return;
+ organica.classList.toggle('abierta',!!o.abierta);const opera=o.modo_franjas==='manual'&&(o.quien_abre==='guardia'||o.quien_abre==='ambos');
+ const quien={{guardia:'la guardia',bascula:'Báscula',ambos:'la guardia o Báscula'}}[o.quien_abre]||'';
+ let t=o.abierta?`<strong>Sesión orgánica abierta</strong><p>Desde las ${{horaCorta(o.desde)}}${{o.hasta?' hasta las '+horaCorta(o.hasta):''}}. Sólo se llama uva orgánica certificada.</p>`
+  :`<strong>Sesión convencional</strong><p>La uva orgánica que entre ahora se recibe como convencional.</p>`;
+ if(o.prioridad)t+='<p>Primeros días de cosecha: la orgánica va primero en la fila.</p>';
+ if(o.modo_franjas==='fijas')t+='<p class="muted">La sesión sigue las franjas horarias fijas.</p>';
+ else if(opera)t+=`<button class="${{o.abierta?'danger':''}}" onclick="cambiarSesion(${{o.abierta?'false':'true'}})">${{o.abierta?'Cerrar sesión orgánica':'Abrir sesión orgánica'}}</button>`;
+ else t+=`<p class="muted">La abre y la cierra ${{quien}}.</p>`;organica.innerHTML=t}}
+async function cambiarSesion(abrir){{const r=await elegir(abrir?'¿Abrir la sesión orgánica?':'¿Cerrar la sesión orgánica?',[['si',abrir?'Sí, abrir: sólo entra orgánica':'Sí, cerrar: vuelve a entrar convencional']]);if(r!=='si')return;
+ if(!navigator.onLine){{await avisar('Sin conexión: la sesión se cambia cuando vuelva la señal.');return}}
+ const x=await fetch('/api/guardia/'+sede+'/organica/'+(abrir?'abrir':'cerrar'),{{method:'POST',headers:H}});if(!x.ok){{await avisar((await x.json()).detail);return}}await cargar()}}
+let fotoViaje=null;function foto(viaje){{if(!navigator.onLine){{avisar('Sin conexión: la foto se puede sacar cuando vuelva la señal.');return}}fotoViaje=viaje;camaraPatente.value='';camaraPatente.click()}}
+async function achicar(archivo){{const img=await createImageBitmap(archivo);const k=Math.min(1,1280/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);return new Promise(ok=>c.toBlob(ok,'image/jpeg',0.7))}}
+camaraPatente.onchange=async()=>{{const a=camaraPatente.files[0],viaje=fotoViaje;fotoViaje=null;if(!a||!viaje)return;try{{const b=await achicar(a);const r=await fetch('/api/guardia/viajes/'+viaje+'/foto',{{method:'POST',headers:{{'x-guardia-token':token,'content-type':'image/jpeg'}},body:b}});if(!r.ok){{await avisar((await r.json()).detail);return}}await cargar()}}catch{{await avisar('No se pudo enviar la foto. Probá de nuevo.')}}}};
+function pintar(){{pintarOrganica();pendientes.innerHTML=datos.pendientes.map(x=>filaHtml(x,`<button onclick="confirmar(${{x.id}})">Confirmar</button><button class="danger" onclick="cerrar(${{x.id}},'rechazar')">Rechazar</button>`)).join('')||'<p class="muted">Ninguno.</p>';
  fila.innerHTML=datos.espera.map((x,i)=>filaHtml(x,`<span class="tag">${{['','Orgánico','Con turno','Espontáneo'][x.grupo]}}</span><button class="secondary" onclick="llamar(${{x.id}},${{i}})">Llamar</button><button class="danger" onclick="cerrar(${{x.id}},'cancelar')">Sacar de la fila</button>`)).join('')||'<p class="muted">Fila vacía.</p>';
  llamados.innerHTML=datos.llamados.map(x=>filaHtml(x,`<button onclick="accion(${{x.id}},'paso')">Pasó</button><button class="secondary" onclick="accion(${{x.id}},'no_vino')">No vino</button><button class="danger" onclick="cerrar(${{x.id}},'cancelar')">Cancelar</button>`)).join('')||'<p class="muted">Ninguno.</p>';}}
 async function cargar(){{try{{const r=await fetch('/api/guardia/{sede}',{{headers:H}});if(!r.ok)throw 0;datos=await r.json();pintar();offline.classList.add('oculto')}}catch{{offline.classList.remove('oculto')}}}}
@@ -160,8 +183,8 @@ altaDirecta.onclick=async()=>{{const f=await pedir('Camión sin celular','Escrib
 const motivosSalto=['no_responde','documentacion_incompleta','problema_mecanico','indicacion_de_planta','otro'];
 const motivosCierre=['patente_no_coincide','no_esta_en_porton','registro_duplicado','datos_incorrectos','se_retiro','rechazado_por_planta','problema_mecanico','indicacion_de_planta','otro'];
 function elegirMotivo(opciones,titulo){{return elegir(titulo,opciones.map(m=>[m,MOTIVOS[m]||m]))}}
-async function llamar(viaje,pos){{let motivo=null;if(pos>0){{motivo=elegirMotivo(motivosSalto,'Elegí por qué se saltea el orden');if(!motivo)return}}await accion(viaje,'llamar',motivo)}}
-async function cerrar(viaje,accionCierre){{const motivo=elegirMotivo(motivosCierre,accionCierre==='rechazar'?'Elegí por qué se rechaza':'Elegí por qué se saca de la fila');if(motivo)await accion(viaje,accionCierre,motivo)}}
+async function llamar(viaje,pos){{let motivo=null;if(pos>0){{motivo=await elegirMotivo(motivosSalto,'Elegí por qué se saltea el orden');if(!motivo)return}}await accion(viaje,'llamar',motivo)}}
+async function cerrar(viaje,accionCierre){{const motivo=await elegirMotivo(motivosCierre,accionCierre==='rechazar'?'Elegí por qué se rechaza':'Elegí por qué se saca de la fila');if(motivo)await accion(viaje,accionCierre,motivo)}}
 async function accion(viaje,a,motivo=null){{await enviar('/api/guardia/viajes/'+viaje+'/'+a,{{id_cliente:id(),momento_cliente:ahora(),motivo}})}}
 siguiente.onclick=()=>datos.espera[0]&&accion(datos.espera[0].id,'llamar');
 async function db(){{return new Promise((ok,no)=>{{const q=indexedDB.open('fila-offline',2);q.onupgradeneeded=()=>{{if(!q.result.objectStoreNames.contains('acciones'))q.result.createObjectStore('acciones',{{keyPath:'id'}});if(!q.result.objectStoreNames.contains('productores'))q.result.createObjectStore('productores',{{keyPath:'clientecuit'}})}};q.onsuccess=()=>ok(q.result);q.onerror=no}})}}

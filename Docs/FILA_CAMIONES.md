@@ -56,3 +56,23 @@ bot lo envía. Con Chattigo real, un aviso fuera de la ventana de 24 h necesita
 plantilla aprobada.
 
 Aplicar `infra/038_ofertas_uva.sql` en la DMZ antes de desplegar el bot y Gestión.
+
+## Sesión orgánica y foto de la patente (infra/039)
+
+- **Parámetros por bodega** (Gestión → Turnos de cosecha → Sesión orgánica, perfil Bodega):
+  si recibe orgánica (sólo Chimbas al instalar), quién abre y cierra la sesión (guardia,
+  Báscula o ambos), franjas horarias en el momento o fijas por día de la semana, primer día
+  de cosecha y días en que la orgánica va primero (15 por defecto).
+- **Con la sesión abierta** no se llama ni pasa a báscula un camión convencional; la consola
+  del guardia lo avisa. La orgánica certificada va primero en la fila.
+- **Sin sesión abierta** la orgánica espera como cualquier camión y se recibe como
+  convencional. Cómo entra cada camión queda en `fila.viaje.recibida_como` al llamarlo.
+- **Primeros días de cosecha**: la orgánica pasa adelante aunque no haya sesión (también en
+  el lugar que ve el chofer en su ticket).
+- **Quién abre**: la guardia desde la consola del portón; Báscula desde Gestión → Fila de
+  camiones (permiso `fila.organica.operar`, perfil Báscula). Pasar a franjas fijas o dejar de
+  recibir orgánica cierra la sesión manual abierta.
+- **Foto de la patente**: botón «Foto patente» en cada camión de la consola; se achica en el
+  celular (1280 px, JPEG) y se guarda en `fila.foto_patente` (hasta 3 MB, se reconoce por
+  su contenido). Gestión la muestra con «Ver foto de la patente» en el tablero. Hace falta
+  conexión para sacarla.
