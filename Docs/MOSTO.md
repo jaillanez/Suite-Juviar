@@ -40,8 +40,9 @@ Cada minuto la API revisa los camiones de mosto virgen sin descarga. Al pasar la
 límite se avisa una sola vez por camión: queda el aviso en rojo en la sección Mosto hasta que
 se descarga, y sale a cada persona cargada por mail y por WhatsApp.
 
-- Mail: usa `SJ_SMTP_HOST`, `SJ_SMTP_PUERTO`, `SJ_SMTP_REMITENTE`, `SJ_SMTP_USUARIO`,
-  `SJ_SMTP_CLAVE` y `SJ_SMTP_TLS`. Sin configurar, el aviso dice «canal sin configurar».
+- Mail: sale por Gmail desde la casilla de RRHH cargada en Parámetros (primero ENAV,
+  si no está, JUBIAR), con su contraseña de aplicación. Sin casilla cargada, el aviso
+  dice «canal sin configurar».
 - WhatsApp: `fila.encolar_aviso_mosto` recibe los datos del camión, arma el texto en la base y
   lo deja en `fila.aviso_productor`; lo manda el worker del bot. Sólo acepta celulares activos
   en «Personal en el bot» y hasta 60 avisos internos por hora. Sale de verdad cuando el bot

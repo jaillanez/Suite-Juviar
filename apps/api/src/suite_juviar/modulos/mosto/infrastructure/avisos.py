@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import smtplib
 import threading
+from collections.abc import Callable
 from email.message import EmailMessage
 
 import psycopg
@@ -15,26 +16,29 @@ from ..domain.modelos import Demora
 _registro = logging.getLogger(__name__)
 
 
-class CorreoSMTP:
+class CorreoGmail:
+    """Sale desde la casilla de RRHH cargada en Parámetros, con su contraseña de aplicación.
+
+    `casilla` devuelve (dirección, contraseña) o None si no hay ninguna cargada; se consulta
+    en cada envío, así un cambio en Parámetros vale sin reiniciar."""
+
     canal = "correo"
 
-    def __init__(self, host: str, puerto: int, remitente: str, usuario: str | None, clave: str | None,
-                 usar_tls: bool = True) -> None:
-        self._host, self._puerto, self._remitente = host, puerto, remitente
-        self._usuario, self._clave, self._usar_tls = usuario, clave, usar_tls
+    def __init__(self, casilla: Callable[[], tuple[str, str] | None]) -> None:
+        self._casilla = casilla
 
     def enviar(self, destino: str, demora: Demora) -> str:
-        if not self._host or not self._remitente:
+        datos = self._casilla()
+        if not datos:
             return "sin_configurar"
+        remitente, clave = datos
         mensaje = EmailMessage()
-        mensaje["From"], mensaje["To"] = self._remitente, destino
+        mensaje["From"], mensaje["To"] = remitente, destino
         mensaje["Subject"] = f"URGENTE: mosto virgen sin descargar ({demora.patente})"
         mensaje.set_content(demora.texto)
-        with smtplib.SMTP(self._host, self._puerto, timeout=15) as smtp:
-            if self._usar_tls:
-                smtp.starttls()
-            if self._usuario:
-                smtp.login(self._usuario, self._clave or "")
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=15) as smtp:
+            smtp.starttls()
+            smtp.login(remitente, clave)
             smtp.send_message(mensaje)
         return "enviado"
 

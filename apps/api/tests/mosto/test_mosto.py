@@ -175,3 +175,29 @@ def test_whatsapp_por_bot_contra_la_base():
     with pytest.raises(ValueError, match="Personal en el bot"):
         WhatsappPorBot(os.environ["SJ_PRUEBA_DMZ_DSN"]).enviar(
             "5490000000001", Demora("AB123CD", "Mostos SA", 1, 7.04, "Chimbas"))
+
+
+def test_el_mail_sale_desde_la_casilla_de_rrhh_y_sin_casilla_no_se_envia():
+    from suite_juviar.modulos.mosto.domain.modelos import Demora
+    from suite_juviar.modulos.mosto.infrastructure.avisos import CorreoGmail
+    from suite_juviar.modulos.seleccion.application.correo import CorreoRRHH
+
+    class _Cifrador:
+        def cifrar(self, valor):
+            return valor[::-1].encode()
+
+        def descifrar(self, cifrado):
+            return cifrado.decode()[::-1]
+
+    parametros: dict = {}
+    correo = CorreoRRHH(parametros, _Cifrador(), None, None, None)
+    demora = Demora("AB123CD", "Proveedor", 1, 30.0, "Chimbas")
+    assert correo.casilla_para_enviar() is None
+    assert CorreoGmail(correo.casilla_para_enviar).enviar("jefe@juviar.com.ar", demora) == "sin_configurar"
+
+    correo.guardar("JUBIAR", "rrhh@jubiar.com", "abcd efgh ijkl mnop", "admin")
+    assert correo.casilla_para_enviar() == ("rrhh@jubiar.com", "abcdefghijklmnop")
+    correo.guardar("ENAV", "rrhh@enav.com", "clave enav", "admin")
+    assert correo.casilla_para_enviar() == ("rrhh@enav.com", "claveenav")
+    # La contraseña nunca sale por la vista de Parámetros.
+    assert "clave" not in correo.ver("ENAV")

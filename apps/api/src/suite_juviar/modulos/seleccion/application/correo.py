@@ -109,6 +109,16 @@ class CorreoRRHH:
         clave = self._cifrador.descifrar(datos["clave"])
         return datos, self._crear_bandeja(datos["casilla"], clave, datos.get("ultima_lectura"), datos.get("cursor"))
 
+    def casilla_para_enviar(self) -> tuple[str, str] | None:
+        """Casilla y contraseña de aplicación para avisos internos: la primera empresa cargada.
+
+        Sólo para uso dentro del servidor; nunca se devuelve por la API."""
+        for empresa in EMPRESAS:
+            datos = self._parametros.get(empresa) or {}
+            if datos.get("casilla") and datos.get("clave"):
+                return datos["casilla"], self._cifrador.descifrar(datos["clave"])
+        return None
+
     def probar(self, empresa: str) -> None:
         self._bandeja(self._empresa(empresa))[1].probar()
 
