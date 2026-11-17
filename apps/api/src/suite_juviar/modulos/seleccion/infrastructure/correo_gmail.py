@@ -11,10 +11,12 @@ import email
 import imaplib
 import logging
 import re
+import smtplib
+import ssl
 from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from email.header import decode_header, make_header
-from email.message import Message
+from email.message import EmailMessage, Message
 from email.utils import parsedate_to_datetime
 from pathlib import PurePath
 from typing import Any
@@ -205,3 +207,13 @@ def desde_para(ultima_lectura: datetime | None, dias_iniciales: int = 30) -> dat
     if ultima_lectura is None:
         return (datetime.now(UTC) - timedelta(days=dias_iniciales)).date()
     return (ultima_lectura - timedelta(days=1)).date()
+
+
+def enviar_por_gmail(casilla: str, clave_aplicacion: str, destino: str, asunto: str, cuerpo: str) -> None:
+    """Envía por el SMTP de Gmail con TLS directo y certificado verificado."""
+    mensaje = EmailMessage()
+    mensaje["From"], mensaje["To"], mensaje["Subject"] = casilla, destino, asunto
+    mensaje.set_content(cuerpo)
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15, context=ssl.create_default_context()) as smtp:
+        smtp.login(casilla, clave_aplicacion.replace(" ", ""))
+        smtp.send_message(mensaje)

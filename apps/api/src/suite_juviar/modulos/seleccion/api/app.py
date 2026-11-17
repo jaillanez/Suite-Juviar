@@ -33,7 +33,12 @@ from ..domain.modelos import (
 )
 from ..infrastructure import ia_deepseek
 from ..infrastructure.cifrado import CifradorAESGCM
-from ..infrastructure.correo_gmail import BandejaGmailIMAP, ErrorCorreo, desde_para
+from ..infrastructure.correo_gmail import (
+    BandejaGmailIMAP,
+    ErrorCorreo,
+    desde_para,
+    enviar_por_gmail,
+)
 from ..infrastructure.extraccion_pdf import CamposPorReglasProvisorias, TextoPDF
 from ..infrastructure.sqlite import (
     ExtraccionesSQLite,
@@ -359,6 +364,7 @@ def construir_correo(ruta_base: str, clave: str) -> CorreoRRHH:
         lambda casilla, clave_app, ultima, cursor: BandejaGmailIMAP(casilla, clave_app, desde_para(ultima), cursor),
         IngestarCVs(originales),
         ExtraerDatosCV(originales, extracciones, TextoPDF(), CamposPorReglasProvisorias()),
+        enviar_por_gmail,
     )
 
 

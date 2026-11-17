@@ -53,8 +53,10 @@ class CorreoRRHH:
         crear_bandeja: Callable[[str, str, datetime | None, dict[str, Any] | None], BandejaConPrueba],
         ingestar: IngestarCVs,
         extraer: ExtraerDatosCV,
+        enviar_correo: Callable[[str, str, str, str, str], None] | None = None,
     ) -> None:
         self._parametros = parametros
+        self._enviar_correo = enviar_correo  # (casilla, clave, destino, asunto, cuerpo)
         self._cifrador = cifrador
         self._crear_bandeja = crear_bandeja
         self._ingestar = ingestar
@@ -108,6 +110,19 @@ class CorreoRRHH:
             raise ValueError("Primero cargá la casilla y la contraseña de aplicación.")
         clave = self._cifrador.descifrar(datos["clave"])
         return datos, self._crear_bandeja(datos["casilla"], clave, datos.get("ultima_lectura"), datos.get("cursor"))
+
+    def enviar_aviso(self, destino: str, asunto: str, cuerpo: str) -> bool:
+        """Manda un aviso interno desde la casilla de RRHH: primero ENAV, si no está, JUBIAR.
+
+        La contraseña no sale de acá. Devuelve False si no hay ninguna casilla cargada."""
+        if self._enviar_correo is None:
+            return False
+        for empresa in EMPRESAS:
+            datos = self._parametros.get(empresa) or {}
+            if datos.get("casilla") and datos.get("clave"):
+                self._enviar_correo(datos["casilla"], self._cifrador.descifrar(datos["clave"]), destino, asunto, cuerpo)
+                return True
+        return False
 
     def probar(self, empresa: str) -> None:
         self._bandeja(self._empresa(empresa))[1].probar()
