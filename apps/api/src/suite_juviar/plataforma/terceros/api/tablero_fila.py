@@ -129,8 +129,15 @@ def foto_patente(viaje_id: int, _: Autorizado):
         raise HTTPException(503, "El tablero de la fila no está conectado.")
     try:
         with psycopg.connect(_dsn, row_factory=dict_row, connect_timeout=5) as cn:
+            # Sólo las fotos de los camiones que muestra el tablero: activos o de hoy.
             fila = cn.execute(
-                "SELECT contenido, tipo FROM fila.foto_patente WHERE viaje_id = %s", (viaje_id,)
+                """SELECT f.contenido, f.tipo
+                     FROM fila.foto_patente f JOIN fila.viaje v ON v.id = f.viaje_id
+                    WHERE f.viaje_id = %(id)s AND v.sede = ANY(%(sedes)s)
+                      AND (v.estado = ANY(%(activos)s)
+                           OR (v.registrado_en AT TIME ZONE 'America/Argentina/San_Juan')::date = %(hoy)s)""",
+                {"id": viaje_id, "sedes": sedes(), "activos": list(ACTIVOS),
+                 "hoy": datetime.now(ZONA).date()},
             ).fetchone()
     except psycopg.Error as exc:
         raise HTTPException(503, "No se pudo leer la foto.") from exc

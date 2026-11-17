@@ -123,3 +123,18 @@ def test_franjas_fijas(base):
 def test_guardia_no_puede_tocar_parametros(base):
     with base.conexion() as cn, pytest.raises(psycopg.errors.InsufficientPrivilege):
         cn.execute("SELECT fila.fijar_parametro_organica('chimbas', false, 'ambos', 'manual', NULL, 15, 'x')")
+
+
+def test_foto_solo_de_camiones_en_la_fila_y_el_reemplazo_queda_anotado(base):
+    repo = base
+    viaje = _alta(repo, "FF666FF", COMUN, False)
+    foto = b"\xff\xd8\xff" + b"0" * 2000
+    repo.guardar_foto(viaje["id"], foto, "image/jpeg", "guardia:a")
+    repo.guardar_foto(viaje["id"], foto, "image/jpeg", "guardia:b")
+    eventos = _admin("""SELECT detalle->'reemplaza'->>'tomada_por' FROM fila.evento
+                         WHERE viaje_id = %s AND tipo = 'foto_patente' ORDER BY id""", viaje["id"])
+    assert eventos == [(None,), ("guardia:a",)]
+    _accion(repo, viaje, "llamar")
+    _admin("UPDATE fila.viaje SET estado = 'descargado' WHERE id = %s RETURNING id", viaje["id"])
+    with pytest.raises(ValueError, match="ya no está en la fila"):
+        repo.guardar_foto(viaje["id"], foto, "image/jpeg", "guardia:c")

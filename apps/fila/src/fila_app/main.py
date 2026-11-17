@@ -319,7 +319,10 @@ async def foto_patente(viaje_id: int, request: Request, sesion: Guardia, reposit
     tipo = tipo_de_imagen(contenido)
     if len(contenido) < FOTO_MINIMA or not tipo:
         raise HTTPException(422, "no llegó una foto válida")
-    repositorio.guardar_foto(viaje_id, contenido, tipo, sesion.actor)
+    try:
+        repositorio.guardar_foto(viaje_id, contenido, tipo, sesion.actor)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 @app.post("/api/guardia/{sede}/organica/{accion}")
