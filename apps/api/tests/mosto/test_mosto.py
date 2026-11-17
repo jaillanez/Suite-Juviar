@@ -1,3 +1,4 @@
+import os
 import tempfile
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -24,10 +25,10 @@ class Canal:
     def __init__(self, canal, resultado="enviado", falla=False):
         self.canal, self._resultado, self._falla, self.enviados = canal, resultado, falla, []
 
-    def enviar(self, destino, asunto, texto):
+    def enviar(self, destino, demora):
         if self._falla:
-            raise OSError("sin conexión")
-        self.enviados.append((destino, texto))
+            raise OSError("sin conexión con 10.0.0.5")
+        self.enviados.append((destino, demora.texto))
         return self._resultado
 
 
@@ -87,7 +88,8 @@ def test_viajes_liquidacion_con_margen_y_excepcion():
     s.mover(v1.id, "Concentrador", "", "jefe")
     vista = s.ficha(c.id)
     assert vista["liquidacion"]["azucar_liquidada"] == 228  # 229 de promedio, 1 g/L de margen
-    s.excepcion_margen(c.id, True, "acuerdo comercial")
+    s.excepcion_margen(c.id, True, "acuerdo comercial", "comercial")
+    assert s.obtener(c.id).sin_margen_por == "comercial"
     cerrada = s.cerrar(c.id, "comercial")
     assert cerrada.estado.value == "CERRADA"
     assert cerrada.liquidacion.azucar_liquidada == 229 and cerrada.liquidacion.margen_gl == 0
@@ -113,6 +115,8 @@ def test_alarma_de_mosto_virgen_una_vez_por_viaje():
     avisos = s.revisar_demoras()
     assert len(avisos) == 1 and "AA111BB" in avisos[0].texto
     assert [(e.canal, e.resultado) for e in avisos[0].envios] == [("correo", "enviado"), ("whatsapp", "error")]
+    assert avisos[0].envios[1].detalle == "falla del canal"  # el error técnico queda sólo en el registro
+    assert "prod@juviar.com.ar" not in str(s.avisos()) and "5492645550000" not in str(s.avisos())
     assert s.revisar_demoras() == []
     assert s.vista_viaje(s.obtener_viaje(v.id))["demorado"] is True
     s.descargar(v.id, "Concentrador", "", "jefe")
@@ -125,6 +129,10 @@ def test_parametros_validan_destinatarios():
         s.guardar_parametros(220, 1, 6, [{"nombre": "Ana"}], "admin")
     with pytest.raises(ValueError, match="horas"):
         s.guardar_parametros(220, 1, 0, [], "admin")
+    with pytest.raises(ValueError, match="litros"):
+        s.crear_compra("Mostos SA", "30712345678", "virgen", float("nan"), 500, "comercial")
+    with pytest.raises(ValueError, match="precio"):
+        s.crear_compra("Mostos SA", "30712345678", "virgen", 1000, float("inf"), "comercial")
 
 
 def cliente(perfil, ruta):
@@ -154,3 +162,16 @@ def test_permisos_por_perfil():
     assert cliente("COMERCIAL", ruta).get("/mosto/parametros").status_code == 403
     assert cliente("SUPERADMIN", ruta).get("/mosto/parametros").json()["azucar_referencia"] == 220
     assert cliente("RRHH", ruta).get("/mosto/compras").status_code == 403
+    assert cliente("COMERCIAL", ruta).post("/mosto/compras", json={**alta, "litros": -1}).status_code == 422
+    assert cliente("COMERCIAL", ruta).post("/mosto/compras", json={**alta, "precio_base": 1e12}).status_code == 422
+
+
+@pytest.mark.skipif(not os.getenv("SJ_PRUEBA_DMZ_DSN"), reason="sin base DMZ de prueba")
+def test_whatsapp_por_bot_contra_la_base():
+    from suite_juviar.modulos.mosto.domain.modelos import Demora
+    from suite_juviar.modulos.mosto.infrastructure.avisos import WhatsappPorBot
+
+    # Un celular que no está en «Personal en el bot» no recibe nada: la base lo rechaza.
+    with pytest.raises(ValueError, match="Personal en el bot"):
+        WhatsappPorBot(os.environ["SJ_PRUEBA_DMZ_DSN"]).enviar(
+            "5490000000001", Demora("AB123CD", "Mostos SA", 1, 7.04, "Chimbas"))

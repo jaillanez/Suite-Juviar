@@ -25,6 +25,12 @@ _TELEFONO = re.compile(r"^\d{8,20}$")
 _CORREO = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
+def _positivo(mensaje: str, valor: float, tope: float = 1e9) -> None:
+    # La comparación encadenada también rechaza NaN e infinito.
+    if not 0 < valor < tope:
+        raise ValueError(mensaje)
+
+
 def _obligatorio(nombre: str, valor: str | None) -> None:
     if not valor or not valor.strip():
         raise ValueError(f"{nombre} no puede estar vacío.")
@@ -72,8 +78,7 @@ class MuestraPileta:
 
     def __post_init__(self) -> None:
         _obligatorio("La pileta", self.pileta)
-        if self.litros <= 0:
-            raise ValueError("Los litros de la pileta tienen que ser más de cero.")
+        _positivo("Los litros de la pileta tienen que ser más de cero.", self.litros)
 
 
 class EstadoCompra(StrEnum):
@@ -114,6 +119,8 @@ class Compra:
     piletas: tuple[MuestraPileta, ...] = ()
     sin_margen: bool = False
     sin_margen_motivo: str = ""
+    sin_margen_por: str = ""
+    sin_margen_en: datetime | None = None
     cerrada_en: datetime | None = None
     cerrada_por: str = ""
     liquidacion: Liquidacion | None = None
@@ -124,10 +131,8 @@ class Compra:
             raise ValueError("El CUIT tiene que tener 11 números, sin guiones.")
         if self.tipo not in TIPOS:
             raise ValueError("Elegí el tipo: sulfitado o virgen.")
-        if self.litros <= 0:
-            raise ValueError("Los litros tienen que ser más de cero.")
-        if self.precio_base <= 0:
-            raise ValueError("El precio base tiene que ser más de cero.")
+        _positivo("Los litros tienen que ser más de cero.", self.litros)
+        _positivo("El precio base tiene que ser más de cero.", self.precio_base)
 
     @property
     def estado(self) -> EstadoCompra:
@@ -170,8 +175,7 @@ class Viaje:
             raise ValueError("Elegí la bodega: Chimbas, Media Agua o Lavalle.")
         if not _PATENTE.match(self.patente):
             raise ValueError("La patente tiene que tener de 5 a 10 letras o números, sin espacios.")
-        if self.litros <= 0:
-            raise ValueError("Los litros del viaje tienen que ser más de cero.")
+        _positivo("Los litros del viaje tienen que ser más de cero.", self.litros)
 
 
 @dataclass(frozen=True, slots=True)
@@ -207,6 +211,23 @@ class Parametros:
             raise ValueError("El margen tiene que estar entre 0 y 50 g/L.")
         if self.horas_virgen is not None and not 0 < self.horas_virgen <= 240:
             raise ValueError("Las horas límite del mosto virgen tienen que estar entre 0 y 240.")
+
+
+@dataclass(frozen=True, slots=True)
+class Demora:
+    """Datos de un camión de mosto virgen demorado; cada canal arma su mensaje con esto."""
+
+    patente: str
+    proveedor: str
+    compra: int
+    horas: float
+    bodega: str
+
+    @property
+    def texto(self) -> str:
+        return (f"URGENTE mosto virgen: el camión {self.patente} ({self.proveedor}, compra N.º {self.compra}) "
+                f"lleva {self.horas:.1f} h en {self.bodega} sin descargarse. "
+                f"Hay que descargarlo o pasarlo al concentrador.")
 
 
 @dataclass(frozen=True, slots=True)

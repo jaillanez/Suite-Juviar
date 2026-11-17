@@ -10,6 +10,7 @@ from email.message import EmailMessage
 import psycopg
 
 from ..application.servicios import GestionarMosto
+from ..domain.modelos import Demora
 
 _registro = logging.getLogger(__name__)
 
@@ -22,12 +23,13 @@ class CorreoSMTP:
         self._host, self._puerto, self._remitente = host, puerto, remitente
         self._usuario, self._clave, self._usar_tls = usuario, clave, usar_tls
 
-    def enviar(self, destino: str, asunto: str, texto: str) -> str:
+    def enviar(self, destino: str, demora: Demora) -> str:
         if not self._host or not self._remitente:
             return "sin_configurar"
         mensaje = EmailMessage()
-        mensaje["From"], mensaje["To"], mensaje["Subject"] = self._remitente, destino, asunto
-        mensaje.set_content(texto)
+        mensaje["From"], mensaje["To"] = self._remitente, destino
+        mensaje["Subject"] = f"URGENTE: mosto virgen sin descargar ({demora.patente})"
+        mensaje.set_content(demora.texto)
         with smtplib.SMTP(self._host, self._puerto, timeout=15) as smtp:
             if self._usar_tls:
                 smtp.starttls()
@@ -38,18 +40,25 @@ class CorreoSMTP:
 
 
 class WhatsappPorBot:
-    """Deja el mensaje en la cola del bot (infra/040); lo manda el worker por Chattigo."""
+    """Deja el aviso en la cola del bot (infra/040); lo manda el worker por Chattigo.
+
+    La base arma el texto y sólo acepta celulares activos en «Personal en el bot»."""
 
     canal = "whatsapp"
 
     def __init__(self, dsn: str) -> None:
         self._dsn = dsn
 
-    def enviar(self, destino: str, asunto: str, texto: str) -> str:
+    def enviar(self, destino: str, demora: Demora) -> str:
         if not self._dsn:
             return "sin_configurar"
-        with psycopg.connect(self._dsn, connect_timeout=5) as cn:
-            cn.execute("SELECT fila.encolar_aviso_interno(%s, %s)", (destino, texto))
+        try:
+            with psycopg.connect(self._dsn, connect_timeout=5) as cn:
+                cn.execute("SELECT fila.encolar_aviso_mosto(%s, %s, %s, %s::integer, %s::numeric, %s)",
+                           (destino, demora.patente, demora.proveedor, demora.compra, round(demora.horas, 1),
+                            demora.bodega))
+        except psycopg.errors.RaiseException as exc:
+            raise ValueError(exc.diag.message_primary or "la base rechazó el aviso") from exc
         return "encolado"
 
 

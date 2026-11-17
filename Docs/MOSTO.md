@@ -42,6 +42,10 @@ se descarga, y sale a cada persona cargada por mail y por WhatsApp.
 
 - Mail: usa `SJ_SMTP_HOST`, `SJ_SMTP_PUERTO`, `SJ_SMTP_REMITENTE`, `SJ_SMTP_USUARIO`,
   `SJ_SMTP_CLAVE` y `SJ_SMTP_TLS`. Sin configurar, el aviso dice «canal sin configurar».
-- WhatsApp: se encola en `fila.aviso_productor` con `fila.encolar_aviso_interno` y lo manda el
-  worker del bot. Sale de verdad cuando el bot tenga las credenciales de Chattigo.
+- WhatsApp: `fila.encolar_aviso_mosto` recibe los datos del camión, arma el texto en la base y
+  lo deja en `fila.aviso_productor`; lo manda el worker del bot. Sólo acepta celulares activos
+  en «Personal en el bot» y hasta 60 avisos internos por hora. Sale de verdad cuando el bot
+  tenga las credenciales de Chattigo.
+- La sección Mosto muestra a quién se avisó por nombre, sin mails ni celulares; el error
+  técnico de un canal queda sólo en el registro del servidor.
 - `SJ_ALARMA_MOSTO=0` apaga el ciclo (pruebas).

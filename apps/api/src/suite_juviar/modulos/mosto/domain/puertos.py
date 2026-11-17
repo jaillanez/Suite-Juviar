@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import MutableMapping
 from typing import Protocol
 
-from .modelos import Aviso, Compra, Parametros, Viaje
+from .modelos import Aviso, Compra, Demora, Parametros, Viaje
 
 
 class RepositorioMosto(Protocol):
@@ -18,4 +18,4 @@ class Notificador(Protocol):
 
     canal: str
 
-    def enviar(self, destino: str, asunto: str, texto: str) -> str: ...
+    def enviar(self, destino: str, demora: Demora) -> str: ...

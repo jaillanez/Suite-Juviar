@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -15,11 +15,14 @@ from suite_juviar.plataforma.identidad.api.dependencias import (
 from ..application.servicios import GestionarMosto
 from ..domain.modelos import BODEGAS, TIPOS, Etapa
 
+Positivo = Annotated[float, Field(gt=0, lt=1e9, allow_inf_nan=False)]
+Medida = Annotated[float, Field(ge=0, lt=1000, allow_inf_nan=False)]
+
 
 class AnalisisEntrada(BaseModel):
-    azucar_gl: float
-    absorbancia_520: float | None = None
-    alcohol: float | None = None
+    azucar_gl: Medida
+    absorbancia_520: Medida | None = None
+    alcohol: Medida | None = None
     observaciones: str = Field(default="", max_length=300)
 
 
@@ -27,8 +30,8 @@ class CompraEntrada(BaseModel):
     proveedor: str = Field(min_length=1, max_length=120)
     cuit: str
     tipo: Literal["sulfitado", "virgen"]
-    litros: float
-    precio_base: float
+    litros: Positivo
+    precio_base: Positivo
 
 
 class DecisionEntrada(BaseModel):
@@ -38,7 +41,7 @@ class DecisionEntrada(BaseModel):
 
 class PiletaEntrada(AnalisisEntrada):
     pileta: str = Field(min_length=1, max_length=40)
-    litros: float
+    litros: Positivo
 
 
 class MargenEntrada(BaseModel):
@@ -50,7 +53,7 @@ class ViajeEntrada(BaseModel):
     compra_id: str
     bodega: str
     patente: str = Field(min_length=1, max_length=12)
-    litros: float
+    litros: Positivo
 
 
 class LugarEntrada(BaseModel):
@@ -65,9 +68,9 @@ class DestinatarioEntrada(BaseModel):
 
 
 class ParametrosEntrada(BaseModel):
-    azucar_referencia: float
-    margen_gl: float
-    horas_virgen: float | None = None
+    azucar_referencia: Medida
+    margen_gl: Medida
+    horas_virgen: Medida | None = None
     destinatarios: list[DestinatarioEntrada] = Field(default_factory=list, max_length=30)
 
 
@@ -149,9 +152,9 @@ def crear_router(servicio: GestionarMosto, entorno: str = "prueba") -> APIRouter
             compra_id, entrada.pileta, entrada.litros, datos, sesion.actor).id))
 
     @app.post("/compras/{compra_id}/margen", dependencies=comercial)
-    def margen(compra_id: str, entrada: MargenEntrada):
+    def margen(compra_id: str, entrada: MargenEntrada, sesion: SesionActual):
         return hacer(lambda: servicio.ficha(servicio.excepcion_margen(
-            compra_id, entrada.sin_margen, entrada.motivo).id))
+            compra_id, entrada.sin_margen, entrada.motivo, sesion.actor).id))
 
     @app.post("/compras/{compra_id}/cerrar", dependencies=comercial)
     def cerrar(compra_id: str, sesion: SesionActual):

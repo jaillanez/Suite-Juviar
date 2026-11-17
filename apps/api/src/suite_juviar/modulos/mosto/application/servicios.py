@@ -16,6 +16,7 @@ from ..domain.modelos import (
     Aviso,
     Compra,
     Decision,
+    Demora,
     Destinatario,
     Envio,
     EstadoCompra,
@@ -129,11 +130,12 @@ class GestionarMosto:
             return replace(c, piletas=(*c.piletas, muestra))
         return self._cambiar(compra_id, cambio)
 
-    def excepcion_margen(self, compra_id: str, sin_margen: bool, motivo: str) -> Compra:
+    def excepcion_margen(self, compra_id: str, sin_margen: bool, motivo: str, actor: str) -> Compra:
         def cambio(c: Compra) -> Compra:
-            if c.estado is EstadoCompra.CERRADA:
-                raise ValueError("La compra está cerrada.")
-            return replace(c, sin_margen=sin_margen, sin_margen_motivo=_motivo(motivo) if sin_margen else "")
+            if c.estado is not EstadoCompra.APROBADA:
+                raise ValueError("La excepción se decide con la compra aprobada y abierta.")
+            return replace(c, sin_margen=sin_margen, sin_margen_motivo=_motivo(motivo) if sin_margen else "",
+                           sin_margen_por=actor, sin_margen_en=self._reloj())
         return self._cambiar(compra_id, cambio)
 
     def viajes_de(self, compra_id: str) -> list[Viaje]:
@@ -262,30 +264,37 @@ class GestionarMosto:
                 if compra is None or viaje.avisado_en is not None or not self.demorado(viaje, compra, ahora):
                     continue
                 self.repo.viajes[viaje.id] = replace(viaje, avisado_en=ahora)
-                horas = (ahora - viaje.ingreso_en).total_seconds() / 3600
-                texto = (f"URGENTE mosto virgen: el camión {viaje.patente} ({compra.proveedor}, compra "
-                         f"N.º {compra.numero}) lleva {horas:.1f} h en {BODEGAS[viaje.bodega]} sin descargarse. "
-                         f"Hay que descargarlo o pasarlo al concentrador.")
-                nuevos.append(Aviso(uuid4().hex, viaje.id, texto, ahora))
-        for aviso in nuevos:
-            envios = tuple(self._enviar(aviso.texto, parametros.destinatarios))
+                demora = Demora(viaje.patente, compra.proveedor, compra.numero,
+                                (ahora - viaje.ingreso_en).total_seconds() / 3600, BODEGAS[viaje.bodega])
+                nuevos.append((Aviso(uuid4().hex, viaje.id, demora.texto, ahora), demora))
+        for aviso, demora in nuevos:
+            envios = tuple(self._enviar(demora, parametros.destinatarios))
             self.repo.avisos[aviso.id] = replace(aviso, envios=envios)
-        return [self.repo.avisos[a.id] for a in nuevos]
+        return [self.repo.avisos[a.id] for a, _ in nuevos]
 
-    def _enviar(self, texto: str, destinatarios: tuple[Destinatario, ...]):
+    def _enviar(self, demora: Demora, destinatarios: tuple[Destinatario, ...]):
         for notificador in self.notificadores:
             for d in destinatarios:
                 destino = d.correo if notificador.canal == "correo" else d.telefono
                 if not destino:
                     continue
                 try:
-                    resultado, detalle = notificador.enviar(destino, "Mosto virgen sin descargar", texto), ""
+                    resultado, detalle = notificador.enviar(destino, demora), ""
+                except ValueError as exc:  # rechazo esperable y explicable (p. ej. celular no habilitado)
+                    _registro.warning("Aviso de mosto por %s a %s rechazado: %s", notificador.canal, d.nombre, exc)
+                    resultado, detalle = "error", str(exc)[:120]
                 except Exception as exc:  # noqa: BLE001 - un canal caído no frena a los demás
+                    # El detalle técnico queda sólo en el registro, no en la pantalla.
                     _registro.warning("Aviso de mosto por %s a %s no salió: %s", notificador.canal, d.nombre, exc)
-                    resultado, detalle = "error", str(exc)[:200]
+                    resultado, detalle = "error", "falla del canal"
                 yield Envio(notificador.canal, destino, d.nombre, resultado, detalle)
 
     def avisos(self) -> list[dict[str, Any]]:
         lista = sorted(self.repo.avisos.values(), key=lambda a: a.creado_en, reverse=True)[:50]
-        return [{**asdict(a), "en_planta": (v := self.repo.viajes.get(a.viaje_id)) is not None and v.descarga is None}
-                for a in lista]
+        # Sin mails ni celulares: esos datos sólo se ven en Parámetros.
+        return [{
+            "id": a.id, "viaje_id": a.viaje_id, "texto": a.texto, "creado_en": a.creado_en,
+            "envios": [{"canal": e.canal, "nombre": e.nombre, "resultado": e.resultado, "detalle": e.detalle}
+                       for e in a.envios],
+            "en_planta": (v := self.repo.viajes.get(a.viaje_id)) is not None and v.descarga is None,
+        } for a in lista]

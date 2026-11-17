@@ -19,7 +19,7 @@ type Viaje = Record<string, unknown> & {
 type Compra = Record<string, unknown> & {
   id: string; numero: number; proveedor: string; cuit: string; tipo: string; tipo_nombre: string; litros: number; precio_base: number;
   creada_por: string; creada_en: string; analisis: Analisis | null; decisiones: Decision[]; piletas: Pileta[];
-  sin_margen: boolean; sin_margen_motivo: string; cerrada_en: string | null; cerrada_por: string;
+  sin_margen: boolean; sin_margen_motivo: string; sin_margen_por: string; sin_margen_en: string | null; cerrada_en: string | null; cerrada_por: string;
   estado: Estado; estado_nombre: string; litros_recibidos: number; viajes: number; liquidacion: Liquidacion | null; liquidacion_final: boolean;
 };
 type Ficha = Compra & { detalle_viajes: Viaje[] };
@@ -155,7 +155,7 @@ function VentanaCompra({ id, p, cerrar, cambio }: { id: string; p: Permisos; cer
         <div><dt>Litros contratados</dt><dd>{numero(ficha.litros)} · recibidos {numero(ficha.litros_recibidos)} en {ficha.viajes} viajes</dd></div>
         <div><dt>Precio base por litro</dt><dd>{pesos(ficha.precio_base)}</dd></div>
         <div><dt>Muestra de la oferta</dt><dd>{resumenAnalisis(ficha.analisis)}{ficha.analisis?.observaciones && ` · ${ficha.analisis.observaciones}`}</dd></div>
-        <div><dt>Margen de azúcar</dt><dd>{ficha.sin_margen ? `Sin margen (excepción comercial: ${ficha.sin_margen_motivo})` : "Se descuenta el margen de Parámetros"}</dd></div>
+        <div><dt>Margen de azúcar</dt><dd>{ficha.sin_margen ? `Sin margen (excepción comercial: ${ficha.sin_margen_motivo})` : "Se descuenta el margen de Parámetros"}{ficha.sin_margen_por && ` · ${ficha.sin_margen_por}, ${fecha(ficha.sin_margen_en)}`}</dd></div>
         <div><dt>Cargada</dt><dd>{ficha.creada_por} · {fecha(ficha.creada_en)}</dd></div>
       </dl>
       {ficha.decisiones.length > 0 && <><h3>Decisiones</h3><ul className="lista-simple">{ficha.decisiones.map((d, i) => <li key={i}>{fecha(d.fecha)} · {ETAPAS[d.etapa]}: {d.aprueba ? "aprobó" : "rechazó"}{d.motivo && ` (${d.motivo})`} · {d.actor}</li>)}</ul></>}
@@ -271,6 +271,7 @@ export function ParametrosMosto() {
       </div>
       <fieldset className="franjas"><legend>A quién avisar si un camión de mosto virgen se demora</legend>
         {destinatarios.length === 0 && <p className="ayuda">Nadie cargado: el aviso se ve sólo en Gestión.</p>}
+        <p className="ayuda">El WhatsApp sólo sale a celulares activos en «Personal en el bot».</p>
         {destinatarios.map((d, i) => <div key={i} className="destinatario-mosto">
           <input aria-label="Nombre" placeholder="Nombre" maxLength={80} value={d.nombre} onChange={e => cambiar(i, { nombre: e.target.value })} />
           <input aria-label="Mail" type="email" placeholder="Mail" maxLength={120} value={d.correo} onChange={e => cambiar(i, { correo: e.target.value })} />
