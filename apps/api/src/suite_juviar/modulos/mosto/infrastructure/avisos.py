@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import logging
-import smtplib
 import threading
 from collections.abc import Callable
-from email.message import EmailMessage
 
 import psycopg
 
@@ -16,31 +14,20 @@ from ..domain.modelos import Demora
 _registro = logging.getLogger(__name__)
 
 
-class CorreoGmail:
-    """Sale desde la casilla de RRHH cargada en Parámetros, con su contraseña de aplicación.
+class CorreoDesdeRRHH:
+    """Sale desde la casilla de RRHH cargada en Parámetros; este canal nunca ve la contraseña.
 
-    `casilla` devuelve (dirección, contraseña) o None si no hay ninguna cargada; se consulta
+    `enviar(destino, asunto, cuerpo)` devuelve False si no hay casilla cargada; se consulta
     en cada envío, así un cambio en Parámetros vale sin reiniciar."""
 
     canal = "correo"
 
-    def __init__(self, casilla: Callable[[], tuple[str, str] | None]) -> None:
-        self._casilla = casilla
+    def __init__(self, enviar: Callable[[str, str, str], bool]) -> None:
+        self._enviar = enviar
 
     def enviar(self, destino: str, demora: Demora) -> str:
-        datos = self._casilla()
-        if not datos:
-            return "sin_configurar"
-        remitente, clave = datos
-        mensaje = EmailMessage()
-        mensaje["From"], mensaje["To"] = remitente, destino
-        mensaje["Subject"] = f"URGENTE: mosto virgen sin descargar ({demora.patente})"
-        mensaje.set_content(demora.texto)
-        with smtplib.SMTP("smtp.gmail.com", 587, timeout=15) as smtp:
-            smtp.starttls()
-            smtp.login(remitente, clave)
-            smtp.send_message(mensaje)
-        return "enviado"
+        asunto = f"URGENTE: mosto virgen sin descargar ({demora.patente})"
+        return "enviado" if self._enviar(destino, asunto, demora.texto) else "sin_configurar"
 
 
 class WhatsappPorBot:

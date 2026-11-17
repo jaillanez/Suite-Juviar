@@ -94,7 +94,8 @@ def construir_routers(rrhh):
             lectura_nocturna.iniciar(correo_rrhh, int(os.getenv("SJ_CORREO_CV_HORA") or "2"))
     mosto = GestionarMosto(MostoSQLite(ruta_modulos), (
         # El aviso por mail sale desde la casilla de RRHH cargada en Parámetros.
-        avisos_mosto.CorreoGmail(lambda: correo_rrhh.casilla_para_enviar() if correo_rrhh else None),
+        avisos_mosto.CorreoDesdeRRHH(
+            lambda *aviso: correo_rrhh.enviar_aviso(*aviso) if correo_rrhh else False),
         avisos_mosto.WhatsappPorBot((os.getenv("SJ_FILA_DSN_DMZ_LECTURA") or "").strip()),
     ))
     if os.getenv("SJ_ALARMA_MOSTO", "1").strip() not in {"0", "false", "no"}:

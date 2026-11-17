@@ -179,7 +179,7 @@ def test_whatsapp_por_bot_contra_la_base():
 
 def test_el_mail_sale_desde_la_casilla_de_rrhh_y_sin_casilla_no_se_envia():
     from suite_juviar.modulos.mosto.domain.modelos import Demora
-    from suite_juviar.modulos.mosto.infrastructure.avisos import CorreoGmail
+    from suite_juviar.modulos.mosto.infrastructure.avisos import CorreoDesdeRRHH
     from suite_juviar.modulos.seleccion.application.correo import CorreoRRHH
 
     class _Cifrador:
@@ -189,15 +189,19 @@ def test_el_mail_sale_desde_la_casilla_de_rrhh_y_sin_casilla_no_se_envia():
         def descifrar(self, cifrado):
             return cifrado.decode()[::-1]
 
-    parametros: dict = {}
-    correo = CorreoRRHH(parametros, _Cifrador(), None, None, None)
+    enviados = []
+    correo = CorreoRRHH({}, _Cifrador(), None, None, None, lambda *envio: enviados.append(envio))
+    canal = CorreoDesdeRRHH(correo.enviar_aviso)
     demora = Demora("AB123CD", "Proveedor", 1, 30.0, "Chimbas")
-    assert correo.casilla_para_enviar() is None
-    assert CorreoGmail(correo.casilla_para_enviar).enviar("jefe@juviar.com.ar", demora) == "sin_configurar"
+    assert canal.enviar("jefe@juviar.com.ar", demora) == "sin_configurar"
+    assert enviados == []
 
     correo.guardar("JUBIAR", "rrhh@jubiar.com", "abcd efgh ijkl mnop", "admin")
-    assert correo.casilla_para_enviar() == ("rrhh@jubiar.com", "abcdefghijklmnop")
+    assert canal.enviar("jefe@juviar.com.ar", demora) == "enviado"
     correo.guardar("ENAV", "rrhh@enav.com", "clave enav", "admin")
-    assert correo.casilla_para_enviar() == ("rrhh@enav.com", "claveenav")
+    canal.enviar("jefe@juviar.com.ar", demora)
+    assert [e[:3] for e in enviados] == [("rrhh@jubiar.com", "abcdefghijklmnop", "jefe@juviar.com.ar"),
+                                         ("rrhh@enav.com", "claveenav", "jefe@juviar.com.ar")]
+    assert "AB123CD" in enviados[0][3] and demora.texto == enviados[0][4]
     # La contraseña nunca sale por la vista de Parámetros.
     assert "clave" not in correo.ver("ENAV")
