@@ -23,6 +23,10 @@ from suite_juviar.modulos.legajo.infrastructure.simulados import (
     FuenteLegajosDesdePuerto,
 )
 from suite_juviar.modulos.legajo.infrastructure.sqlite import AdjuntosCifradosSQLite
+from suite_juviar.modulos.mosto.api.app import crear_router as crear_mosto
+from suite_juviar.modulos.mosto.application.servicios import GestionarMosto
+from suite_juviar.modulos.mosto.infrastructure import avisos as avisos_mosto
+from suite_juviar.modulos.mosto.infrastructure.sqlite import MostoSQLite
 from suite_juviar.modulos.salud.api.app import crear_router as crear_salud
 from suite_juviar.modulos.salud.application.servicios import GestionarSalud
 from suite_juviar.modulos.salud.infrastructure.simulados import (
@@ -88,6 +92,16 @@ def construir_routers(rrhh):
         correo_rrhh = construir_correo(ruta_modulos, clave_parametros or clave_adjuntos.decode())
         if os.getenv("SJ_CORREO_CV_AUTOMATICO", "1").strip() not in {"0", "false", "no"}:
             lectura_nocturna.iniciar(correo_rrhh, int(os.getenv("SJ_CORREO_CV_HORA") or "2"))
+    mosto = GestionarMosto(MostoSQLite(ruta_modulos), (
+        avisos_mosto.CorreoSMTP(
+            (os.getenv("SJ_SMTP_HOST") or "").strip(), int(os.getenv("SJ_SMTP_PUERTO") or "587"),
+            (os.getenv("SJ_SMTP_REMITENTE") or "").strip(), (os.getenv("SJ_SMTP_USUARIO") or "").strip() or None,
+            os.getenv("SJ_SMTP_CLAVE"),
+            (os.getenv("SJ_SMTP_TLS") or "SI").strip().upper() in {"1", "SI", "SÍ", "TRUE"}),
+        avisos_mosto.WhatsappPorBot((os.getenv("SJ_FILA_DSN_DMZ_LECTURA") or "").strip()),
+    ))
+    if os.getenv("SJ_ALARMA_MOSTO", "1").strip() not in {"0", "false", "no"}:
+        avisos_mosto.iniciar(mosto)
     return {
         "parametros": crear_router_parametros(correo_rrhh, entorno),
         "epp-analitica": crear_analitica(analitica, entorno, NombresDesdePuerto(rrhh)),
@@ -99,4 +113,5 @@ def construir_routers(rrhh):
             configuracion_capacitacion, entorno, ruta_modulos, fuente_legajos
         ),
         "activos": crear_activos(entorno, ruta_modulos),
+        "mosto": crear_mosto(mosto, entorno),
     }

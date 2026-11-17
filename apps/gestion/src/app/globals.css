@@ -1137,4 +1137,8 @@ th button {
 .franja-organica button { padding: 0; min-width: 0; }
 .franja-organica input { padding-left: 6px; padding-right: 4px; }
 .franja-organica > * { min-width: 0; }
+.destinatario-mosto { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1.1fr) 40px; gap: 6px; align-items: center; }
+.destinatario-mosto > * { min-width: 0; }
+.destinatario-mosto button { padding: 0; }
+@media (max-width: 720px) { .destinatario-mosto { grid-template-columns: 1fr 40px; } }
 .lista-simple { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: .88rem; color: var(--muted); }

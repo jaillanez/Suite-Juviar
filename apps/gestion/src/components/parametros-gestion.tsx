@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { ErrorVisible } from "./compartidos";
+import { ParametrosMosto } from "./mosto-gestion";
 
 type Resultado = { leida_en: string; adjuntos: number; incorporados: number; repetidos: number; error: string | null; incompleta?: boolean };
 type Correo = { empresa: string; casilla: string; clave_cargada: boolean; actualizado_por: string | null; actualizado_en: string | null; ultima_lectura: string | null; ultimo_resultado: Resultado | null };
@@ -100,5 +101,5 @@ export function ParametrosGestion() {
   useEffect(() => { api<Correo[]>("parametros/correo-rrhh").then(setCorreos).catch(x => setError(x instanceof Error ? x.message : String(x))); }, []);
   if (error) return <ErrorVisible mensaje={error} />;
   if (!correos) return <p className="ayuda">Cargando…</p>;
-  return <>{correos.map(c => <CasillaEmpresa key={c.empresa} inicial={c} />)}<ImpresoraEtiquetas /></>;
+  return <>{correos.map(c => <CasillaEmpresa key={c.empresa} inicial={c} />)}<ImpresoraEtiquetas /><ParametrosMosto /></>;
 }
