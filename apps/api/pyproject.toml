@@ -64,6 +64,7 @@ containers = [
     "suite_juviar.modulos.seleccion",
     "suite_juviar.modulos.capacitacion",
     "suite_juviar.modulos.activos",
+    "suite_juviar.modulos.mosto",
 ]
 
 [[tool.importlinter.contracts]]
@@ -94,6 +95,7 @@ modules = [
     "suite_juviar.modulos.seleccion",
     "suite_juviar.modulos.capacitacion",
     "suite_juviar.modulos.activos",
+    "suite_juviar.modulos.mosto",
 ]
 
 [[tool.importlinter.contracts]]
@@ -111,6 +113,7 @@ source_modules = [
     "suite_juviar.modulos.seleccion.domain",
     "suite_juviar.modulos.capacitacion.domain",
     "suite_juviar.modulos.activos.domain",
+    "suite_juviar.modulos.mosto.domain",
     "suite_juviar.plataforma.identidad.domain",
     "suite_juviar.plataforma.terceros.domain",
     "suite_juviar.plataforma.firma.domain",
@@ -135,6 +138,7 @@ source_modules = [
     "suite_juviar.modulos.seleccion.application",
     "suite_juviar.modulos.capacitacion.application",
     "suite_juviar.modulos.activos.application",
+    "suite_juviar.modulos.mosto.application",
 ]
 forbidden_modules = ["sqlalchemy", "fastapi", "asyncpg"]
 

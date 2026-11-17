@@ -21,6 +21,7 @@ PERMISOS_POR_PERFIL: dict[str, frozenset[str]] = {
     "CAMPO": frozenset({"suite.acceder", "recepcion.romaneo.crear"}),
     "BASCULA": frozenset({
         "suite.acceder", "recepcion.romaneo.crear", "fila.tablero.leer", "fila.organica.operar",
+        "mosto.leer", "mosto.viajes.ingresar",
     }),
     "BODEGA": frozenset({
         "suite.acceder", "fila.contactos.gestionar", "fila.tablero.leer", "fila.turnos.gestionar", "bot.simulador.usar",
@@ -40,9 +41,15 @@ PERMISOS_POR_PERFIL: dict[str, frozenset[str]] = {
         "epp.matriz.editar", "epp.stock.leer", "epp.entrega.leer",
         "epp.analitica.leer", "capacitacion.gestionar",
     }),
-    "COMPRAS": frozenset({"suite.acceder", "epp.catalogo.leer", "epp.stock.leer", "epp.stock.editar", "epp.aviso.gestionar", "epp.analitica.leer"}),
+    "COMPRAS": frozenset({"suite.acceder", "epp.catalogo.leer", "epp.stock.leer", "epp.stock.editar", "epp.aviso.gestionar", "epp.analitica.leer",
+                         "mosto.leer", "mosto.compras.gestionar"}),
     "SUPERVISOR": frozenset({"suite.acceder", "capacitacion.leer", "turnos.cronograma.leer", "turnos.cronograma.editar"}),
     "MANTENIMIENTO": frozenset({"suite.acceder", "activos.gestionar"}),
+    # Mosto: Laboratorio analiza y decide por Calidad; el Jefe de Producción puede aprobar lo
+    # que rechazó Calidad y registra descargas; Comercial decide con escasez y cierra contratos.
+    "LABORATORIO": frozenset({"suite.acceder", "mosto.leer", "mosto.laboratorio"}),
+    "PRODUCCION": frozenset({"suite.acceder", "mosto.leer", "mosto.produccion"}),
+    "COMERCIAL": frozenset({"suite.acceder", "mosto.leer", "mosto.compras.gestionar", "mosto.comercial"}),
 }
 PERMISOS_POR_PERFIL["SUPERADMIN"] = frozenset().union(
     *PERMISOS_POR_PERFIL.values(), {"identidad.usuarios.gestionar", "bot.personal.gestionar", "parametros.gestionar"}
