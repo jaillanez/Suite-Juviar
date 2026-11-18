@@ -386,7 +386,7 @@ class GestionarControles:
     def _acceso(self, p: Parametros, descifrar: bool = True) -> tuple[AccesoARCA | None, str]:
         credencial = self.repo.credenciales.get(f"activa:{p.ambiente}")
         if credencial is None:
-            return None, f"Falta cargar en Parámetros el certificado de ARCA ({AMBIENTES[p.ambiente].lower()})."
+            return None, f"Falta cargar en Parámetros el certificado de ARCA para {AMBIENTES[p.ambiente].lower()}."
         if credencial.cuit != p.cuit_representante:
             return None, "El certificado cargado es de otro CUIT: generá uno nuevo en Parámetros."
         if credencial.vence is not None and credencial.vence <= self._reloj():
