@@ -469,6 +469,11 @@ def test_la_api_nunca_devuelve_la_clave_privada():
         "Falta cargar en Parámetros el CUIT de ENAV.", "Falta cargar en Parámetros el CUIT de JUBIAR."]
 
 
+def test_el_cifrado_viejo_solo_se_usa_con_el_servidor_que_lo_necesita():
+    from suite_juviar.modulos.controles_arca.infrastructure.arca import HOSTS_CIFRADO_VIEJO
+    assert HOSTS_CIFRADO_VIEJO == {"servicios1.afip.gov.ar"}
+
+
 def test_parametros_validan_cuits_y_urls():
     s = servicio()
     with pytest.raises(ValueError, match="ENAV"):
@@ -477,6 +482,12 @@ def test_parametros_validan_cuits_y_urls():
         parametros(s, url_apocrifas="https://ejemplo.com/lista.zip")
     with pytest.raises(ValueError, match="sitio de ARCA"):
         parametros(s, url_rg18="http://servicioscf.afip.gob.ar/Publico/rg18/Archivos/RG18.csv")
+    # Direcciones armadas para engañar una comparación de texto.
+    for engano in ("https://servicioscf.afip.gob.ar@127.0.0.1/x", "https://127.0.0.1#.afip.gob.ar/x",
+                   "https://servicioscf.afip.gob.ar:8080/x", "https://evil.com\\@servicioscf.afip.gob.ar/x",
+                   "https://usuario:clave@servicioscf.afip.gob.ar/x"):
+        with pytest.raises(ValueError, match="sitio de ARCA"):
+            parametros(s, url_rg18=engano)
     c = cliente("SUPERADMIN", s)
     datos = {**s.vista_parametros(), "controles_activos": [1, 6]}
     datos.pop("actualizado_por"), datos.pop("actualizado_en")

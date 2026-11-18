@@ -54,11 +54,16 @@ _SOBRE = ('<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope '
           '<soapenv:Body>{cuerpo}</soapenv:Body></soapenv:Envelope>')
 
 
-def cliente_http() -> httpx.Client:
-    """TLS verificado. Algunos servidores de ARCA usan claves DH cortas: se baja el nivel de
-    cifrado aceptado (SECLEVEL=1), pero el certificado del servidor se sigue verificando."""
+# Servidores de ARCA que todavía usan claves DH cortas: sólo con ellos se acepta ese cifrado.
+HOSTS_CIFRADO_VIEJO = frozenset({"servicios1.afip.gov.ar"})
+
+
+def cliente_http(cifrado_viejo: bool = False) -> httpx.Client:
+    """TLS con el certificado del servidor verificado. ``cifrado_viejo`` baja el nivel de cifrado
+    aceptado (SECLEVEL=1) y se usa sólo para los servidores de ``HOSTS_CIFRADO_VIEJO``."""
     contexto = ssl.create_default_context()
-    contexto.set_ciphers("DEFAULT@SECLEVEL=1")
+    if cifrado_viejo:
+        contexto.set_ciphers("DEFAULT@SECLEVEL=1")
     return httpx.Client(verify=contexto, timeout=httpx.Timeout(30.0, connect=10.0), follow_redirects=False)
 
 
@@ -159,13 +164,15 @@ class ConectorARCAWeb:
         self._tickets = tickets
         self._cifrador = cifrador
         self._http = http or cliente_http()
+        self._http_viejo = http or cliente_http(cifrado_viejo=True)
         self._reloj = reloj
         self._endpoints = endpoints or ENDPOINTS
         self._bloqueo = RLock()
 
     def _post(self, url: str, cuerpo: str, accion: str = "") -> bytes:
         try:
-            respuesta = self._http.post(url, content=cuerpo.encode(), headers={
+            http = self._http_viejo if httpx.URL(url).host in HOSTS_CIFRADO_VIEJO else self._http
+            respuesta = http.post(url, content=cuerpo.encode(), headers={
                 "Content-Type": "text/xml; charset=utf-8", "SOAPAction": f'"{accion}"'})
         except httpx.HTTPError as exc:
             raise ErrorARCA("No hubo conexión con ARCA. Probá de nuevo más tarde.") from exc

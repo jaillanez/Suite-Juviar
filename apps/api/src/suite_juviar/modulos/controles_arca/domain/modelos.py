@@ -22,6 +22,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from enum import IntEnum, StrEnum
+from urllib.parse import urlsplit
 
 EMPRESAS = ("ENAV", "JUBIAR")
 CUIT_REPRESENTANTE = "20172238832"
@@ -123,9 +124,16 @@ def validar_cuit(cuit: str, quien: str = "El CUIT") -> str:
 
 
 def validar_url(url: str, que: str) -> str:
+    """Sólo https a un dominio de ARCA, sin usuario ni clave en la dirección y sin otro puerto."""
     url = (url or "").strip()
-    host = url.removeprefix("https://").split("/", 1)[0].lower()
-    if not url.startswith("https://") or not host.endswith(_HOSTS_ARCA) or len(url) > 300:
+    try:
+        partes = urlsplit(url)
+        puerto = partes.port
+    except ValueError:
+        partes, puerto = None, -1
+    host = (partes.hostname or "") if partes else ""
+    if (len(url) > 300 or not partes or partes.scheme != "https" or partes.username or partes.password
+            or puerto not in (None, 443) or not host.endswith(_HOSTS_ARCA) or "\\" in url):
         raise ValueError(f"La dirección de {que} tiene que ser de un sitio de ARCA y empezar con https://.")
     return url
 
