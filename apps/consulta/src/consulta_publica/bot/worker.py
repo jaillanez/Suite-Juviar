@@ -102,15 +102,26 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
         # de otro, nunca de los dos: infra/034).
         persona = bot.personal(pendiente.telefono) if hasattr(bot, "personal") else None
         if persona is not None:
-            if hasattr(bot, "registrar_mantenimiento") and es_para_mantenimiento(pendiente):
-                texto = registrar_mantenimiento(bot, salida, pendiente)
+            registro = hasattr(bot, "registrar_mantenimiento") and es_para_mantenimiento(pendiente)
+            if registro:
+                try:
+                    texto = registrar_mantenimiento(bot, salida, pendiente)
+                except (psycopg.Error, OSError) as exc:  # no quedó nada registrado: se puede reintentar
+                    bot.reintentar(pendiente.id, str(exc), MAX_INTENTOS)
+                    log.warning("no se pudo registrar para mantenimiento (intento %s): %s",
+                                pendiente.intentos + 1, exc)
+                    continue
             else:
                 texto = saludo_personal(persona)
             try:
                 wamid = salida.enviar_texto(pendiente.telefono, texto)
             except (ErrorChattigo, transporte.ErrorTransporte, psycopg.Error, RuntimeError,
                     ValueError, OSError) as exc:
-                bot.reintentar(pendiente.id, str(exc), MAX_INTENTOS)
+                if registro:
+                    # Ya quedó registrado: reintentar lo registraría dos veces. Se cierra sin respuesta.
+                    bot.cerrar(pendiente.id, "error", respuesta=texto, error=f"registrado; falló la respuesta: {exc}")
+                else:
+                    bot.reintentar(pendiente.id, str(exc), MAX_INTENTOS)
                 log.warning("envío falló (intento %s): %s", pendiente.intentos + 1, exc)
                 continue
             bot.cerrar(pendiente.id, "respondido", respuesta=texto, wamid_salida=wamid)
