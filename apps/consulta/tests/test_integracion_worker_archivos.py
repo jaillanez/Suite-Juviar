@@ -328,3 +328,17 @@ def test_marcar_se_insiste_solo_si_salio_y_sin_esperar_despues_del_ultimo(monkey
     assert enviar_avisos(bot, SalidaQueFallaUnaVez()) == 1
     assert bot.llamadas == [1, 1, 1, 2]   # el que falló al enviar se anota una sola vez
     assert esperas == [0.5, 1.0]
+
+
+class SalidaQueFalla(Salida):
+    def enviar_texto(self, telefono, texto):
+        raise OSError("sin red")
+
+
+def test_si_falla_la_respuesta_lo_registrado_no_se_reintenta(monkeypatch):
+    bot = BotMantenimiento(Pendiente(1, "5492640000000", "sale el taladro al taller", 0))
+    bot.reintentos = []
+    bot.reintentar = lambda *a: bot.reintentos.append(a)
+    _procesar(monkeypatch, bot, SalidaQueFalla())
+    assert len(bot.registrados) == 1 and bot.reintentos == []
+    assert bot.cierres[0][0][1] == "error"
