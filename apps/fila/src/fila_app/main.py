@@ -337,6 +337,19 @@ def sesion_organica(sede: str, accion: str, sesion: Guardia, repositorio: Guardi
         raise HTTPException(409, str(exc)) from exc
 
 
+RemitoEnRuta = Annotated[str, Path(pattern=r"^[0-9a-f-]{36}$")]
+
+
+@app.post("/api/guardia/{sede}/remitos/{remito_id}/salida")
+def salida_remito(sede: str, remito_id: RemitoEnRuta, sesion: Guardia, repositorio: GuardiaRepoDep):
+    if not sesion.puede_operar(sede):
+        raise HTTPException(403, "la sesión no corresponde a esta sede")
+    try:
+        return repositorio.salida_remito(remito_id, sede, sesion.actor)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
 @app.post("/api/guardia/viajes/{viaje_id}/{accion}")
 def accionar(
     viaje_id: int,

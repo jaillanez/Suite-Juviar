@@ -190,7 +190,7 @@ function Pendiente({ seccion }: { seccion: Seccion }) { return <><Encabezado tit
 function Contenido({ seccion, sesion, guardar, actualizar }: { seccion: Seccion; sesion: SesionGestion; guardar: (empresa: Empresa, perfil: Perfil) => void; actualizar: (yo: Yo) => void }) {
   if (seccion === "usuarios") return <Usuarios />;
   if (seccion === "parametros") return <><Encabezado titulo="Parámetros" descripcion="Casillas de Gmail de RRHH de las que el sistema trae los CV cada noche, impresora de etiquetas y mosto." /><ParametrosGestion /></>;
-  if (seccion === "activos") return <><Encabezado titulo="Equipos y activos" descripcion="Bombas, maquinarias y demás bienes de planta: ubicación, traslados, reparaciones externas y etiquetas con código de barras." /><ActivosGestion /></>;
+  if (seccion === "activos") return <><Encabezado titulo="Equipos y activos" descripcion="Bombas, maquinarias y demás bienes de planta: ubicación, traslados, reparaciones externas, remitos de salida y etiquetas con código de barras." /><ActivosGestion perfil={sesion.perfil} /></>;
   if (seccion === "cosecha") return <TurnosCosecha />;
   if (seccion === "mosto") return <><Encabezado titulo="Mosto" descripcion="Compras de mosto sulfitado y virgen: análisis y aprobación, camiones en planta, descarga, liquidación por azúcar y alarma del mosto virgen demorado." /><MostoGestion perfil={sesion.perfil} /></>;
   if (seccion === "configuracion" && sesion.real) return <ConfiguracionReal sesion={sesion} actualizar={actualizar} />;

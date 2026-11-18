@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 _TELEFONO = re.compile(r"^\d{8,20}$")
+_MEDIA = re.compile(r"^[A-Za-z0-9._-]{1,200}$")
 _MAX_TEXTO = 1000
 
 
@@ -17,6 +18,7 @@ class MensajeEntrante:
     tipo: str
     texto: str | None
     enviado_en: datetime | None
+    media_id: str | None = None  # foto que mandó: se baja después con este identificador
 
 
 def _texto(mensaje: dict) -> str | None:
@@ -29,7 +31,16 @@ def _texto(mensaje: dict) -> str | None:
         interactivo = mensaje.get("interactive") or {}
         respuesta = interactivo.get("button_reply") or interactivo.get("list_reply") or {}
         return respuesta.get("title")
+    if tipo == "image":
+        return (mensaje.get("image") or {}).get("caption") or None
     return None
+
+
+def _media_id(mensaje: dict) -> str | None:
+    if mensaje.get("type") != "image":
+        return None
+    valor = str((mensaje.get("image") or {}).get("id") or "")
+    return valor if _MEDIA.fullmatch(valor) else None
 
 
 def extraer_mensajes(payload: object) -> list[MensajeEntrante]:
@@ -54,6 +65,7 @@ def extraer_mensajes(payload: object) -> list[MensajeEntrante]:
                         telefono=telefono,
                         tipo=str(mensaje.get("type") or "desconocido")[:30],
                         texto=texto[:_MAX_TEXTO] if isinstance(texto, str) else None,
+                        media_id=_media_id(mensaje),
                         enviado_en=(
                             datetime.fromtimestamp(int(marca), UTC)
                             if str(marca or "").isdigit()

@@ -26,3 +26,11 @@ class ActivosSQLite:
 
     def movimientos(self) -> list[Movimiento]:
         return list(self._movimientos)
+
+
+class RemitosSQLite:
+    def __init__(self, ruta: str | Path) -> None:
+        base = BaseColeccionesSQLite(ruta)
+        self.remitos = MapaSQLite(base, "activos.remitos")
+        self.mensajes = MapaSQLite(base, "activos.mensajes_whatsapp")
+        self.parametros = MapaSQLite(base, "activos.parametros_remitos")

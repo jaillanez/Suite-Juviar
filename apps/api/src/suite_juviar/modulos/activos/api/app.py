@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+import base64
+import binascii
+import logging
+import threading
 from collections.abc import Callable
 from dataclasses import asdict
+from io import BytesIO
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response
+from PIL import Image as PILImage
 from pydantic import BaseModel, Field
 
 from suite_juviar.plataforma.identidad.api.dependencias import (
@@ -12,10 +19,13 @@ from suite_juviar.plataforma.identidad.api.dependencias import (
     exigir_permiso,
 )
 
+from ..application.remitos import GestionarRemitos
 from ..application.servicios import GestionarActivos
 from ..domain.modelos import BODEGAS
-from ..domain.puertos import Impresora
-from ..infrastructure.sqlite import ActivosSQLite
+from ..domain.puertos import Impresora, PuertaGuardia
+from ..infrastructure.guardia_dmz import PuertaSinConfigurar
+from ..infrastructure.remito_pdf import remito_pdf
+from ..infrastructure.sqlite import ActivosSQLite, RemitosSQLite
 from ..infrastructure.zebra import (
     PUERTO_ZEBRA,
     ConfiguracionEtiqueta,
@@ -23,6 +33,9 @@ from ..infrastructure.zebra import (
     ImpresoraZebraRed,
     etiqueta_zpl,
 )
+
+Costo = Annotated[float, Field(ge=0, lt=1e10, allow_inf_nan=False)]
+_registro = logging.getLogger(__name__)
 
 
 class TipoEntrada(BaseModel):
@@ -58,7 +71,7 @@ class SalidaTallerEntrada(BaseModel):
 
 
 class RegresoTallerEntrada(BaseModel):
-    costo: float = Field(ge=0)
+    costo: Costo
     trabajo_realizado: str = Field(default="", max_length=500)
     sector_id: str
     empresa: str
@@ -80,6 +93,33 @@ class ImprimirEntrada(BaseModel):
     copias: int = Field(default=1, ge=1, le=50)
 
 
+class ItemEntrada(BaseModel):
+    codigo: str | None = Field(default=None, max_length=20)
+    descripcion: str = Field(default="", max_length=200)
+    cantidad: int = Field(default=1, ge=1, le=999)
+
+
+class RemitoEntrada(BaseModel):
+    bodega: str = Field(max_length=20)
+    destino: str = Field(min_length=1, max_length=120)
+    motivo: str = Field(min_length=1, max_length=300)
+    items: list[ItemEntrada] = Field(min_length=1, max_length=50)
+
+
+class FirmaEntrada(BaseModel):
+    modo: Literal["celular", "papel"]
+    imagen: str | None = Field(default=None, max_length=420_000)  # PNG en base64
+
+
+class AnularEntrada(BaseModel):
+    motivo: str = Field(min_length=1, max_length=300)
+
+
+class ParametrosRemitosEntrada(BaseModel):
+    dias_maximos_fuera: int | None = Field(default=None, ge=1, le=365)
+    modo_whatsapp: Literal["revision", "directo"]
+
+
 def _error(exc: Exception) -> HTTPException:
     return HTTPException(404 if isinstance(exc, LookupError) else 400, str(exc))
 
@@ -88,13 +128,122 @@ def crear_router(
     entorno: str = "prueba",
     ruta_base: str = "datos/modulos.sqlite3",
     crear_impresora: Callable[[str, int], Impresora] = ImpresoraZebraRed,
+    puerta: PuertaGuardia | None = None,
+    sincronizar_cada: int | None = None,
 ) -> APIRouter:
     exigir_identidad_configurada(entorno)
     repo = ActivosSQLite(ruta_base)
     servicio = GestionarActivos(repo)
+    remitos = GestionarRemitos(RemitosSQLite(ruta_base), servicio, puerta or PuertaSinConfigurar())
+    if sincronizar_cada:
+        _iniciar_sincronizacion(remitos, sincronizar_cada)
     app = APIRouter()
     operar = [Depends(exigir_permiso("activos.gestionar"))]
+    firmar = [Depends(exigir_permiso("activos.remitos.firmar"))]
     administrar = [Depends(exigir_permiso("parametros.gestionar"))]
+
+    def hacer(funcion):
+        try:
+            return funcion()
+        except (ValueError, LookupError) as exc:
+            raise _error(exc) from exc
+
+    def sincronizar() -> None:
+        try:
+            remitos.sincronizar()
+        except Exception:  # noqa: BLE001 - sin la base de la fila se muestra lo que hay
+            _registro.warning("No se pudo leer la guardia para los remitos.", exc_info=True)
+
+    @app.get("/remitos", dependencies=operar)
+    def listar_remitos(estado: str | None = None):
+        sincronizar()
+        return remitos.listar(estado)
+
+    @app.post("/remitos", status_code=201, dependencies=operar)
+    def crear_remito(entrada: RemitoEntrada, sesion: SesionActual):
+        return hacer(lambda: remitos.vista(remitos.crear(
+            entrada.bodega, entrada.destino, entrada.motivo, [i.model_dump() for i in entrada.items], sesion.actor)))
+
+    @app.get("/remitos/{remito_id}", dependencies=operar)
+    def ver_remito(remito_id: str):
+        return hacer(lambda: remitos.vista(remitos.obtener(remito_id)))
+
+    @app.put("/remitos/{remito_id}", dependencies=operar)
+    def editar_remito(remito_id: str, entrada: RemitoEntrada):
+        return hacer(lambda: remitos.vista(remitos.editar(
+            remito_id, entrada.bodega, entrada.destino, entrada.motivo, [i.model_dump() for i in entrada.items])))
+
+    @app.post("/remitos/{remito_id}/firma", dependencies=firmar)
+    def firmar_remito(remito_id: str, entrada: FirmaEntrada, sesion: SesionActual):
+        imagen = None
+        if entrada.modo == "celular":
+            try:
+                imagen = base64.b64decode((entrada.imagen or "").split(",")[-1], validate=True)
+                if imagen:
+                    with PILImage.open(BytesIO(imagen)) as dibujo:
+                        if dibujo.format != "PNG" or dibujo.width > 2000 or dibujo.height > 1000:
+                            raise ValueError
+                        dibujo.load()
+            except (binascii.Error, ValueError, OSError):
+                raise HTTPException(400, "La firma no llegó bien; volvé a firmar.") from None
+        return hacer(lambda: remitos.vista(remitos.firmar(remito_id, entrada.modo, imagen, sesion.actor)))
+
+    @app.post("/remitos/{remito_id}/anular", dependencies=firmar)
+    def anular_remito(remito_id: str, entrada: AnularEntrada, sesion: SesionActual):
+        return hacer(lambda: remitos.vista(remitos.anular(remito_id, entrada.motivo, sesion.actor)))
+
+    @app.post("/remitos/{remito_id}/items/{indice}/regreso", dependencies=operar)
+    def regreso_item(remito_id: str, indice: int, sesion: SesionActual):
+        return hacer(lambda: remitos.vista(remitos.marcar_regreso(remito_id, indice, sesion.actor)))
+
+    @app.post("/remitos/{remito_id}/equipos/{codigo}/regreso", dependencies=operar)
+    def regreso_equipo(remito_id: str, codigo: str, entrada: RegresoTallerEntrada, sesion: SesionActual):
+        return hacer(lambda: remitos.vista(remitos.regreso_equipo(
+            remito_id, codigo, entrada.costo, entrada.trabajo_realizado, entrada.sector_id, entrada.empresa,
+            sesion.actor)))
+
+    @app.get("/remitos/{remito_id}/pdf", dependencies=operar)
+    def pdf_remito(remito_id: str):
+        remito = hacer(lambda: remitos.obtener(remito_id))
+        return Response(remito_pdf(remito), media_type="application/pdf", headers={
+            "Content-Disposition": f'inline; filename="remito-{remito.numero:06d}.pdf"'})
+
+    @app.get("/remitos/{remito_id}/foto", dependencies=operar)
+    def foto_remito(remito_id: str):
+        remito = hacer(lambda: remitos.obtener(remito_id))
+        if remito.foto is None:
+            raise HTTPException(404, "Ese remito no tiene foto.")
+        return Response(remito.foto, media_type=remito.foto_tipo or "image/jpeg")
+
+    @app.get("/mensajes-whatsapp", dependencies=operar)
+    def mensajes_whatsapp():
+        sincronizar()
+        return remitos.mensajes()
+
+    @app.get("/mensajes-whatsapp/{mensaje_id}/foto", dependencies=operar)
+    def foto_mensaje(mensaje_id: str):
+        mensaje = hacer(lambda: remitos.obtener_mensaje(mensaje_id))
+        if mensaje.foto is None:
+            raise HTTPException(404, "Ese mensaje no tiene foto.")
+        return Response(mensaje.foto, media_type=mensaje.foto_tipo or "image/jpeg")
+
+    @app.post("/mensajes-whatsapp/{mensaje_id}/remito", status_code=201, dependencies=operar)
+    def remito_desde_mensaje(mensaje_id: str, sesion: SesionActual):
+        return hacer(lambda: remitos.vista(remitos.armar_desde_mensaje(mensaje_id, sesion.actor)))
+
+    @app.post("/mensajes-whatsapp/{mensaje_id}/descartar", status_code=204, dependencies=operar)
+    def descartar_mensaje(mensaje_id: str, sesion: SesionActual):
+        hacer(lambda: remitos.descartar_mensaje(mensaje_id, sesion.actor))
+
+    @app.get("/parametros-remitos", dependencies=operar)
+    def ver_parametros_remitos():
+        p = remitos.parametros()
+        return {**asdict(p), "modo_whatsapp": p.modo_whatsapp.value}
+
+    @app.put("/parametros-remitos", dependencies=administrar)
+    def guardar_parametros_remitos(entrada: ParametrosRemitosEntrada, sesion: SesionActual):
+        p = hacer(lambda: remitos.guardar_parametros(entrada.dias_maximos_fuera, entrada.modo_whatsapp, sesion.actor))
+        return {**asdict(p), "modo_whatsapp": p.modo_whatsapp.value}
 
     def configuracion() -> ConfiguracionEtiqueta | None:
         guardada = repo.impresora.get("etiquetas")
@@ -247,6 +396,20 @@ def crear_router(
         return {"ok": True, "copias": entrada.copias}
 
     return app
+
+
+def _iniciar_sincronizacion(remitos: GestionarRemitos, cada_segundos: int) -> threading.Thread:
+    def ciclo() -> None:
+        while True:
+            threading.Event().wait(cada_segundos)
+            try:
+                remitos.sincronizar()
+            except Exception:  # noqa: BLE001 - el ciclo no se corta por un error puntual
+                _registro.exception("No se pudo sincronizar los remitos con la guardia.")
+
+    hilo = threading.Thread(target=ciclo, name="remitos-guardia", daemon=True)
+    hilo.start()
+    return hilo
 
 
 def crear_app(entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> FastAPI:
