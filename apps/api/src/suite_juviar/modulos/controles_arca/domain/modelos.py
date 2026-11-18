@@ -22,7 +22,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from enum import IntEnum, StrEnum
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 EMPRESAS = ("ENAV", "JUBIAR")
 CUIT_REPRESENTANTE = "20172238832"
@@ -126,6 +126,10 @@ def validar_cuit(cuit: str, quien: str = "El CUIT") -> str:
 def validar_url(url: str, que: str) -> str:
     """Sólo https a un dominio de ARCA, sin usuario ni clave en la dirección y sin otro puerto."""
     url = (url or "").strip()
+    error = ValueError(f"La dirección de {que} tiene que ser de un sitio de ARCA y empezar con https://.")
+    # Sólo caracteres comunes: nada de espacios, controles ni letras parecidas de otros alfabetos.
+    if not url.isascii() or any(c.isspace() or ord(c) < 0x20 or ord(c) == 0x7F or c == "\\" for c in url):
+        raise error
     try:
         partes = urlsplit(url)
         puerto = partes.port
@@ -133,9 +137,10 @@ def validar_url(url: str, que: str) -> str:
         partes, puerto = None, -1
     host = (partes.hostname or "") if partes else ""
     if (len(url) > 300 or not partes or partes.scheme != "https" or partes.username or partes.password
-            or puerto not in (None, 443) or not host.endswith(_HOSTS_ARCA) or "\\" in url):
-        raise ValueError(f"La dirección de {que} tiene que ser de un sitio de ARCA y empezar con https://.")
-    return url
+            or puerto not in (None, 443) or not host.endswith(_HOSTS_ARCA)):
+        raise error
+    # Se devuelve armada de nuevo: lo que se usa es exactamente lo que se validó.
+    return urlunsplit(("https", host, partes.path, partes.query, ""))
 
 
 def nombre_pdf(cuit: str, control: int, fecha: date, numero_comprobante: int | None = None) -> str:
@@ -240,12 +245,12 @@ class Parametros:
         for empresa, cuit in self.cuit_empresas.items():
             if cuit:
                 validar_cuit(cuit, f"El CUIT de {empresa}")
-        validar_url(self.url_apocrifas, "facturas apócrifas")
-        validar_url(self.url_rg18, "agentes de retención")
+        object.__setattr__(self, "url_apocrifas", validar_url(self.url_apocrifas, "facturas apócrifas"))
+        object.__setattr__(self, "url_rg18", validar_url(self.url_rg18, "agentes de retención"))
         if not 1 <= len(self.enlaces_impositivo) <= 6:
             raise ValueError("Cargá entre 1 y 6 enlaces para el control impositivo.")
-        for enlace in self.enlaces_impositivo:
-            validar_url(enlace, "control impositivo")
+        object.__setattr__(self, "enlaces_impositivo",
+                           type(self.enlaces_impositivo)(validar_url(e, "control impositivo") for e in self.enlaces_impositivo))
 
 
 @dataclass(frozen=True, slots=True)

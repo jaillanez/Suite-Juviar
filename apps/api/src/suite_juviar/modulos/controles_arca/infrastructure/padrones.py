@@ -17,6 +17,7 @@ import zipfile
 import httpx
 
 from ..application.servicios import GestionarControles
+from ..domain.modelos import validar_url
 from .arca import cliente_http
 
 _registro = logging.getLogger(__name__)
@@ -73,6 +74,7 @@ class DescargaHTTP:
         self._http = http
 
     def descargar(self, nombre: str, url: str) -> tuple[str, Registros]:
+        url = validar_url(url, nombre)  # viene de los parámetros guardados: se controla otra vez
         http = self._http or cliente_http()
         partes = []
         try:

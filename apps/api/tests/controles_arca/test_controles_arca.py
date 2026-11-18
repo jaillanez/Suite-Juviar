@@ -485,7 +485,8 @@ def test_parametros_validan_cuits_y_urls():
     # Direcciones armadas para engañar una comparación de texto.
     for engano in ("https://servicioscf.afip.gob.ar@127.0.0.1/x", "https://127.0.0.1#.afip.gob.ar/x",
                    "https://servicioscf.afip.gob.ar:8080/x", "https://evil.com\\@servicioscf.afip.gob.ar/x",
-                   "https://usuario:clave@servicioscf.afip.gob.ar/x"):
+                   "https://usuario:clave@servicioscf.afip.gob.ar/x", "https://servicioscf.afip.gob.ar/x\ty",
+                   "https://servicioscf.afip.gob.ar\n.evil.com/x", "https://servicioscf.afіp.gob.ar/x"):
         with pytest.raises(ValueError, match="sitio de ARCA"):
             parametros(s, url_rg18=engano)
     c = cliente("SUPERADMIN", s)
