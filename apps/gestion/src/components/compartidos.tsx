@@ -12,8 +12,8 @@ export function Vacio({ children = "Todavía no hay datos para mostrar." }: { ch
 
 export type Columna<T> = { clave: keyof T; titulo: string; valor?: (fila: T) => ReactNode };
 
-export function Tabla<T extends Record<string, unknown>>({ filas, columnas, etiqueta, porPagina = 8, alElegir }: {
-  filas: T[]; columnas: Columna<T>[]; etiqueta: string; porPagina?: number; alElegir?: (fila: T) => void;
+export function Tabla<T extends Record<string, unknown>>({ filas, columnas, etiqueta, porPagina = 8, alElegir, claseFila }: {
+  filas: T[]; columnas: Columna<T>[]; etiqueta: string; porPagina?: number; alElegir?: (fila: T) => void; claseFila?: (fila: T) => string;
 }) {
   const [filtro, setFiltro] = useState("");
   const [pagina, setPagina] = useState(1);
@@ -25,7 +25,7 @@ export function Tabla<T extends Record<string, unknown>>({ filas, columnas, etiq
   return <section className="tabla-contenedor" aria-label={etiqueta}>
     <div className="tabla-herramientas"><label>Filtrar <input value={filtro} onChange={(e) => { setFiltro(e.target.value); setPagina(1); }} /></label><span>{filtradas.length} resultados</span></div>
     <div className="tabla-scroll"><table><thead><tr>{columnas.map((c) => <th key={String(c.clave)}><button onClick={() => setOrden(c.clave)}>{c.titulo}</button></th>)}</tr></thead>
-      <tbody>{visibles.map((fila, i) => <tr key={i} {...(alElegir ? { className: "fila-elegible", tabIndex: 0, onClick: () => alElegir(fila), onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); alElegir(fila); } } } : {})}>{columnas.map((c) => <td key={String(c.clave)}>{c.valor ? c.valor(fila) : String(fila[c.clave] ?? "—")}</td>)}</tr>)}</tbody></table></div>
+      <tbody>{visibles.map((fila, i) => <tr key={i} className={[alElegir ? "fila-elegible" : "", claseFila?.(fila) ?? ""].join(" ").trim() || undefined} {...(alElegir ? { tabIndex: 0, onClick: () => alElegir(fila), onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); alElegir(fila); } } } : {})}>{columnas.map((c) => <td key={String(c.clave)}>{c.valor ? c.valor(fila) : String(fila[c.clave] ?? "—")}</td>)}</tr>)}</tbody></table></div>
     {filtradas.length === 0 && <Vacio>No hay coincidencias.</Vacio>}
     <nav className="paginacion" aria-label="Paginación"><button disabled={pagina === 1} onClick={() => setPagina(pagina - 1)}>Anterior</button><span>Página {pagina} de {paginas}</span><button disabled={pagina === paginas} onClick={() => setPagina(pagina + 1)}>Siguiente</button></nav>
   </section>;
