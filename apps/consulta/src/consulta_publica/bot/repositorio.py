@@ -21,6 +21,13 @@ class RepositorioWebhook:
 
     def encolar(self, mensaje: MensajeEntrante) -> bool:
         with psycopg.connect(self._dsn) as conexion:
+            if mensaje.media_id:
+                fila = conexion.execute(
+                    "SELECT consulta.encolar_bot_media(%s, %s, %s, %s, %s, %s) AS insertado",
+                    (mensaje.wamid, mensaje.telefono, mensaje.tipo, mensaje.texto, mensaje.enviado_en,
+                     mensaje.media_id),
+                ).fetchone()
+                return bool(fila[0])
             fila = conexion.execute(
                 """
                 SELECT consulta.encolar_bot(%s, %s, %s, %s, %s) AS insertado
@@ -51,6 +58,8 @@ class Pendiente:
     telefono: str
     texto: str | None
     intentos: int
+    tipo: str = "text"
+    media_id: str | None = None
 
 
 class RepositorioBot:
@@ -73,7 +82,7 @@ class RepositorioBot:
                     FOR UPDATE SKIP LOCKED
                     LIMIT %s
                 )
-                RETURNING id, telefono, texto, intentos
+                RETURNING id, telefono, texto, intentos, tipo, media_id
                 """,
                 (lote,),
             ).fetchall()
@@ -238,6 +247,18 @@ class RepositorioBot:
             )
 
     # --- Avisos de la bodega al productor (asignación de días, postergación) ------------
+
+    def registrar_mantenimiento(self, telefono: str, texto: str, foto: bytes | None, tipo_foto: str | None) -> int:
+        """Foto y texto del personal para Mantenimiento (infra/041); la base controla quién puede."""
+        with self._conexion() as conexion:
+            try:
+                fila = conexion.execute(
+                    "SELECT fila.recibir_mensaje_mantenimiento(%s, %s, %s, %s) AS id",
+                    (telefono, texto, foto, tipo_foto),
+                ).fetchone()
+            except psycopg.errors.RaiseException as exc:
+                raise ValueError(exc.diag.message_primary or "no se pudo registrar") from exc
+        return int(fila["id"])
 
     def tomar_avisos(self, lote: int = 10) -> list[dict]:
         with self._conexion() as conexion:

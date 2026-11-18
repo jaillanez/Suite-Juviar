@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 
 from suite_juviar.modulos.activos.api.app import crear_router as crear_activos
+from suite_juviar.modulos.activos.infrastructure.guardia_dmz import PuertaDMZ
 from suite_juviar.modulos.capacitacion.api.app import crear_router as crear_capacitacion
 from suite_juviar.modulos.capacitacion.infrastructure.configuracion_yaml import (
     ConfiguracionCapacitacionYAML,
@@ -100,6 +101,7 @@ def construir_routers(rrhh):
         correo_rrhh = construir_correo(ruta_modulos, clave_parametros or clave_adjuntos.decode())
         if os.getenv("SJ_CORREO_CV_AUTOMATICO", "1").strip() not in {"0", "false", "no"}:
             lectura_nocturna.iniciar(correo_rrhh, int(os.getenv("SJ_CORREO_CV_HORA") or "2"))
+    dsn_fila = (os.getenv("SJ_FILA_DSN_DMZ_LECTURA") or "").strip()
     mosto = GestionarMosto(MostoSQLite(ruta_modulos), (
         # El aviso por mail sale desde la casilla de RRHH cargada en Parámetros.
         avisos_mosto.CorreoDesdeRRHH(
@@ -119,7 +121,10 @@ def construir_routers(rrhh):
         "capacitaciones": crear_capacitacion(
             configuracion_capacitacion, entorno, ruta_modulos, fuente_legajos
         ),
-        "activos": crear_activos(entorno, ruta_modulos),
+        "activos": crear_activos(
+            entorno, ruta_modulos, puerta=PuertaDMZ(dsn_fila) if dsn_fila else None,
+            sincronizar_cada=60 if dsn_fila and os.getenv("SJ_SINCRONIZAR_REMITOS", "1").strip() not in {"0", "false", "no"}
+            else None),
         "mosto": crear_mosto(mosto, entorno),
         "controles-arca": crear_controles_arca(controles, entorno),
     }

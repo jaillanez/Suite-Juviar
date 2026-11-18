@@ -72,7 +72,7 @@ class ClienteChattigo:
         token = self._token if self._token and time.monotonic() < self._vence else self._login()
         return {"Authorization": f"{self._config.prefijo_auth}{token}"}
 
-    def _enviar(self, metodo: str, ruta: str, cuerpo: dict) -> httpx.Response:
+    def _enviar(self, metodo: str, ruta: str, cuerpo: dict | None) -> httpx.Response:
         url = f"{self._config.base_url}{ruta}"
         respuesta = self._cliente.request(
             metodo, url, json=cuerpo, headers=self._cabeceras()
@@ -123,6 +123,21 @@ class ClienteChattigo:
         self, telefono: str, url: str, nombre: str, epigrafe: str | None = None
     ) -> str:
         return self._enviar_mensaje(cuerpo_documento(telefono, url, nombre, epigrafe))
+
+    def descargar_media(self, media_id: str) -> tuple[bytes, str]:
+        """Foto que mandó un usuario: igual que en Meta, primero la dirección y después el archivo."""
+        datos = self._enviar("GET", f"/{self._config.version}/{media_id}", None)
+        try:
+            info = datos.json() or {}
+        except ValueError as exc:
+            raise ErrorChattigo("la foto devolvió una respuesta inválida") from exc
+        url, tipo = str(info.get("url") or ""), str(info.get("mime_type") or "")
+        if not url.startswith("https://"):
+            raise ErrorChattigo("la foto no trajo una dirección segura")
+        archivo = self._cliente.get(url, headers=self._cabeceras(), follow_redirects=True)
+        if archivo.status_code >= 400:
+            raise ErrorChattigo(f"no se pudo bajar la foto: HTTP {archivo.status_code}")
+        return archivo.content, (tipo or archivo.headers.get("content-type", "")).split(";")[0]
 
     def configurar_webhook(self, url_webhook: str) -> dict:
         if not url_webhook.startswith("https://"):

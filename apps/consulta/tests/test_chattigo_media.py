@@ -23,3 +23,15 @@ def test_documento_lleva_nombre_de_archivo():
 
 def test_epigrafe_largo_se_recorta():
     assert len(cuerpo_imagen("549", URL, "x" * 2000)["image"]["caption"]) == 1024
+
+
+def test_mensaje_con_foto_trae_el_identificador_y_el_epigrafe():
+    from consulta_publica.bot.meta import extraer_mensajes
+
+    payload = {"entry": [{"changes": [{"value": {"messages": [
+        {"id": "w1", "from": "5492640000000", "type": "image", "image": {"id": "MEDIA.123", "caption": "BOM-0003"}},
+        {"id": "w2", "from": "5492640000000", "type": "image", "image": {"id": "../malo"}},
+    ]}}]}]}
+    primero, segundo = extraer_mensajes(payload)
+    assert (primero.tipo, primero.texto, primero.media_id) == ("image", "BOM-0003", "MEDIA.123")
+    assert segundo.media_id is None and segundo.texto is None

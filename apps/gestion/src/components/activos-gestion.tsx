@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { Confirmacion, ErrorVisible, FormularioVentana as Formulario, Tabla, Vacio, Ventana } from "./compartidos";
 import { LectorCamara } from "./lector-camara";
+import { RemitosGestion } from "./remitos-gestion";
 
 type Tipo = { id: string; nombre: string; prefijo: string };
 type Sector = { id: string; nombre: string; bodega: string; bodega_nombre: string };
@@ -171,8 +172,8 @@ function Catalogo<T extends Record<string, unknown> & { id: string; nombre: stri
   </section>;
 }
 
-export function ActivosGestion() {
-  const [pestana, setPestana] = useState<"equipos" | "tipos" | "sectores" | "reparados">("equipos");
+export function ActivosGestion({ perfil }: { perfil: string }) {
+  const [pestana, setPestana] = useState<"equipos" | "remitos" | "tipos" | "sectores" | "reparados">("equipos");
   const [filtroBodegaSector, setFiltroBodegaSector] = useState("");
   const [tipos, setTipos] = useState<Tipo[]>([]); const [sectores, setSectores] = useState<Sector[]>([]);
   const [equipos, setEquipos] = useState<Equipo[] | null>(null); const [masReparados, setMasReparados] = useState<Equipo[]>([]);
@@ -215,7 +216,7 @@ export function ActivosGestion() {
   }
 
   const faltaCatalogo = !tipos.length || !sectores.length;
-  const pestanas = [["equipos", "Equipos"], ["tipos", "Tipos"], ["sectores", "Sectores"], ["reparados", "Más reparados"]] as const;
+  const pestanas = [["equipos", "Equipos"], ["remitos", "Remitos de salida"], ["tipos", "Tipos"], ["sectores", "Sectores"], ["reparados", "Más reparados"]] as const;
 
   return <>
     <div className="pestanas">
@@ -246,6 +247,7 @@ export function ActivosGestion() {
         ]} /> : <Vacio>No hay equipos cargados con estos filtros.</Vacio>}
     </section>}
 
+    {pestana === "remitos" && <RemitosGestion perfil={perfil} sectores={sectores} />}
     {pestana === "tipos" && <Catalogo titulo="Tipos de activo" nuevo="Nuevo tipo" ayuda="Bombas, maquinarias, muebles… El prefijo es el comienzo del código de barras: por ejemplo BOM da BOM-0001." items={tipos} ruta="activos/tipos" cambio={() => void cargarCatalogos()}
       columnas={[{ clave: "nombre", titulo: "Nombre" }, { clave: "prefijo", titulo: "Prefijo del código" }]} campos={t => <>
         <label>Nombre<input name="nombre" required maxLength={60} defaultValue={t?.nombre} autoFocus /></label>

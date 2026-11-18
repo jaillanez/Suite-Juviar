@@ -45,6 +45,8 @@ PERMISOS_POR_PERFIL: dict[str, frozenset[str]] = {
                          "mosto.leer", "mosto.compras.gestionar", "controles_fiscales.operar"}),
     "SUPERVISOR": frozenset({"suite.acceder", "capacitacion.leer", "turnos.cronograma.leer", "turnos.cronograma.editar"}),
     "MANTENIMIENTO": frozenset({"suite.acceder", "activos.gestionar"}),
+    # Sólo el Encargado autoriza (firma) los remitos de salida de equipos y herramientas.
+    "ENCARGADO_MANTENIMIENTO": frozenset({"suite.acceder", "activos.gestionar", "activos.remitos.firmar"}),
     # Mosto: Laboratorio analiza y decide por Calidad; el Jefe de Producción puede aprobar lo
     # que rechazó Calidad y registra descargas; Comercial decide con escasez y cierra contratos.
     "LABORATORIO": frozenset({"suite.acceder", "mosto.leer", "mosto.laboratorio"}),
