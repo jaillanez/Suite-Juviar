@@ -31,6 +31,7 @@ color:#fff;padding:10px;text-align:center;font-weight:750;z-index:5}.oculto{disp
 @media(prefers-reduced-motion:reduce){.parpadea{animation:none}}
 .tag.uva{background:#f3e3c3;color:#5c3b08;margin-left:8px;vertical-align:.12em}
 .tag.org,.tag.conv{display:inline-block;white-space:nowrap;margin-left:8px;vertical-align:.12em}.tag.org{background:#12633d;color:#fff}.tag.conv{background:#e4e8e3}
+.remito ul{margin:8px 0;padding-left:20px}.firma-papel{background:#fff4cc;padding:8px 10px;border-radius:10px;font-weight:700}
 .organica{margin:0 0 18px;border-left:8px solid #bdc5bd}.organica.abierta{border-color:var(--green);background:#e8f4ec}
 .organica strong{font-size:1.2rem}.organica p{margin:6px 0 0}.organica button{margin-top:14px}
 .velo{position:fixed;inset:0;background:#17221c99;display:grid;align-items:end;z-index:20;padding:12px}
@@ -131,6 +132,7 @@ def guardia(sede: str, variedades: Iterable[str] = ()) -> str:
 <button>Entrar</button><p id="errorIngreso" role="alert"></p></form></main>
 <main id="aplicacion" class="oculto"><p class="muted">Guardia · {sede.title()}</p><h1>Fila del portón</h1>
 <section id="organica" class="panel organica oculto" aria-live="polite"></section>
+<section id="seccionRemitos" class="oculto"><h2>Remitos de salida</h2><p class="muted">Equipos y herramientas que salen a talleres. Sin remito autorizado no sale nada.</p><div id="remitos" class="list"></div></section>
 <input id="camaraPatente" type="file" accept="image/*" capture="environment" class="oculto">
 <button id="altaDirecta" class="secondary">+ Camión sin celular</button><h2>Por confirmar</h2><div id="pendientes" class="list"></div>
 <h2>Fila</h2><button id="siguiente">Llamar siguiente</button><div id="fila" class="list"></div>
@@ -174,7 +176,16 @@ async function achicar(archivo){{const img=await createImageBitmap(archivo);cons
 camaraPatente.onchange=async()=>{{const a=camaraPatente.files[0],viaje=fotoViaje;fotoViaje=null;if(!a||!viaje)return;try{{const b=await achicar(a);const r=await fetch('/api/guardia/viajes/'+viaje+'/foto',{{method:'POST',headers:{{'x-guardia-token':token,'content-type':'image/jpeg'}},body:b}});if(!r.ok){{await avisar((await r.json()).detail);return}}await cargar()}}catch{{await avisar('No se pudo enviar la foto. Probá de nuevo.')}}}};
 function pintar(){{pintarOrganica();pendientes.innerHTML=datos.pendientes.map(x=>filaHtml(x,`<button onclick="confirmar(${{x.id}})">Confirmar</button><button class="danger" onclick="cerrar(${{x.id}},'rechazar')">Rechazar</button>`)).join('')||'<p class="muted">Ninguno.</p>';
  fila.innerHTML=datos.espera.map((x,i)=>filaHtml(x,`<span class="tag">${{['','Orgánico','Con turno','Espontáneo'][x.grupo]}}</span><button class="secondary" onclick="llamar(${{x.id}},${{i}})">Llamar</button><button class="danger" onclick="cerrar(${{x.id}},'cancelar')">Sacar de la fila</button>`)).join('')||'<p class="muted">Fila vacía.</p>';
+ pintarRemitos();
  llamados.innerHTML=datos.llamados.map(x=>filaHtml(x,`<button onclick="accion(${{x.id}},'paso')">Pasó</button><button class="secondary" onclick="accion(${{x.id}},'no_vino')">No vino</button><button class="danger" onclick="cerrar(${{x.id}},'cancelar')">Cancelar</button>`)).join('')||'<p class="muted">Ninguno.</p>';}}
+function pintarRemitos(){{const xs=datos.remitos||[];seccionRemitos.classList.toggle('oculto',!xs.length);
+ remitos.innerHTML=xs.map(r=>`<article class="row remito"><div><strong>Remito N.º ${{esc(r.numero)}}</strong> → ${{esc(r.destino)}}
+<div class="muted">${{esc(r.motivo)}}</div><ul>${{(r.items||[]).map(i=>`<li>${{i.cantidad>1?esc(i.cantidad)+' × ':''}}${{esc(i.descripcion)}}${{i.codigo?' <span class="tag">'+esc(i.codigo)+'</span>':''}}</li>`).join('')}}</ul>
+<div class="${{r.firma==='papel'?'firma-papel':'muted'}}">${{r.firma==='papel'?'Firma en papel: revisá que el remito impreso tenga la firma del Encargado ('+esc(r.autorizado_por)+').':'Firmado en el celular por '+esc(r.autorizado_por)+'.'}}</div></div>
+<div class="acciones"><button onclick="dejarSalir('${{esc(r.id)}}',${{Number(r.numero)}})">Dejar salir</button></div></article>`).join('')}}
+async function dejarSalir(remito,numero){{const r=await elegir('¿Sale ahora lo del remito N.º '+numero+'?',[['si','Sí, revisé lo que lleva y sale']]);if(r!=='si')return;
+ if(!navigator.onLine){{await avisar('Sin conexión: la salida se marca cuando vuelva la señal.');return}}
+ const x=await fetch('/api/guardia/'+sede+'/remitos/'+remito+'/salida',{{method:'POST',headers:H}});if(!x.ok){{await avisar((await x.json()).detail);return}}await cargar()}}
 async function cargar(){{try{{const r=await fetch('/api/guardia/{sede}',{{headers:H}});if(!r.ok)throw 0;datos=await r.json();pintar();offline.classList.add('oculto')}}catch{{offline.classList.remove('oculto')}}}}
 async function enviar(url,body){{if(!navigator.onLine){{await cola(url,body);return}}try{{const r=await fetch(url,{{method:'POST',headers:H,body:JSON.stringify(body)}});if(!r.ok){{await avisar((await r.json()).detail);return}}await cargar()}}catch{{await cola(url,body)}}}}
 async function confirmar(viaje){{const x=datos.pendientes.find(v=>v.id===viaje);const p=await elegirProductor(x?.variedad_declarada);if(!p)return;const organica=await esOrganica();if(organica===null)return;await enviar('/api/guardia/viajes/'+viaje+'/confirmar',{{id_cliente:id(),clientecuit:p.clientecuit,clientecodigo:p.codigos?.[0]||null,declara_organica:organica,productor_revision_manual:!!p.manual,variedad:p.variedad,momento_cliente:ahora()}})}}

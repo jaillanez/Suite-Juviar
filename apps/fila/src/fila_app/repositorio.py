@@ -335,12 +335,25 @@ class RepositorioFila:
                 (sede,),
             ).fetchall()
             organica = self._estado_organica(cn, sede)
+            remitos = cn.execute("SELECT * FROM fila.remitos_por_salir(%s)", (sede,)).fetchall()
         return {
             "pendientes": [dict(f) for f in pendientes],
             "espera": espera,
             "llamados": [dict(f) for f in llamados],
             "organica": organica,
+            "remitos": [dict(f) for f in remitos],
         }
+
+    def salida_remito(self, remito_id: str, sede: str, actor: str) -> dict[str, Any]:
+        """La guardia deja salir lo que lleva un remito autorizado por el Encargado de Mantenimiento."""
+        with self.conexion() as cn:
+            try:
+                fila = cn.execute(
+                    "SELECT * FROM fila.marcar_salida_remito(%s,%s,%s)", (remito_id, sede, actor)
+                ).fetchone()
+            except psycopg.errors.RaiseException as exc:
+                raise ValueError(exc.diag.message_primary or "no se pudo marcar la salida") from exc
+        return dict(fila)
 
     def confirmar(
         self,

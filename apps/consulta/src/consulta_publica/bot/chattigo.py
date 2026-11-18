@@ -44,6 +44,11 @@ class ConfigChattigo:
         )
 
 
+MAXIMO_FOTO = 3_000_000
+# Donde Meta deja las fotos que mandan los usuarios.
+HOSTS_FOTOS = (".fbsbx.com", ".whatsapp.net", ".fbcdn.net")
+
+
 class ClienteChattigo:
     def __init__(self, config: ConfigChattigo, cliente: httpx.Client | None = None) -> None:
         self._config = config
@@ -72,7 +77,7 @@ class ClienteChattigo:
         token = self._token if self._token and time.monotonic() < self._vence else self._login()
         return {"Authorization": f"{self._config.prefijo_auth}{token}"}
 
-    def _enviar(self, metodo: str, ruta: str, cuerpo: dict) -> httpx.Response:
+    def _enviar(self, metodo: str, ruta: str, cuerpo: dict | None) -> httpx.Response:
         url = f"{self._config.base_url}{ruta}"
         respuesta = self._cliente.request(
             metodo, url, json=cuerpo, headers=self._cabeceras()
@@ -123,6 +128,38 @@ class ClienteChattigo:
         self, telefono: str, url: str, nombre: str, epigrafe: str | None = None
     ) -> str:
         return self._enviar_mensaje(cuerpo_documento(telefono, url, nombre, epigrafe))
+
+    def descargar_media(self, media_id: str) -> tuple[bytes, str]:
+        """Foto que mandó un usuario: igual que en Meta, primero la dirección y después el archivo."""
+        datos = self._enviar("GET", f"/{self._config.version}/{media_id}", None)
+        try:
+            info = datos.json() or {}
+        except ValueError as exc:
+            raise ErrorChattigo("la foto devolvió una respuesta inválida") from exc
+        url, tipo = str(info.get("url") or ""), str(info.get("mime_type") or "")
+        if not self._direccion_de_fotos(url):
+            raise ErrorChattigo("la foto no trajo una dirección de Chattigo o de WhatsApp")
+        contenido = bytearray()
+        with self._cliente.stream("GET", url, headers=self._cabeceras(), follow_redirects=False) as archivo:
+            if archivo.status_code >= 400:
+                raise ErrorChattigo(f"no se pudo bajar la foto: HTTP {archivo.status_code}")
+            for parte in archivo.iter_bytes():
+                contenido.extend(parte)
+                if len(contenido) > MAXIMO_FOTO:
+                    raise ErrorChattigo("la foto es demasiado grande")
+            tipo = tipo or archivo.headers.get("content-type", "")
+        return bytes(contenido), tipo.split(";")[0]
+
+    def _direccion_de_fotos(self, url: str) -> bool:
+        """Sólo https, puerto estándar, sin usuario, y al servidor de Chattigo o a los de WhatsApp."""
+        try:
+            partes = httpx.URL(url)
+        except (httpx.InvalidURL, ValueError):
+            return False
+        host = partes.host.lower()
+        propio = httpx.URL(self._config.base_url).host.lower()
+        return (partes.scheme == "https" and partes.port in (None, 443) and not partes.userinfo
+                and (host == propio or host.endswith(HOSTS_FOTOS)))
 
     def configurar_webhook(self, url_webhook: str) -> dict:
         if not url_webhook.startswith("https://"):

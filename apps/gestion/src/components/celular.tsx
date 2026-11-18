@@ -12,7 +12,7 @@ type Usuario = { nombre: string; perfil: Perfil; real: boolean };
 type Tarea = "equipo" | "epp" | "capacitacion";
 
 const TAREAS: Record<Tarea, { titulo: string; detalle: string; perfiles: Perfil[] }> = {
-  equipo: { titulo: "Leer QR de un equipo", detalle: "Bombas, motores y máquinas", perfiles: ["SUPERADMIN", "MANTENIMIENTO"] },
+  equipo: { titulo: "Leer QR de un equipo", detalle: "Bombas, motores y máquinas", perfiles: ["SUPERADMIN", "MANTENIMIENTO", "ENCARGADO_MANTENIMIENTO"] },
   epp: { titulo: "Entregar ropa y EPP", detalle: "El trabajador firma lo que recibe", perfiles: ["SUPERADMIN", "DEPOSITO"] },
   capacitacion: { titulo: "Firmar asistencia", detalle: "A una capacitación", perfiles: ["SUPERADMIN", "RRHH", "HYS"] },
 };
@@ -91,7 +91,7 @@ function Ingreso({ entrar }: { entrar: (yo: Yo) => void }) {
 }
 
 function IngresoPrueba({ entrar }: { entrar: (perfil: Perfil) => void }) {
-  const opciones: Perfil[] = ["SUPERADMIN", "MANTENIMIENTO", "DEPOSITO", "RRHH", "HYS"];
+  const opciones: Perfil[] = ["SUPERADMIN", "MANTENIMIENTO", "ENCARGADO_MANTENIMIENTO", "DEPOSITO", "RRHH", "HYS"];
   return <main className="cel cel-ingreso"><span className="cel-logo">SJ</span><h1 className="cel-titulo">Modo de prueba</h1><p className="cel-texto">Elegí con qué perfil entrar.</p>
     <div className="cel-lista">{opciones.map(p => <button key={p} className="cel-opcion" onClick={() => entrar(p)}><strong>{perfiles[p].nombre}</strong></button>)}</div></main>;
 }

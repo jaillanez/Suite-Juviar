@@ -1,5 +1,5 @@
 export type Empresa = "ENAV" | "JUBIAR";
-export type Perfil = "SUPERADMIN" | "RRHH" | "MEDICO" | "HYS" | "COMPRAS" | "SUPERVISOR" | "MANTENIMIENTO" | "BODEGA" | "CAMPO" | "BASCULA" | "DEPOSITO" | "LABORATORIO" | "PRODUCCION" | "COMERCIAL";
+export type Perfil = "SUPERADMIN" | "RRHH" | "MEDICO" | "HYS" | "COMPRAS" | "SUPERVISOR" | "MANTENIMIENTO" | "ENCARGADO_MANTENIMIENTO" | "BODEGA" | "CAMPO" | "BASCULA" | "DEPOSITO" | "LABORATORIO" | "PRODUCCION" | "COMERCIAL";
 export type Seccion = "inicio" | "produccion" | "fila" | "bot" | "epp" | "analitica" | "seleccion" | "capacitaciones" | "legajo" | "salud" | "turnos" | "contactos" | "configuracion" | "usuarios" | "parametros" | "cosecha" | "personal" | "activos" | "mosto";
 
 export const todasLasSecciones: Seccion[] = [
@@ -15,6 +15,8 @@ export const perfiles: Record<Perfil, { nombre: string; secciones: Seccion[] }> 
   COMPRAS: { nombre: "Compras", secciones: ["inicio", "epp", "analitica", "mosto", "configuracion"] },
   SUPERVISOR: { nombre: "Supervisión", secciones: ["inicio", "capacitaciones", "turnos", "configuracion"] },
   MANTENIMIENTO: { nombre: "Mantenimiento", secciones: ["inicio", "activos", "configuracion"] },
+  // Además firma (autoriza) los remitos de salida de equipos y herramientas.
+  ENCARGADO_MANTENIMIENTO: { nombre: "Encargado de Mantenimiento", secciones: ["inicio", "activos", "configuracion"] },
   BODEGA: { nombre: "Administración de bodega", secciones: ["inicio", "produccion", "fila", "cosecha", "bot", "contactos", "configuracion"] },
   CAMPO: { nombre: "Recepción de campo", secciones: ["inicio", "produccion", "configuracion"] },
   BASCULA: { nombre: "Operación de báscula", secciones: ["inicio", "produccion", "fila", "mosto", "configuracion"] },

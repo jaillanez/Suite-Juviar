@@ -30,10 +30,45 @@ TIPOS_PERSONAL = {"personal": "Personal", "mando_medio": "Mando medio"}
 
 
 def saludo_personal(persona) -> str:
-    """Respuesta al personal mientras no haya consultas definidas para ese grupo."""
+    """Saludo al personal con lo que puede hacer por el bot."""
     nombre = persona.nombre.split(",")[-1].strip().split(" ")[0].title() or persona.nombre
     tipo = TIPOS_PERSONAL.get(persona.tipo, persona.tipo)
-    return f"Hola, {nombre} ({tipo}, {persona.empresa}).\nTodavía no hay consultas habilitadas para vos."
+    return f"Hola, {nombre} ({tipo}, {persona.empresa}).\n{AYUDA_MANTENIMIENTO}"
+
+
+PALABRAS_MANTENIMIENTO = ("salida", "sale ", "mantenimiento", "taller", "remito")
+TIPOS_FOTO = {"image/jpeg", "image/png", "image/webp"}
+AYUDA_MANTENIMIENTO = ("Para registrar una salida de Mantenimiento mandá una foto con un texto, "
+                       "por ejemplo: «BOM-0003 sale a Taller Pérez para bobinar».")
+
+
+def es_para_mantenimiento(pendiente) -> bool:
+    texto = (pendiente.texto or "").casefold()
+    return bool(getattr(pendiente, "media_id", None)) or any(p in texto for p in PALABRAS_MANTENIMIENTO)
+
+
+def registrar_mantenimiento(bot, salida, pendiente) -> str:
+    """Foto y texto del personal: quedan para el Encargado de Mantenimiento en Gestión."""
+    foto, tipo, aviso = None, None, ""
+    media_id = getattr(pendiente, "media_id", None)
+    if media_id:
+        try:
+            contenido, tipo_recibido = salida.descargar_media(media_id)
+            if tipo_recibido in TIPOS_FOTO and 1000 <= len(contenido) <= 3_000_000:
+                foto, tipo = contenido, tipo_recibido
+            else:
+                aviso = "\nLa foto no se pudo guardar (formato o tamaño): mandala de nuevo."
+        except (ErrorChattigo, transporte.ErrorTransporte, AttributeError, OSError) as exc:
+            log.warning("no se pudo bajar la foto de %s: %s", pendiente.id, exc)
+            aviso = "\nLa foto no se pudo bajar: mandala de nuevo."
+    texto = (pendiente.texto or "").strip()
+    if not foto and not texto:
+        return AYUDA_MANTENIMIENTO + aviso
+    try:
+        numero = bot.registrar_mantenimiento(pendiente.telefono, texto, foto, tipo)
+    except ValueError as exc:
+        return f"No se pudo registrar: {exc}."
+    return f"Listo, quedó registrado para Mantenimiento (N.º {numero}). El Encargado lo revisa en Gestión.{aviso}"
 
 
 def _max_respuestas_hora() -> int:
@@ -67,12 +102,26 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
         # de otro, nunca de los dos: infra/034).
         persona = bot.personal(pendiente.telefono) if hasattr(bot, "personal") else None
         if persona is not None:
-            texto = saludo_personal(persona)
+            registro = hasattr(bot, "registrar_mantenimiento") and es_para_mantenimiento(pendiente)
+            if registro:
+                try:
+                    texto = registrar_mantenimiento(bot, salida, pendiente)
+                except (psycopg.Error, OSError) as exc:  # no quedó nada registrado: se puede reintentar
+                    bot.reintentar(pendiente.id, str(exc), MAX_INTENTOS)
+                    log.warning("no se pudo registrar para mantenimiento (intento %s): %s",
+                                pendiente.intentos + 1, exc)
+                    continue
+            else:
+                texto = saludo_personal(persona)
             try:
                 wamid = salida.enviar_texto(pendiente.telefono, texto)
             except (ErrorChattigo, transporte.ErrorTransporte, psycopg.Error, RuntimeError,
                     ValueError, OSError) as exc:
-                bot.reintentar(pendiente.id, str(exc), MAX_INTENTOS)
+                if registro:
+                    # Ya quedó registrado: reintentar lo registraría dos veces. Se cierra sin respuesta.
+                    bot.cerrar(pendiente.id, "error", respuesta=texto, error=f"registrado; falló la respuesta: {exc}")
+                else:
+                    bot.reintentar(pendiente.id, str(exc), MAX_INTENTOS)
                 log.warning("envío falló (intento %s): %s", pendiente.intentos + 1, exc)
                 continue
             bot.cerrar(pendiente.id, "respondido", respuesta=texto, wamid_salida=wamid)

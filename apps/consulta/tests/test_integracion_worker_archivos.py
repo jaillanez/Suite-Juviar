@@ -11,7 +11,11 @@ from consulta_publica.bot.dialogo import (
 )
 from consulta_publica.bot.repositorio import Pendiente
 from consulta_publica.bot.turnos import Borrador
-from consulta_publica.bot.worker import enviar_avisos, procesar_una_vez
+from consulta_publica.bot.worker import (
+    AYUDA_MANTENIMIENTO,
+    enviar_avisos,
+    procesar_una_vez,
+)
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -197,8 +201,67 @@ def test_personal_recibe_saludo_con_nombre_y_no_entra_al_menu(monkeypatch):
     monkeypatch.setattr("consulta_publica.bot.transporte.fecha_hoy", lambda: date(2026, 3, 17))
     bot, salida = BotConPersonal(), Salida()
     assert procesar_una_vez(bot, Consultas(), salida) == 1
-    assert salida.textos == ["Hola, Juan (Mando medio, ENAV).\nTodavía no hay consultas habilitadas para vos."]
+    assert salida.textos == ["Hola, Juan (Mando medio, ENAV).\n" + AYUDA_MANTENIMIENTO]
     assert bot.cierres[0][0][1] == "respondido"
+
+
+class BotMantenimiento(BotConPersonal):
+    def __init__(self, pendiente, falla=None):
+        super().__init__()
+        self.pendiente, self.falla, self.registrados = pendiente, falla, []
+
+    def tomar(self):
+        return [self.pendiente]
+
+    def registrar_mantenimiento(self, telefono, texto, foto, tipo):
+        if self.falla:
+            raise ValueError(self.falla)
+        self.registrados.append((telefono, texto, foto, tipo))
+        return 7
+
+
+class SalidaConFotos(Salida):
+    def __init__(self, foto=None):
+        super().__init__()
+        self.foto = foto
+
+    def descargar_media(self, media_id):
+        if self.foto is None:
+            raise OSError("sin red")
+        return self.foto, "image/jpeg"
+
+
+def _procesar(monkeypatch, bot, salida):
+    monkeypatch.setenv("BOT_PUBLIC_BASE_URL", "https://juviar-bot.duckdns.org")
+    monkeypatch.setattr("consulta_publica.bot.transporte.fecha_hoy", lambda: date(2026, 3, 17))
+    procesar_una_vez(bot, Consultas(), salida)
+
+
+def test_foto_del_personal_queda_para_mantenimiento(monkeypatch):
+    foto = b"\xff\xd8" + b"0" * 5000
+    bot = BotMantenimiento(Pendiente(1, "5492640000000", "BOM-0003 a taller", 0, "image", "MEDIA.1"))
+    salida = SalidaConFotos(foto)
+    _procesar(monkeypatch, bot, salida)
+    assert bot.registrados == [("5492640000000", "BOM-0003 a taller", foto, "image/jpeg")]
+    assert "N.º 7" in salida.textos[0]
+
+
+def test_si_la_foto_no_baja_igual_se_registra_el_texto_y_se_avisa(monkeypatch):
+    bot = BotMantenimiento(Pendiente(1, "5492640000000", "sale la soldadora", 0, "image", "MEDIA.1"))
+    salida = SalidaConFotos(None)
+    _procesar(monkeypatch, bot, salida)
+    assert bot.registrados[0][2] is None and "mandala de nuevo" in salida.textos[0]
+
+
+def test_texto_comun_del_personal_no_se_registra_y_la_base_puede_rechazar(monkeypatch):
+    bot = BotMantenimiento(Pendiente(1, "5492640000000", "hola", 0))
+    salida = Salida()
+    _procesar(monkeypatch, bot, salida)
+    assert bot.registrados == [] and AYUDA_MANTENIMIENTO in salida.textos[0]
+    bot = BotMantenimiento(Pendiente(1, "5492640000000", "sale el taladro al taller", 0), falla="tope de mensajes por hora")
+    salida = Salida()
+    _procesar(monkeypatch, bot, salida)
+    assert salida.textos == ["No se pudo registrar: tope de mensajes por hora."]
 
 
 class BotConAvisos:
@@ -265,3 +328,17 @@ def test_marcar_se_insiste_solo_si_salio_y_sin_esperar_despues_del_ultimo(monkey
     assert enviar_avisos(bot, SalidaQueFallaUnaVez()) == 1
     assert bot.llamadas == [1, 1, 1, 2]   # el que falló al enviar se anota una sola vez
     assert esperas == [0.5, 1.0]
+
+
+class SalidaQueFalla(Salida):
+    def enviar_texto(self, telefono, texto):
+        raise OSError("sin red")
+
+
+def test_si_falla_la_respuesta_lo_registrado_no_se_reintenta(monkeypatch):
+    bot = BotMantenimiento(Pendiente(1, "5492640000000", "sale el taladro al taller", 0))
+    bot.reintentos = []
+    bot.reintentar = lambda *a: bot.reintentos.append(a)
+    _procesar(monkeypatch, bot, SalidaQueFalla())
+    assert len(bot.registrados) == 1 and bot.reintentos == []
+    assert bot.cierres[0][0][1] == "error"

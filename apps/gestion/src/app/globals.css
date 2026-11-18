@@ -1142,3 +1142,16 @@ th button {
 .destinatario-mosto button { padding: 0; }
 @media (max-width: 720px) { .destinatario-mosto { grid-template-columns: 1fr 40px; } }
 .lista-simple { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: .88rem; color: var(--muted); }
+
+/* Remitos de salida de Mantenimiento */
+.item-remito { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 2fr) 80px 40px; gap: 6px; align-items: center; margin-bottom: 6px; }
+.item-remito > * { min-width: 0; }
+.item-remito button { padding: 0; }
+@media (max-width: 720px) { .item-remito { grid-template-columns: 1fr 70px 40px; } .item-remito input:first-child { grid-column: 1 / -1; } }
+.estado-remito-borrador { background: #fff1cf; color: #76500b; }
+.estado-remito-autorizado { background: #e3ecf7; color: #1d4570; }
+.estado-remito-afuera { background: #e3ece8; color: #1f5c45; }
+.estado-remito-cerrado, .estado-remito-anulado { background: #eceeed; color: #5b6b64; }
+.estado-remito-demorado { background: #fbe3e1; color: #8a1c12; }
+.opciones-firma { display: grid; gap: 8px; margin-bottom: 12px; }
+.opciones-firma label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
