@@ -1142,3 +1142,21 @@ th button {
 .destinatario-mosto button { padding: 0; }
 @media (max-width: 720px) { .destinatario-mosto { grid-template-columns: 1fr 40px; } }
 .lista-simple { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; font-size: .88rem; color: var(--muted); }
+/* Controles ARCA */
+.estado-arca { white-space: nowrap; }
+.estado-arca-ok { background: #e3f1e9; color: #1f5c45; }
+.estado-arca-alerta { background: #fde8ea; color: var(--rojo); }
+.estado-arca-pendiente, .estado-arca-error { background: #fff1cf; color: #76500b; }
+.estado-arca-no_aplica, .estado-arca-sin_configurar, .estado-arca-sin_correr { background: #eef1ef; color: var(--muted); }
+.chips-arca { display: flex; flex-wrap: wrap; gap: 4px; }
+.fila-alerta td { background: #fdf1f2; }
+.fila-alerta td:first-child { box-shadow: inset 4px 0 0 var(--rojo); }
+.controles-arca { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
+.control-arca { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--borde); border-radius: 10px; background: #fff; }
+.control-arca p { margin: 0; }
+.control-arca .titulo-fila { margin: 0; gap: 8px; }
+.control-arca h3 { margin: 0; font-size: 1rem; }
+.control-arca-alerta { border-color: var(--rojo); box-shadow: inset 4px 0 0 var(--rojo); }
+.padrones-arca { display: grid; gap: 8px; }
+.padrones-arca > div { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.aviso-pendiente { padding: 10px 14px; border-radius: 10px; background: #fff7e3; color: #5f430c; margin-bottom: 10px; }

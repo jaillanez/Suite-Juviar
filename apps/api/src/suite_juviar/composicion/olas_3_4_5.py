@@ -10,6 +10,14 @@ from suite_juviar.modulos.capacitacion.api.app import crear_router as crear_capa
 from suite_juviar.modulos.capacitacion.infrastructure.configuracion_yaml import (
     ConfiguracionCapacitacionYAML,
 )
+from suite_juviar.modulos.controles_arca.api.app import crear_router as crear_controles_arca
+from suite_juviar.modulos.controles_arca.application.servicios import GestionarControles
+from suite_juviar.modulos.controles_arca.infrastructure import padrones as padrones_arca
+from suite_juviar.modulos.controles_arca.infrastructure.arca import ConectorARCAWeb
+from suite_juviar.modulos.controles_arca.infrastructure.certificados import CertificadosRSA
+from suite_juviar.modulos.controles_arca.infrastructure.cifrado import CifradorARCA
+from suite_juviar.modulos.controles_arca.infrastructure.pdf import ConstanciaPDF
+from suite_juviar.modulos.controles_arca.infrastructure.sqlite import ControlesSQLite
 from suite_juviar.modulos.epp_analitica.api.app import crear_router as crear_analitica
 from suite_juviar.modulos.epp_analitica.application.servicios import AnalizarEPP
 from suite_juviar.modulos.epp_analitica.infrastructure.simulados import (
@@ -100,6 +108,7 @@ def construir_routers(rrhh):
     ))
     if os.getenv("SJ_ALARMA_MOSTO", "1").strip() not in {"0", "false", "no"}:
         avisos_mosto.iniciar(mosto)
+    controles = construir_controles_arca(ruta_modulos, clave_parametros, entorno, clave_adjuntos.decode())
     return {
         "parametros": crear_router_parametros(correo_rrhh, entorno),
         "epp-analitica": crear_analitica(analitica, entorno, NombresDesdePuerto(rrhh)),
@@ -112,4 +121,25 @@ def construir_routers(rrhh):
         ),
         "activos": crear_activos(entorno, ruta_modulos),
         "mosto": crear_mosto(mosto, entorno),
+        "controles-arca": crear_controles_arca(controles, entorno),
     }
+
+
+def construir_controles_arca(ruta_modulos: str, clave_parametros: str, entorno: str,
+                             clave_prueba: str) -> GestionarControles:
+    repo = ControlesSQLite(ruta_modulos)
+    cifrador = None
+    # La clave privada del certificado se guarda cifrada con SJ_CLAVE_PARAMETROS (derivación
+    # propia); sólo en desarrollo y prueba se acepta la clave de prueba.
+    if clave_parametros or entorno in {"desarrollo", "development", "dev", "local", "prueba", "test"}:
+        cifrador = CifradorARCA.desde_secreto(clave_parametros or clave_prueba)
+    controles = GestionarControles(
+        repo, ConstanciaPDF(), padrones_arca.DescargaHTTP(),
+        ConectorARCAWeb(repo.tickets, cifrador) if cifrador else None,
+        CertificadosRSA(), cifrador,
+    )
+    # Bajada diaria de los listados de ARCA; nunca en las pruebas.
+    por_defecto = "0" if entorno in {"prueba", "test"} else "1"
+    if os.getenv("SJ_DESCARGA_PADRONES", por_defecto).strip() not in {"0", "false", "no"}:
+        padrones_arca.iniciar(controles)
+    return controles

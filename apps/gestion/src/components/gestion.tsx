@@ -24,6 +24,7 @@ import { PersonalBot } from "./personal-bot";
 import { ParametrosGestion } from "./parametros-gestion";
 import { ActivosGestion } from "./activos-gestion";
 import { MostoGestion } from "./mosto-gestion";
+import { ControlesArcaGestion } from "./controles-arca-gestion";
 
 const VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "0.1.0";
 const COMMIT = process.env.NEXT_PUBLIC_GIT_COMMIT ?? "local";
@@ -44,6 +45,7 @@ function Icono({ nombre }: { nombre: Seccion }) {
     personal: "M4 6h16v13H4z M9 13a2 2 0 100-4 2 2 0 000 4z M6 17c.6-1.6 1.7-2.4 3-2.4s2.4.8 3 2.4 M14 10h4 M14 14h3 M9 6V4h6v2",
     cosecha: "M4 5h16v15H4z M4 9h16 M8 3v4 M16 3v4 M8 13h2 M14 13h2 M8 17h2",
     mosto: "M8 3h8 M9 3v5l-4 9a3 3 0 003 4h8a3 3 0 003-4l-4-9V3 M7 14h10",
+    controles: "M6 3h9l3 3v15H6z M9 13l2 2 4-4 M9 18h6",
     activos: "M12 3v4 M12 17v4 M5 12H3 M21 12h-2 M12 16a4 4 0 100-8 4 4 0 000 8z M7 7l-1.5-1.5 M18.5 18.5L17 17 M7 17l-1.5 1.5 M18.5 5.5L17 7",
     parametros: "M4 6h10 M18 6h2 M4 12h4 M12 12h8 M4 18h12 M14 4v4 M8 10v4 M16 16v4",
     usuarios: "M12 12a4 4 0 100-8 4 4 0 000 8z M4 21v-1a6 6 0 0112 0v1 M17 11l2 2 4-4",
@@ -189,10 +191,11 @@ function Pendiente({ seccion }: { seccion: Seccion }) { return <><Encabezado tit
 
 function Contenido({ seccion, sesion, guardar, actualizar }: { seccion: Seccion; sesion: SesionGestion; guardar: (empresa: Empresa, perfil: Perfil) => void; actualizar: (yo: Yo) => void }) {
   if (seccion === "usuarios") return <Usuarios />;
-  if (seccion === "parametros") return <><Encabezado titulo="Parámetros" descripcion="Casillas de Gmail de RRHH de las que el sistema trae los CV cada noche, impresora de etiquetas y mosto." /><ParametrosGestion /></>;
+  if (seccion === "parametros") return <><Encabezado titulo="Parámetros" descripcion="Casillas de Gmail de RRHH de las que el sistema trae los CV cada noche, impresora de etiquetas, mosto y controles de ARCA." /><ParametrosGestion /></>;
   if (seccion === "activos") return <><Encabezado titulo="Equipos y activos" descripcion="Bombas, maquinarias y demás bienes de planta: ubicación, traslados, reparaciones externas y etiquetas con código de barras." /><ActivosGestion /></>;
   if (seccion === "cosecha") return <TurnosCosecha />;
   if (seccion === "mosto") return <><Encabezado titulo="Mosto" descripcion="Compras de mosto sulfitado y virgen: análisis y aprobación, camiones en planta, descarga, liquidación por azúcar y alarma del mosto virgen demorado." /><MostoGestion perfil={sesion.perfil} /></>;
+  if (seccion === "controles") return <><Encabezado titulo="Controles ARCA" descripcion="Los cinco controles fiscales de cada factura de proveedor, con la constancia en PDF de cada uno. Si alguno da mal, la factura queda en rojo." /><ControlesArcaGestion /></>;
   if (seccion === "configuracion" && sesion.real) return <ConfiguracionReal sesion={sesion} actualizar={actualizar} />;
   if (seccion === "inicio") return <Inicio empresa={sesion.empresa} nombre={sesion.nombre} perfil={sesion.perfil} />; if (seccion === "produccion") return <Produccion area="recepcion" />; if (seccion === "fila") return <Produccion area="fila" perfil={sesion.perfil} />; if (seccion === "bot") return <Produccion area="bot" />; if (seccion === "epp") return <Epp />; if (seccion === "analitica") return <Analitica />; if (seccion === "seleccion") return <Seleccion />; if (seccion === "capacitaciones") return <Capacitaciones />; if (seccion === "legajo") return <Legajo />; if (seccion === "salud") return <Salud />; if (seccion === "turnos") return <Turnos />; if (seccion === "contactos") return <Contactos />; if (seccion === "personal") return <Personal />; if (seccion === "configuracion") return <Configuracion sesion={sesion} guardar={guardar} />; return <Pendiente seccion={seccion} />;
 }

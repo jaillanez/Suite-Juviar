@@ -42,7 +42,7 @@ PERMISOS_POR_PERFIL: dict[str, frozenset[str]] = {
         "epp.analitica.leer", "capacitacion.gestionar",
     }),
     "COMPRAS": frozenset({"suite.acceder", "epp.catalogo.leer", "epp.stock.leer", "epp.stock.editar", "epp.aviso.gestionar", "epp.analitica.leer",
-                         "mosto.leer", "mosto.compras.gestionar"}),
+                         "mosto.leer", "mosto.compras.gestionar", "controles_fiscales.operar"}),
     "SUPERVISOR": frozenset({"suite.acceder", "capacitacion.leer", "turnos.cronograma.leer", "turnos.cronograma.editar"}),
     "MANTENIMIENTO": frozenset({"suite.acceder", "activos.gestionar"}),
     # Mosto: Laboratorio analiza y decide por Calidad; el Jefe de Producción puede aprobar lo
@@ -50,6 +50,8 @@ PERMISOS_POR_PERFIL: dict[str, frozenset[str]] = {
     "LABORATORIO": frozenset({"suite.acceder", "mosto.leer", "mosto.laboratorio"}),
     "PRODUCCION": frozenset({"suite.acceder", "mosto.leer", "mosto.produccion"}),
     "COMERCIAL": frozenset({"suite.acceder", "mosto.leer", "mosto.compras.gestionar", "mosto.comercial"}),
+    # Controles fiscales de ARCA sobre las facturas de proveedores.
+    "ADMINISTRACION": frozenset({"suite.acceder", "controles_fiscales.operar"}),
 }
 PERMISOS_POR_PERFIL["SUPERADMIN"] = frozenset().union(
     *PERMISOS_POR_PERFIL.values(), {"identidad.usuarios.gestionar", "bot.personal.gestionar", "parametros.gestionar"}

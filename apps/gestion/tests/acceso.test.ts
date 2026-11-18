@@ -15,7 +15,7 @@ test("sólo el perfil médico recibe la sección Salud", () => {
 });
 
 test("el menú se construye con secciones permitidas", () => {
-  assert.deepEqual(perfiles.COMPRAS.secciones, ["inicio", "epp", "analitica", "configuracion"]);
+  assert.deepEqual(perfiles.COMPRAS.secciones, ["inicio", "epp", "analitica", "mosto", "controles", "configuracion"]);
   assert.equal(puedeEntrar("SUPERVISOR", "turnos"), true);
 });
 
@@ -36,7 +36,8 @@ test("Superadministrador ve y puede abrir toda la aplicación", () => {
 test("el menú separa RRHH, Producción, Bot y Configuración", () => {
   const porNombre = Object.fromEntries(gruposMenu.map((grupo) => [grupo.nombre, grupo.secciones]));
   assert.deepEqual(porNombre.Mantenimiento, ["activos"]);
-  assert.deepEqual(porNombre.Producción, ["produccion", "fila", "cosecha"]);
+  assert.deepEqual(porNombre.Producción, ["produccion", "fila", "cosecha", "mosto"]);
+  assert.deepEqual(porNombre.Administración, ["controles"]);
   assert.deepEqual(porNombre.Bot, ["bot", "contactos", "personal"]);
   assert.deepEqual(porNombre.Configuración, ["configuracion", "usuarios", "parametros"]);
   assert.equal(porNombre.RRHH.includes("epp"), true);
@@ -46,4 +47,10 @@ test("el menú separa RRHH, Producción, Bot y Configuración", () => {
 test("Mantenimiento sólo ve equipos y activos", () => {
   assert.deepEqual(perfiles.MANTENIMIENTO.secciones, ["inicio", "activos", "configuracion"]);
   assert.equal(puedeEntrar("RRHH", "activos"), false);
+});
+
+test("Administración sólo ve los controles de ARCA", () => {
+  assert.deepEqual(perfiles.ADMINISTRACION.secciones, ["inicio", "controles", "configuracion"]);
+  assert.equal(puedeEntrar("COMPRAS", "controles"), true);
+  assert.equal(puedeEntrar("RRHH", "controles"), false);
 });
