@@ -13,6 +13,7 @@ from consulta_publica.bot.repositorio import Pendiente
 from consulta_publica.bot.turnos import Borrador
 from consulta_publica.bot.worker import (
     AYUDA_MANTENIMIENTO,
+    AYUDA_PERSONAL,
     enviar_avisos,
     procesar_una_vez,
 )
@@ -201,7 +202,9 @@ def test_personal_recibe_saludo_con_nombre_y_no_entra_al_menu(monkeypatch):
     monkeypatch.setattr("consulta_publica.bot.transporte.fecha_hoy", lambda: date(2026, 3, 17))
     bot, salida = BotConPersonal(), Salida()
     assert procesar_una_vez(bot, Consultas(), salida) == 1
-    assert salida.textos == ["Hola, Juan (Mando medio, ENAV).\n" + AYUDA_MANTENIMIENTO]
+    # El saludo lista las tres cosas que el personal puede mandar (fase 5: antes sólo Mantenimiento).
+    assert salida.textos == ["Hola, Juan (Mando medio, ENAV).\n" + AYUDA_PERSONAL]
+    assert AYUDA_MANTENIMIENTO in AYUDA_PERSONAL and "certificado" in AYUDA_PERSONAL and "EPP" in AYUDA_PERSONAL
     assert bot.cierres[0][0][1] == "respondido"
 
 

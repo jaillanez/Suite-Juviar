@@ -43,8 +43,8 @@ class TransporteSimulado:
             raise ErrorTransporte(f"salida simulada: {exc.__class__.__name__}") from exc
         return wamid
 
-    def descargar_media(self, media_id: str) -> tuple[bytes, str]:
-        raise ErrorTransporte("en el simulador no se reciben fotos")
+    def descargar_media(self, media_id: str, maximo: int = 0) -> tuple[bytes, str]:
+        raise ErrorTransporte("en el simulador no se reciben fotos ni archivos")
 
     def enviar_imagen(self, telefono: str, url: str, epigrafe: str | None = None) -> str:
         return self.enviar_texto(telefono, f"[IMAGEN] {epigrafe or ''}\n{url}".strip())

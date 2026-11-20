@@ -37,7 +37,18 @@ from suite_juviar.modulos.mosto.api.app import crear_router as crear_mosto
 from suite_juviar.modulos.mosto.application.servicios import GestionarMosto
 from suite_juviar.modulos.mosto.infrastructure import avisos as avisos_mosto
 from suite_juviar.modulos.mosto.infrastructure.sqlite import MostoSQLite
+from suite_juviar.modulos.rrhh_whatsapp.api.app import crear_router as crear_rrhh_whatsapp
+from suite_juviar.modulos.rrhh_whatsapp.application.servicios import BandejaRRHH
+from suite_juviar.modulos.rrhh_whatsapp.infrastructure.dmz import PuertaDMZ as PuertaRRHHDMZ
+from suite_juviar.modulos.rrhh_whatsapp.infrastructure.dmz import (
+    PuertaSinConfigurar as PuertaRRHHSinConfigurar,
+)
+from suite_juviar.modulos.rrhh_whatsapp.infrastructure.sqlite import BandejaCifradaSQLite
 from suite_juviar.modulos.salud.api.app import crear_router as crear_salud
+from suite_juviar.modulos.salud.application.lector_certificados import (
+    analizar_certificado,
+    usaria_ia_externa,
+)
 from suite_juviar.modulos.salud.application.servicios import GestionarSalud
 from suite_juviar.modulos.salud.infrastructure.simulados import (
     FuenteLaboralSimulada,
@@ -47,7 +58,11 @@ from suite_juviar.modulos.salud.infrastructure.sqlite import (
     CatalogoDiagnosticoSQLite,
     SaludSQLite,
 )
-from suite_juviar.modulos.seleccion.api.app import construir_correo, crear_router_parametros
+from suite_juviar.modulos.seleccion.api.app import (
+    construir_correo,
+    construir_cvs_whatsapp,
+    crear_router_parametros,
+)
 from suite_juviar.modulos.seleccion.api.app import crear_router as crear_seleccion
 from suite_juviar.modulos.seleccion.infrastructure import lectura_nocturna
 from suite_juviar.modulos.seleccion.infrastructure.perfiles_yaml import CriteriosPerfilYAML
@@ -59,6 +74,8 @@ from suite_juviar.modulos.turnos.infrastructure.sqlite import (
     FuenteFichadasSQLite,
 )
 from suite_juviar.plataforma.terceros.api.personal_bot import configurar as configurar_personal_bot
+from suite_juviar.plataforma.terceros.api.tablero_fila import NOMBRES as NOMBRES_SEDES
+from suite_juviar.plataforma.terceros.api.tablero_fila import sedes as sedes_fila
 
 
 def construir_routers(rrhh):
@@ -128,7 +145,55 @@ def construir_routers(rrhh):
             else None),
         "mosto": crear_mosto(mosto, entorno),
         "controles-arca": crear_controles_arca(controles, entorno),
+        "rrhh-whatsapp": crear_rrhh_whatsapp(
+            construir_bandeja_rrhh(entorno, ruta_modulos, clave_adjuntos, dsn_fila, legajo, salud), entorno,
+            sincronizar_cada=60 if dsn_fila and os.getenv("SJ_SINCRONIZAR_RRHH_WHATSAPP", "1").strip()
+            not in {"0", "false", "no"} else None),
     }
+
+
+class SaludParaBandeja:
+    """La bandeja de RRHH carga en Salud sin ver el catálogo ni los diagnósticos."""
+
+    def __init__(self, salud: GestionarSalud) -> None:
+        self._salud = salud
+
+    def cargar(self, legajo, diagnostico_codigo, desde, hasta, dias, profesional, nombre_adjunto, contenido,
+               resumen, tipo_accidente) -> str:
+        return self._salud.cargar(legajo, diagnostico_codigo, desde, hasta, dias, profesional, nombre_adjunto,
+                                  contenido, resumen, tipo_accidente).id
+
+    def auditar(self, actor: str, legajo: str | None, accion: str) -> None:
+        self._salud.auditar(actor, legajo, accion)
+
+
+def construir_bandeja_rrhh(entorno: str, ruta_modulos: str, clave_adjuntos: bytes, dsn_fila: str,
+                           legajo: GestionarLegajo, salud: GestionarSalud) -> BandejaRRHH:
+    """Certificados y pedidos de EPP del personal, CV por WhatsApp y recorridos del micro (infra/042)."""
+    # Mandar un certificado a la IA externa saca datos de salud de la empresa y acá corre solo, sin
+    # nadie que lo dispare: sólo con autorización expresa en el servidor, en cualquier entorno.
+    ia_externa_permitida = os.getenv("SJ_SALUD_IA_EXTERNA_AUTORIZADA", "").strip().lower() in {"1", "true", "si"}
+
+    def leer_certificado(nombre: str, contenido: bytes, legajo_empleado: str) -> dict:
+        externa = ia_externa_permitida and usaria_ia_externa(nombre)
+        salud.auditar("bandeja-rrhh-whatsapp", legajo_empleado,
+                      "ENVIO_CERTIFICADO_A_IA_EXTERNA_DEEPSEEK" if externa else "ANALISIS_CERTIFICADO")
+        return analizar_certificado(nombre, contenido, permitir_ia_externa=ia_externa_permitida)
+
+    def adjuntar(legajo_empleado: str, nombre: str, contenido: bytes, actor: str) -> str:
+        return legajo.adjuntar(legajo_empleado, nombre, contenido).id
+
+    cvs = construir_cvs_whatsapp(ruta_modulos)
+    return BandejaRRHH(
+        BandejaCifradaSQLite(clave_adjuntos, ruta_modulos),
+        PuertaRRHHDMZ(dsn_fila) if dsn_fila else PuertaRRHHSinConfigurar(),
+        leer_certificado,
+        adjuntar,
+        lambda cv: cvs.ejecutar(cv.telefono, cv.nombre_archivo, cv.contenido, cv.recibido_en,
+                                f"{cv.telefono}:{cv.id}:{cv.recibido_en.isoformat()}"),
+        {sede: NOMBRES_SEDES.get(sede, sede.replace("-", " ").title()) for sede in sedes_fila()},
+        salud=SaludParaBandeja(salud),
+    )
 
 
 def construir_controles_arca(ruta_modulos: str, clave_parametros: str, entorno: str,

@@ -45,3 +45,17 @@ def test_legajo_inexistente_y_tipo_invalido_se_rechazan(escrito):
 def test_busca_personas_por_legajo_o_apellido(escrito):
     respuesta = TestClient(app).get("/api/v1/personal-bot/personas?q=quiroga", headers=ADMIN)
     assert respuesta.json()[0]["nombre"] == "Quiroga, Carlos Alberto"
+
+
+def test_asignar_recorrido_del_micro_deja_quien(escrito):
+    cliente = TestClient(app)
+    r = cliente.post("/api/v1/personal-bot/5492644567890/recorrido", headers=ADMIN, json={"recorrido_id": 3})
+    assert r.status_code == 200
+    sql, parametros = escrito[0]
+    assert "asignar_recorrido_personal" in sql
+    assert parametros == {"telefono": "5492644567890", "recorrido": 3, "actor": "admin"}
+    cliente.post("/api/v1/personal-bot/5492644567890/recorrido", headers=ADMIN, json={"recorrido_id": None})
+    assert escrito[1][1]["recorrido"] is None
+    assert cliente.post("/api/v1/personal-bot/5492644567890/recorrido", json={"recorrido_id": 3},
+                        headers={"X-Perfil-Simulado": "RRHH"}).status_code == 403
+    assert len(escrito) == 2

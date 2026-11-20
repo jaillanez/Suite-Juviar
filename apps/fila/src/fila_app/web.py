@@ -132,6 +132,7 @@ def guardia(sede: str, variedades: Iterable[str] = ()) -> str:
 <button>Entrar</button><p id="errorIngreso" role="alert"></p></form></main>
 <main id="aplicacion" class="oculto"><p class="muted">Guardia · {sede.title()}</p><h1>Fila del portón</h1>
 <section id="organica" class="panel organica oculto" aria-live="polite"></section>
+<section id="seccionMicro" class="oculto"><h2>Micro del personal</h2><p class="muted">Cuando llega el micro, tocá el botón y elegí el recorrido: el personal de ese recorrido recibe el aviso por WhatsApp.</p><button id="llegoMicro">Llegó el micro</button></section>
 <section id="seccionRemitos" class="oculto"><h2>Remitos de salida</h2><p class="muted">Equipos y herramientas que salen a talleres. Sin remito autorizado no sale nada.</p><div id="remitos" class="list"></div></section>
 <input id="camaraPatente" type="file" accept="image/*" capture="environment" class="oculto">
 <button id="altaDirecta" class="secondary">+ Camión sin celular</button><h2>Por confirmar</h2><div id="pendientes" class="list"></div>
@@ -176,7 +177,7 @@ async function achicar(archivo){{const img=await createImageBitmap(archivo);cons
 camaraPatente.onchange=async()=>{{const a=camaraPatente.files[0],viaje=fotoViaje;fotoViaje=null;if(!a||!viaje)return;try{{const b=await achicar(a);const r=await fetch('/api/guardia/viajes/'+viaje+'/foto',{{method:'POST',headers:{{'x-guardia-token':token,'content-type':'image/jpeg'}},body:b}});if(!r.ok){{await avisar((await r.json()).detail);return}}await cargar()}}catch{{await avisar('No se pudo enviar la foto. Probá de nuevo.')}}}};
 function pintar(){{pintarOrganica();pendientes.innerHTML=datos.pendientes.map(x=>filaHtml(x,`<button onclick="confirmar(${{x.id}})">Confirmar</button><button class="danger" onclick="cerrar(${{x.id}},'rechazar')">Rechazar</button>`)).join('')||'<p class="muted">Ninguno.</p>';
  fila.innerHTML=datos.espera.map((x,i)=>filaHtml(x,`<span class="tag">${{['','Orgánico','Con turno','Espontáneo'][x.grupo]}}</span><button class="secondary" onclick="llamar(${{x.id}},${{i}})">Llamar</button><button class="danger" onclick="cerrar(${{x.id}},'cancelar')">Sacar de la fila</button>`)).join('')||'<p class="muted">Fila vacía.</p>';
- pintarRemitos();
+ pintarRemitos();seccionMicro.classList.toggle('oculto',!(datos.recorridos||[]).length);
  llamados.innerHTML=datos.llamados.map(x=>filaHtml(x,`<button onclick="accion(${{x.id}},'paso')">Pasó</button><button class="secondary" onclick="accion(${{x.id}},'no_vino')">No vino</button><button class="danger" onclick="cerrar(${{x.id}},'cancelar')">Cancelar</button>`)).join('')||'<p class="muted">Ninguno.</p>';}}
 function pintarRemitos(){{const xs=datos.remitos||[];seccionRemitos.classList.toggle('oculto',!xs.length);
  remitos.innerHTML=xs.map(r=>`<article class="row remito"><div><strong>Remito N.º ${{esc(r.numero)}}</strong> → ${{esc(r.destino)}}
@@ -186,6 +187,11 @@ function pintarRemitos(){{const xs=datos.remitos||[];seccionRemitos.classList.to
 async function dejarSalir(remito,numero){{const r=await elegir('¿Sale ahora lo del remito N.º '+numero+'?',[['si','Sí, revisé lo que lleva y sale']]);if(r!=='si')return;
  if(!navigator.onLine){{await avisar('Sin conexión: la salida se marca cuando vuelva la señal.');return}}
  const x=await fetch('/api/guardia/'+sede+'/remitos/'+remito+'/salida',{{method:'POST',headers:H}});if(!x.ok){{await avisar((await x.json()).detail);return}}await cargar()}}
+llegoMicro.onclick=async()=>{{const xs=datos.recorridos||[];if(!xs.length)return;
+ const r=await elegir('¿De qué recorrido llegó el micro?',xs.map(x=>[String(x.id),x.nombre+' ('+x.personas+(x.personas===1?' persona':' personas')+')']));if(!r)return;
+ if(!navigator.onLine){{await avisar('Sin conexión: el aviso del micro se manda cuando vuelva la señal.');return}}
+ const x=await fetch('/api/guardia/'+sede+'/micro/'+r+'/llego',{{method:'POST',headers:H}});const d=await x.json();if(!x.ok){{await avisar(d.detail);return}}
+ await avisar('Listo: se avisó a '+d.destinatarios+(d.destinatarios===1?' persona':' personas')+' del recorrido '+d.recorrido+'.');await cargar()}};
 async function cargar(){{try{{const r=await fetch('/api/guardia/{sede}',{{headers:H}});if(!r.ok)throw 0;datos=await r.json();pintar();offline.classList.add('oculto')}}catch{{offline.classList.remove('oculto')}}}}
 async function enviar(url,body){{if(!navigator.onLine){{await cola(url,body);return}}try{{const r=await fetch(url,{{method:'POST',headers:H,body:JSON.stringify(body)}});if(!r.ok){{await avisar((await r.json()).detail);return}}await cargar()}}catch{{await cola(url,body)}}}}
 async function confirmar(viaje){{const x=datos.pendientes.find(v=>v.id===viaje);const p=await elegirProductor(x?.variedad_declarada);if(!p)return;const organica=await esOrganica();if(organica===null)return;await enviar('/api/guardia/viajes/'+viaje+'/confirmar',{{id_cliente:id(),clientecuit:p.clientecuit,clientecodigo:p.codigos?.[0]||null,declara_organica:organica,productor_revision_manual:!!p.manual,variedad:p.variedad,momento_cliente:ahora()}})}}

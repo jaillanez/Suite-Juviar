@@ -336,13 +336,26 @@ class RepositorioFila:
             ).fetchall()
             organica = self._estado_organica(cn, sede)
             remitos = cn.execute("SELECT * FROM fila.remitos_por_salir(%s)", (sede,)).fetchall()
+            recorridos = cn.execute("SELECT * FROM fila.recorridos_micro(%s)", (sede,)).fetchall()
         return {
             "pendientes": [dict(f) for f in pendientes],
             "espera": espera,
             "llamados": [dict(f) for f in llamados],
             "organica": organica,
             "remitos": [dict(f) for f in remitos],
+            "recorridos": [dict(f) for f in recorridos],
         }
+
+    def avisar_micro(self, recorrido_id: int, sede: str, actor: str) -> dict[str, Any]:
+        """«Llegó el micro»: el bot avisa por WhatsApp al personal de ese recorrido (infra/042)."""
+        with self.conexion() as cn:
+            try:
+                fila = cn.execute(
+                    "SELECT * FROM fila.avisar_llegada_micro(%s,%s,%s)", (recorrido_id, sede, actor)
+                ).fetchone()
+            except psycopg.errors.RaiseException as exc:
+                raise ValueError(exc.diag.message_primary or "no se pudo avisar") from exc
+        return dict(fila)
 
     def salida_remito(self, remito_id: str, sede: str, actor: str) -> dict[str, Any]:
         """La guardia deja salir lo que lleva un remito autorizado por el Encargado de Mantenimiento."""

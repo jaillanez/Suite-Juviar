@@ -350,6 +350,18 @@ def salida_remito(sede: str, remito_id: RemitoEnRuta, sesion: Guardia, repositor
         raise HTTPException(409, str(exc)) from exc
 
 
+@app.post("/api/guardia/{sede}/micro/{recorrido_id}/llego")
+def llego_micro(sede: str, recorrido_id: Annotated[int, Path(ge=1)], sesion: Guardia,
+                repositorio: GuardiaRepoDep):
+    """«Llegó el micro»: el bot avisa al personal de ese recorrido (infra/042)."""
+    if not sesion.puede_operar(sede):
+        raise HTTPException(403, "la sesión no corresponde a esta sede")
+    try:
+        return repositorio.avisar_micro(recorrido_id, sede, sesion.actor)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
 @app.post("/api/guardia/viajes/{viaje_id}/{accion}")
 def accionar(
     viaje_id: int,

@@ -52,10 +52,32 @@ def _persona(p: Any) -> dict[str, str]:
 @router.get("")
 def listar(_: Autorizado):
     return _leer(
-        """SELECT telefono, legajo, nombre, empresa, tipo, activo, alta_por, alta_en,
-                  actualizado_por, actualizado_en
-             FROM consulta.telefono_personal ORDER BY activo DESC, nombre""",
+        """SELECT p.telefono, p.legajo, p.nombre, p.empresa, p.tipo, p.activo, p.alta_por, p.alta_en,
+                  p.actualizado_por, p.actualizado_en, p.recorrido_id, r.nombre AS recorrido, r.sede AS recorrido_sede
+             FROM consulta.telefono_personal p
+             LEFT JOIN fila.recorrido_micro r ON r.id = p.recorrido_id
+            ORDER BY p.activo DESC, p.nombre""",
         {},
+    )
+
+
+@router.get("/recorridos")
+def recorridos(_: Autorizado):
+    """Recorridos del micro activos, para asignarle a cada empleado el suyo (infra/042)."""
+    return _leer(
+        "SELECT id, sede, nombre FROM fila.recorrido_micro WHERE activo ORDER BY sede, lower(nombre)", {})
+
+
+class Recorrido(BaseModel):
+    recorrido_id: int | None = Field(default=None, ge=1)
+
+
+@router.post("/{telefono}/recorrido")
+def asignar_recorrido(datos: Recorrido, sesion: SesionActual, _: Autorizado,
+                      telefono: str = Path(pattern=r"^\d{8,20}$")):
+    return _escribir(
+        "SELECT * FROM consulta.asignar_recorrido_personal(%(telefono)s, %(recorrido)s, %(actor)s)",
+        {"telefono": telefono, "recorrido": datos.recorrido_id, "actor": sesion.actor},
     )
 
 
