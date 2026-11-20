@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, descargarArchivo } from "@/lib/api";
+import { abrirArchivo, api, descargarArchivo } from "@/lib/api";
 import { ErrorVisible, FormularioVentana as Formulario, Tabla, Vacio, Ventana } from "./compartidos";
 
 type EstadoControl = "ok" | "alerta" | "pendiente" | "no_aplica" | "sin_configurar" | "error" | "sin_correr";
@@ -9,7 +9,7 @@ type ControlVista = { numero: number; nombre: string; estado: EstadoControl; est
 type Factura = Record<string, unknown> & {
   id: string; empresa: string; cuit_emisor: string; razon_social: string; tipo_nombre: string; comprobante: string; fecha: string;
   importe_total: number; autorizacion: string; autorizacion_nombre: string; codigo_autorizacion: string; cargada_por: string; cargada_en: string;
-  alerta: boolean; controlada: boolean; controles: ControlVista[];
+  alerta: boolean; controlada: boolean; tiene_foto: boolean; controles: ControlVista[];
 };
 type Padron = { nombre: string; titulo: string; descargado_en: string | null; generado: string; cuits: number };
 type Catalogo = {
@@ -78,7 +78,7 @@ function VentanaFactura({ inicial, catalogo, cerrar, cambio }: { inicial: Factur
       <div><dt>Autorización</dt><dd>{factura.autorizacion_nombre}{factura.codigo_autorizacion && ` ${factura.codigo_autorizacion}`}</dd></div>
       <div><dt>Cargada</dt><dd>{factura.cargada_por} · {fecha(factura.cargada_en)}</dd></div>
     </dl>
-    <div className="acciones"><button className="primario" disabled={ocupado} onClick={correr}>{ocupado ? "Consultando ARCA…" : factura.controlada ? "Volver a correr los controles" : "Correr controles"}</button></div>
+    <div className="acciones">{factura.tiene_foto && <button onClick={() => abrirArchivo(`controles-arca/facturas/${factura.id}/foto`).catch(x => setError(mensaje(x, "No se pudo abrir la foto.")))}>Ver foto de la factura</button>}<button className="primario" disabled={ocupado} onClick={correr}>{ocupado ? "Consultando ARCA…" : factura.controlada ? "Volver a correr los controles" : "Correr controles"}</button></div>
     <ul className="controles-arca">{factura.controles.map(c => <li key={c.numero} className={`control-arca control-arca-${c.estado}`}>
       <div className="titulo-fila"><h3>{c.numero}. {c.nombre}</h3><span className={`estado estado-arca estado-arca-${c.estado}`}>{c.estado_nombre}</span></div>
       {c.detalle && <p>{c.detalle}</p>}

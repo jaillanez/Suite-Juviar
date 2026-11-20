@@ -52,5 +52,15 @@ class DescargaPadrones(Protocol):
         ...
 
 
+class LectorFacturas(Protocol):
+    """Lee el texto de la foto de una factura (OCR en el servidor o, si se autorizó, IA externa)."""
+
+    ia_externa: bool  # True si la foto sale de la empresa para leerla
+
+    def leer(self, contenido: bytes, tipo: str) -> tuple[str, str]:
+        """Devuelve (texto leído, motor usado)."""
+        ...
+
+
 class GeneradorPDF(Protocol):
     def constancia(self, titulo: str, filas: list[tuple[str, str]], alerta: bool) -> bytes: ...
