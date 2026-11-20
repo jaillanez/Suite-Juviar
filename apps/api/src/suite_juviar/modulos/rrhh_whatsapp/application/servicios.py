@@ -20,10 +20,10 @@ from ..domain.puertos import PuertaDMZ, RepositorioBandeja
 
 _registro = logging.getLogger(__name__)
 
-# Lo que se le muestra a RRHH de la lectura del certificado (el diagnóstico queda para Salud).
+# Lo que se le muestra a RRHH de la lectura del certificado. El resumen y el texto leído pueden
+# traer el diagnóstico: quedan sólo en Salud, con su propio permiso.
 CAMPOS_LECTURA = ("dias_detectados", "fecha_desde", "fecha_hasta", "fecha_reintegro", "profesional",
-                  "resumen", "tipo_accidente", "paciente_nombre", "paciente_dni", "texto_detectado",
-                  "motor", "mensaje")
+                  "tipo_accidente", "paciente_nombre", "paciente_dni", "motor", "mensaje")
 SIN_LECTURA = "No pudimos leer los datos de tu certificado médico. RRHH lo va a revisar."
 
 
@@ -243,7 +243,6 @@ class BandejaRRHH:
                 "dias": _dias(dias) if dias is not None else None,
                 "desde": desde.isoformat() if desde else None, "hasta": hasta.isoformat() if hasta else None,
                 "profesional": str(datos.get("profesional") or "").strip()[:120],
-                "resumen": str(datos.get("resumen") or "").strip()[:500],
                 "nombre_adjunto": nombre,
             }
             resuelto = replace(mensaje, estado=EstadoMensaje.EN_LEGAJO, resuelto_por=actor, resuelto_en=self._reloj(),

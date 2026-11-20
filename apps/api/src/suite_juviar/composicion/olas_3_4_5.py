@@ -154,11 +154,9 @@ def construir_routers(rrhh):
 def construir_bandeja_rrhh(entorno: str, ruta_modulos: str, clave_adjuntos: bytes, dsn_fila: str,
                            legajo: GestionarLegajo, salud: GestionarSalud) -> BandejaRRHH:
     """Certificados y pedidos de EPP del personal, CV por WhatsApp y recorridos del micro (infra/042)."""
-    # Igual que en Salud: mandar un certificado a la IA externa saca datos de salud de la empresa;
-    # en producción sólo con autorización expresa en la configuración del servidor.
-    ia_externa_permitida = entorno.lower() not in {"produccion", "production", "prod"} or (
-        os.getenv("SJ_SALUD_IA_EXTERNA_AUTORIZADA", "").strip().lower() in {"1", "true", "si"}
-    )
+    # Mandar un certificado a la IA externa saca datos de salud de la empresa y acá corre solo, sin
+    # nadie que lo dispare: sólo con autorización expresa en el servidor, en cualquier entorno.
+    ia_externa_permitida = os.getenv("SJ_SALUD_IA_EXTERNA_AUTORIZADA", "").strip().lower() in {"1", "true", "si"}
 
     def leer_certificado(nombre: str, contenido: bytes, legajo_empleado: str) -> dict:
         externa = ia_externa_permitida and usaria_ia_externa(nombre)

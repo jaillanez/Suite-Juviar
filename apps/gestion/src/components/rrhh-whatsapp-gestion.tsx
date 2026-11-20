@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { abrirArchivo, api } from "@/lib/api";
 import { ErrorVisible, FormularioVentana as Formulario, Pestanas, Tabla, Vacio, Ventana } from "./compartidos";
 
-type Lectura = { dias_detectados?: number; fecha_desde?: string; fecha_hasta?: string; fecha_reintegro?: string; profesional?: string; resumen?: string; mensaje?: string; motor?: string };
+type Lectura = { dias_detectados?: number; fecha_desde?: string; fecha_hasta?: string; fecha_reintegro?: string; profesional?: string; mensaje?: string; motor?: string };
 type Confirmacion = "sin_pedir" | "esperando" | "corrigiendo" | "confirmado" | "no_coincide" | "sin_confirmar";
 type Estado = "PENDIENTE" | "EN_LEGAJO" | "ATENDIDO" | "DESCARTADO";
 type Mensaje = Record<string, unknown> & {
@@ -58,7 +58,7 @@ function VentanaMensaje({ m, cerrar, cambio }: { m: Mensaje; cerrar: () => void;
       const numero = (k: string) => f.get(k) ? Number(f.get(k)) : null; const texto = (k: string) => String(f.get(k) ?? "");
       await api(`rrhh-whatsapp/mensajes/${m.id}/legajo`, { method: "POST", body: JSON.stringify({
         nombre: texto("nombre"), dias: numero("dias"), desde: texto("desde") || null, hasta: texto("hasta") || null,
-        profesional: texto("profesional"), resumen: texto("resumen"), nota: texto("nota") }) });
+        profesional: texto("profesional"), nota: texto("nota") }) });
       listo();
     }}>
       <p className="ayuda">Los datos vienen de la lectura automática del certificado: revisalos contra el archivo y corregí lo que haga falta. {m.confirmacion === "no_coincide" && m.correccion ? `El empleado avisó: «${m.correccion}».` : ""}</p>
@@ -67,7 +67,6 @@ function VentanaMensaje({ m, cerrar, cambio }: { m: Mensaje; cerrar: () => void;
       <label>Desde<input name="desde" type="date" defaultValue={l.fecha_desde ?? ""} /></label>
       <label>Hasta<input name="hasta" type="date" defaultValue={l.fecha_hasta ?? ""} /></label>
       <label>Profesional<input name="profesional" maxLength={120} defaultValue={l.profesional ?? ""} /></label>
-      <label>Resumen<textarea name="resumen" maxLength={500} defaultValue={l.resumen ?? ""} /></label>
       <label>Nota <span className="ayuda">(opcional)</span><input name="nota" maxLength={300} /></label>
     </Formulario>}
     {accion === "atender" && <Formulario titulo="Marcar el pedido como atendido" boton="Marcar atendido" cerrar={() => setAccion(null)} enviar={async f => {

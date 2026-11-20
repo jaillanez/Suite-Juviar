@@ -109,6 +109,7 @@ def test_certificado_se_lee_y_se_le_pide_confirmacion_al_empleado():
     # Los datos leídos quedan precargados para RRHH; el diagnóstico no (es de Salud).
     assert fila["lectura"]["dias_detectados"] == 3 and fila["lectura"]["fecha_desde"] == "2026-11-18"
     assert "diagnostico_codigo" not in fila["lectura"] and "transcripcion" not in fila["lectura"]
+    assert "resumen" not in fila["lectura"]  # puede traer el diagnóstico: sólo en Salud
     [(mensaje_id, texto, pide)] = e.puerta.avisos
     assert mensaje_id == "1" and pide and "Días: 3" in texto and "18/11/2026" in texto
     assert "1 = Sí, es correcto" in texto and "2 = No" in texto
