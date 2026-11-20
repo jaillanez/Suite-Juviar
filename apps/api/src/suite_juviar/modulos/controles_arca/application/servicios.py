@@ -341,7 +341,8 @@ class GestionarControles:
     # --- Desde el celular: foto de la factura ---------------------------
     def buscar_factura(self, cuit_emisor: str, tipo: int, punto_venta: int, numero: int) -> Factura | None:
         """Misma factura = mismo emisor, tipo, punto de venta y número (sin importar la empresa)."""
-        clave = (cuit_emisor, int(tipo), int(punto_venta), int(numero))
+        # Igual que en el alta: el CUIT se guarda sin espacios ni guiones.
+        clave = ("".join(str(cuit_emisor).split()).replace("-", ""), int(tipo), int(punto_venta), int(numero))
         return next((f for f in self.repo.facturas.values()
                      if (f.cuit_emisor, f.tipo_comprobante, f.punto_venta, f.numero) == clave), None)
 

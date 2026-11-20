@@ -242,6 +242,15 @@ def test_sin_qr_propone_datos_y_no_controla_hasta_confirmar():
     # Confirmar dos veces la misma no la duplica.
     again = c.post("/controles-arca/celular/confirmar", json={"factura": datos, "foto_base64": FOTO}).json()
     assert again["ya_cargada"] and len(s.repo.facturas) == 1 and len(conector.llamadas) == 2
+    # El mismo CUIT escrito con guiones o espacios es la misma factura.
+    c_guiones = str(datos["cuit_emisor"])
+    c_guiones = f"{c_guiones[:2]}-{c_guiones[2:10]} -{c_guiones[10:]}"
+    tercera = c.post("/controles-arca/celular/confirmar",
+                     json={"factura": {**datos, "cuit_emisor": c_guiones}, "foto_base64": FOTO})
+    assert tercera.status_code in (200, 422)
+    if tercera.status_code == 200:
+        assert tercera.json()["ya_cargada"] and len(s.repo.facturas) == 1
+    assert s.buscar_factura(c_guiones, datos["tipo_comprobante"], datos["punto_venta"], datos["numero"]) is not None
     # Sin todos los datos confirmados no hay alta.
     incompleta = {**datos, "numero": 99, "cuit_emisor": None}
     assert c.post("/controles-arca/celular/confirmar", json={"factura": incompleta, "foto_base64": FOTO}).status_code == 422
