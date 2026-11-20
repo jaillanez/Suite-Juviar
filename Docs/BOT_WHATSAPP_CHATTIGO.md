@@ -1,5 +1,9 @@
 # Bot de WhatsApp por Chattigo
 
+> **Desde 2026-11-19 el canal es Meta directo** (WhatsApp Cloud API): la licencia
+> de Chattigo con Meta es ISV y el número se atiende sin intermediario. Ver
+> «Meta directo» al final. Lo de Chattigo queda como alternativa.
+
 El bot vive en `apps/consulta` y sólo consulta la proyección de descargas de la
 DMZ. No abre conectividad hacia Oracle ni hacia la base operativa. El webhook
 solamente inserta en una cola durable; el worker usa otro rol para leer la cola,
@@ -98,3 +102,44 @@ PYTHONPATH=/opt/suite-juviar:/opt/suite-juviar/apps/api/src \
 
 Luego cambiar a `BOT_TRANSPORTE=chattigo`, quitar `BOT_FECHA_SIMULADA`, detener
 `bot-simulador.service` y recién entonces registrar el webhook en Chattigo.
+
+
+## Meta directo (WhatsApp Cloud API)
+
+Dirección que se carga en la app de Meta (WhatsApp → Configuración → Webhook):
+
+- **URL de devolución de llamada:** `https://juviar-bot.duckdns.org/webhook/meta`
+- **Token de verificación:** el valor de `META_TOKEN_VERIFICACION`.
+- **Campo suscripto:** `messages`.
+
+Meta primero hace un `GET` con `hub.mode=subscribe`, `hub.verify_token` y
+`hub.challenge`; si el token coincide se devuelve el challenge. Después cada aviso
+llega por `POST` firmado con la clave secreta de la app (`X-Hub-Signature-256`);
+sin firma válida se responde 403 y no se encola nada. Si `META_CLAVE_APP` o
+`META_TOKEN_VERIFICACION` faltan, la dirección responde 404.
+
+Variables en `/etc/suite/bot.env` (nunca en Git ni por chat):
+
+| Variable | Dónde está en Meta |
+|---|---|
+| `META_TOKEN` | Token permanente de un usuario del sistema (Administrador comercial → Usuarios del sistema), con `whatsapp_business_messaging` y `whatsapp_business_management` |
+| `META_NUMERO_ID` | WhatsApp → Configuración de la API → «Identificador del número de teléfono» |
+| `META_CUENTA_ID` | Mismo lugar → «Identificador de la cuenta de WhatsApp Business» |
+| `META_CLAVE_APP` | Configuración de la app → Básica → «Clave secreta de la app» |
+| `META_TOKEN_VERIFICACION` | Lo generamos nosotros (48 caracteres al azar) y se pega en Meta |
+
+Caddy publica `/webhook/meta` hacia `172.18.0.1:8021`, igual que el de Chattigo.
+
+Puesta en marcha:
+
+1. Cargar las variables y `BOT_TRANSPORTE=meta`; quitar `BOT_FECHA_SIMULADA`.
+2. Reiniciar `consulta-publica` y `bot-whatsapp`.
+3. En Meta, cargar URL y token de verificación y suscribir `messages`.
+4. Suscribir la cuenta a la app:
+   `PYTHONPATH=apps/consulta/src python -m consulta_publica.bot.configurar_webhook x`
+   (con `BOT_TRANSPORTE=meta` sólo suscribe la cuenta).
+5. Escribir al número desde un teléfono registrado y confirmar la respuesta.
+
+Los mensajes que el bot manda sin que la persona haya escrito en las últimas 24 h
+(avisos de turnos, mosto) Meta sólo los acepta como **plantillas aprobadas**;
+mientras no estén, esos avisos quedan con error y se ven en Gestión.
