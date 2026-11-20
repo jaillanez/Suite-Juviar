@@ -212,7 +212,7 @@ function Certificado({ estado, cambio }: { estado: EstadoCertificado; cambio: (e
       <li>Tocá «Generar pedido de certificado». Se baja un archivo .csr; la clave privada queda guardada en el servidor y no sale nunca.</li>
       <li>En ARCA, con la clave fiscal de {estado.cuit}, entrá a «Administración de Certificados Digitales»{estado.ambiente === "homologacion" ? " (en homologación: «WSASS»)" : ""}, creá el alias y subí el .csr.</li>
       <li>Bajá el certificado (.crt) que te da ARCA y subilo acá.</li>
-      <li>En el «Administrador de Relaciones» asociá ese certificado a ws_sr_constancia_inscripcion y a wscdc. ENAV y JUBIAR tienen que delegar esos dos servicios en {estado.cuit}.</li>
+      <li>En el «Administrador de Relaciones» asociá ese certificado a ws_sr_constancia_inscripcion y a wscdc. Las consultas salen con el CUIT {estado.cuit}: no hace falta que las empresas deleguen nada.</li>
     </ol>
     <div className="acciones">
       <button className="primario" disabled={ocupado || !estado.servidor_listo} onClick={generar}>Generar pedido de certificado</button>

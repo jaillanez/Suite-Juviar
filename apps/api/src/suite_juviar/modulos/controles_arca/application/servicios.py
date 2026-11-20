@@ -225,13 +225,17 @@ class GestionarControles:
                     return self._resultado(control, Estado.SIN_CONFIGURAR,
                                            f"Falta cargar en Parámetros el CUIT de {factura.empresa}.", actor)
                 ambiente = AMBIENTES[p.ambiente]
+                # Se consulta con el CUIT dueño del certificado: ARCA no deja delegar estos servicios
+                # web a una persona, y ninguno de los dos exige ser la empresa. La empresa va como
+                # receptora de la factura en la constatación.
                 if control is Control.INSCRIPCION:
                     estado, detalle = evaluar_constancia(
-                        self.conector.constancia(acceso, cuit_empresa, factura.cuit_emisor))
+                        self.conector.constancia(acceso, p.cuit_representante, factura.cuit_emisor))
                     fuente = f"ARCA, constancia de inscripción (padrón A5), {ambiente}"
                 else:
                     estado, detalle = evaluar_constatacion(
-                        self.conector.constatar(acceso, cuit_empresa, factura), factura.autorizacion)
+                        self.conector.constatar(acceso, p.cuit_representante, factura, cuit_empresa),
+                        factura.autorizacion)
                     fuente = f"ARCA, constatación de comprobantes (WSCDC), {ambiente}"
             else:
                 padron = self._padron("apocrifas" if control is Control.APOCRIFAS else "rg18")

@@ -207,7 +207,8 @@ class ConectorARCAWeb:
             f"<idPersona>{int(cuit)}</idPersona></a5:getPersona_v2>"))
         return leer_constancia(self._post(self._endpoints[acceso.ambiente]["padron"], cuerpo))
 
-    def constatar(self, acceso: AccesoARCA, cuit_representada: str, factura: Factura) -> Constatacion:
+    def constatar(self, acceso: AccesoARCA, cuit_representada: str, factura: Factura,
+                  cuit_receptor: str) -> Constatacion:
         ticket = self.ticket(acceso, SERVICIO_CDC)
         cuerpo = _SOBRE.format(ns="", cuerpo=(
             f'<ComprobanteConstatar xmlns="{_NS_CDC}"><Auth><Token>{escape(ticket.token)}</Token>'
@@ -217,7 +218,7 @@ class ConectorARCAWeb:
             f"<CbteNro>{factura.numero}</CbteNro><CbteFch>{factura.fecha:%Y%m%d}</CbteFch>"
             f"<ImpTotal>{factura.importe_total:.2f}</ImpTotal>"
             f"<CodAutorizacion>{escape(factura.codigo_autorizacion)}</CodAutorizacion>"
-            f"<DocTipoReceptor>80</DocTipoReceptor><DocNroReceptor>{int(cuit_representada)}</DocNroReceptor>"
+            f"<DocTipoReceptor>80</DocTipoReceptor><DocNroReceptor>{int(cuit_receptor)}</DocNroReceptor>"
             "</CmpReq></ComprobanteConstatar>"))
         return leer_constatacion(self._post(self._endpoints[acceso.ambiente]["wscdc"], cuerpo,
                                             f"{_NS_CDC}ComprobanteConstatar"))

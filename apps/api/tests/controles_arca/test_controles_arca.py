@@ -74,8 +74,9 @@ class Conector:
             raise self._falla
         return self._constancia
 
-    def constatar(self, acceso, cuit_representada, factura):
+    def constatar(self, acceso, cuit_representada, factura, cuit_receptor):
         self.llamadas.append(("constatar", acceso.ambiente, cuit_representada, factura.numero, bool(acceso.clave_pem)))
+        self.receptor = cuit_receptor
         if self._falla:
             raise self._falla
         return self._constatacion
@@ -201,8 +202,10 @@ def test_corre_los_controles_y_guarda_cada_pdf_con_su_nombre():
     configurado(s)
     factura = s.correr(alta(s).id, "administracion")
     assert estados(factura) == {1: "pendiente", 2: "ok", 3: "ok", 4: "ok", 5: "ok"}
-    assert conector.llamadas == [("constancia", "homologacion", ENAV, PROVEEDOR, True),
-                                 ("constatar", "homologacion", ENAV, 1, True)]
+    # Se consulta con el CUIT del certificado; la empresa va como receptora de la factura.
+    assert conector.llamadas == [("constancia", "homologacion", REPRESENTANTE, PROVEEDOR, True),
+                                 ("constatar", "homologacion", REPRESENTANTE, 1, True)]
+    assert conector.receptor == ENAV
     nombre, pdf = s.archivo(factura.id, 4)
     assert nombre == "30693135679_4_00000001_18-11-2026.pdf" and pdf.startswith(b"%PDF-")
     assert s.archivo(factura.id, 2)[0] == "30693135679_2_18-11-2026.pdf"
@@ -330,7 +333,7 @@ def test_wsaa_firma_el_tra_y_guarda_el_permiso_hasta_que_vence():
             return httpx.Response(200, text=f"<Envelope><Body><loginCmsResponse><loginCmsReturn>{ticket}"
                                             "</loginCmsReturn></loginCmsResponse></Body></Envelope>")
         if "getPersona_v2" in cuerpo:
-            assert "<token>TOK</token>" in cuerpo and f"<cuitRepresentada>{ENAV}</cuitRepresentada>" in cuerpo
+            assert "<token>TOK</token>" in cuerpo and f"<cuitRepresentada>{REPRESENTANTE}</cuitRepresentada>" in cuerpo
             return httpx.Response(200, text=(
                 "<Envelope><Body><getPersona_v2Response><personaReturn><datosGenerales><estadoClave>ACTIVO"
                 "</estadoClave><razonSocial>PROVEEDOR SA</razonSocial></datosGenerales><datosRegimenGeneral>"
@@ -338,6 +341,7 @@ def test_wsaa_firma_el_tra_y_guarda_el_permiso_hasta_que_vence():
                 "</personaReturn></getPersona_v2Response></Body></Envelope>"))
         assert pedido.headers["SOAPAction"] == '"http://servicios1.afip.gob.ar/wscdc/ComprobanteConstatar"'
         assert "<CbteModo>CAE</CbteModo>" in cuerpo and "<CbteFch>20261110</CbteFch>" in cuerpo
+        assert f"<Cuit>{REPRESENTANTE}</Cuit>" in cuerpo and f"<DocNroReceptor>{ENAV}</DocNroReceptor>" in cuerpo
         return httpx.Response(200, text=(
             "<Envelope><Body><ComprobanteConstatarResponse><ComprobanteConstatarResult><Resultado>A</Resultado>"
             "</ComprobanteConstatarResult></ComprobanteConstatarResponse></Body></Envelope>"))
@@ -348,14 +352,14 @@ def test_wsaa_firma_el_tra_y_guarda_el_permiso_hasta_que_vence():
     acceso = AccesoARCA("homologacion", certificado, clave)
     s = servicio()
     factura = alta(s)
-    assert conector.constancia(acceso, ENAV, PROVEEDOR).razon_social == "PROVEEDOR SA"
-    assert conector.constancia(acceso, ENAV, PROVEEDOR).impuestos == ("IVA",)
-    assert conector.constatar(acceso, ENAV, factura).resultado == "A"
+    assert conector.constancia(acceso, REPRESENTANTE, PROVEEDOR).razon_social == "PROVEEDOR SA"
+    assert conector.constancia(acceso, REPRESENTANTE, PROVEEDOR).impuestos == ("IVA",)
+    assert conector.constatar(acceso, REPRESENTANTE, factura, ENAV).resultado == "A"
     logins = [u for u, _ in pedidos if "wsaahomo" in u]
     assert len(logins) == 2  # uno por servicio; la segunda constancia reusó el permiso
     assert all(b"TOK" not in v for v in tickets.values())  # guardado cifrado
     reloj.ahora += timedelta(hours=12)
-    conector.constancia(acceso, ENAV, PROVEEDOR)
+    conector.constancia(acceso, REPRESENTANTE, PROVEEDOR)
     assert len([u for u, _ in pedidos if "wsaahomo" in u]) == 3
 
 
