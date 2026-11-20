@@ -1,4 +1,4 @@
-"""Transporte intercambiable: Chattigo real o salida durable simulada."""
+"""Transporte intercambiable: Meta directo, Chattigo o salida durable simulada."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ import psycopg
 
 from .chattigo import ClienteChattigo, ConfigChattigo
 from .conversacion import ZONA
+from .meta_cloud import ClienteMeta, ConfigMeta
 
 
 class Transporte(Protocol):
@@ -58,15 +59,17 @@ class TransporteSimulado:
 
 def modo() -> str:
     valor = os.environ.get("BOT_TRANSPORTE", "")
-    if valor not in {"simulado", "chattigo"}:
-        raise RuntimeError("BOT_TRANSPORTE tiene que ser 'simulado' o 'chattigo'")
+    if valor not in {"simulado", "chattigo", "meta"}:
+        raise RuntimeError("BOT_TRANSPORTE tiene que ser 'simulado', 'chattigo' o 'meta'")
     return valor
 
 
 def desde_entorno() -> Transporte:
+    if modo() != "simulado" and os.environ.get("BOT_FECHA_SIMULADA"):
+        raise RuntimeError(f"BOT_FECHA_SIMULADA no se admite con BOT_TRANSPORTE={modo()}")
+    if modo() == "meta":
+        return ClienteMeta(ConfigMeta.desde_entorno())
     if modo() == "chattigo":
-        if os.environ.get("BOT_FECHA_SIMULADA"):
-            raise RuntimeError("BOT_FECHA_SIMULADA no se admite con BOT_TRANSPORTE=chattigo")
         return ClienteChattigo(ConfigChattigo.desde_entorno())
     return TransporteSimulado(os.environ["BOT_DSN"])
 

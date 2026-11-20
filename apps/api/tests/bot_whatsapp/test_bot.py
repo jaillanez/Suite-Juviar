@@ -250,3 +250,89 @@ def test_mensaje_entrante_es_inmutable():
     mensaje = MensajeEntrante("w", "5492645123456", "text", "1", None)
     with pytest.raises(AttributeError):
         mensaje.texto = "2"
+
+
+# --- Meta directo -------------------------------------------------------------
+import hashlib
+import hmac
+import json
+
+from consulta_publica.bot.meta_cloud import ClienteMeta, ConfigMeta, ErrorMeta
+
+CLAVE_APP = "c" * 32
+VERIFICACION = "v" * 32
+
+
+@pytest.fixture
+def cliente_meta(monkeypatch, cliente_webhook):
+    monkeypatch.setenv("META_CLAVE_APP", CLAVE_APP)
+    monkeypatch.setenv("META_TOKEN_VERIFICACION", VERIFICACION)
+    return cliente_webhook
+
+
+def firmado(cuerpo: bytes, clave: str = CLAVE_APP) -> dict[str, str]:
+    firma = hmac.new(clave.encode(), cuerpo, hashlib.sha256).hexdigest()
+    return {"X-Hub-Signature-256": f"sha256={firma}", "Content-Type": "application/json"}
+
+
+def test_meta_verifica_la_direccion(cliente_meta):
+    params = {"hub.mode": "subscribe", "hub.verify_token": VERIFICACION, "hub.challenge": "12345"}
+    respuesta = cliente_meta.get("/webhook/meta", params=params)
+    assert respuesta.status_code == 200 and respuesta.text == "12345"
+    malo = {**params, "hub.verify_token": "otro"}
+    assert cliente_meta.get("/webhook/meta", params=malo).status_code == 403
+
+
+def test_meta_encola_solo_con_firma_valida(cliente_meta):
+    cuerpo = json.dumps(payload(TEXTO)).encode()
+    assert cliente_meta.post("/webhook/meta", content=cuerpo).status_code == 403
+    assert cliente_meta.post("/webhook/meta", content=cuerpo,
+                             headers=firmado(cuerpo, "x" * 32)).status_code == 403
+    assert cliente_meta.cola.recibidos == []
+    ok = cliente_meta.post("/webhook/meta", content=cuerpo, headers=firmado(cuerpo))
+    assert ok.json() == {"recibidos": 1, "nuevos": 1}
+
+
+def test_meta_sin_configurar_no_existe(cliente_webhook, monkeypatch):
+    monkeypatch.delenv("META_CLAVE_APP", raising=False)
+    monkeypatch.delenv("META_TOKEN_VERIFICACION", raising=False)
+    assert cliente_webhook.post("/webhook/meta", json=payload(TEXTO)).status_code == 404
+    assert cliente_webhook.get("/webhook/meta").status_code == 404
+
+
+def cliente_graph(manejador):
+    http = httpx.Client(transport=httpx.MockTransport(manejador))
+    return ClienteMeta(ConfigMeta("TOKEN", "123", cuenta_id="999"), http)
+
+
+def test_meta_envia_con_token_al_numero():
+    def manejar(pedido):
+        assert pedido.headers["Authorization"] == "Bearer TOKEN"
+        assert str(pedido.url) == "https://graph.facebook.com/v23.0/123/messages"
+        assert json.loads(pedido.content)["text"]["body"] == "hola"
+        return httpx.Response(200, json={"messages": [{"id": "wamid.M"}]})
+    assert cliente_graph(manejar).enviar_texto("549", "hola") == "wamid.M"
+
+
+def test_meta_errores_se_reintentan_como_chattigo():
+    with pytest.raises(ErrorChattigo):
+        cliente_graph(lambda _: httpx.Response(400, text="x")).enviar_texto("549", "a")
+
+
+def test_meta_baja_foto_solo_de_whatsapp():
+    def manejar(pedido):
+        if pedido.url.path == "/v23.0/MEDIA":
+            return httpx.Response(200, json={"url": "https://lookaside.fbsbx.com/f", "mime_type": "image/jpeg"})
+        assert pedido.url.host == "lookaside.fbsbx.com"
+        return httpx.Response(200, content=b"x" * 2000)
+    contenido, tipo = cliente_graph(manejar).descargar_media("MEDIA")
+    assert len(contenido) == 2000 and tipo == "image/jpeg"
+    with pytest.raises(ErrorMeta):
+        cliente_graph(lambda _: httpx.Response(200, json={"url": "https://malo.com/f"})).descargar_media("M")
+
+
+def test_meta_suscribe_la_cuenta():
+    def manejar(pedido):
+        assert pedido.method == "POST" and pedido.url.path == "/v23.0/999/subscribed_apps"
+        return httpx.Response(200, json={"success": True})
+    assert cliente_graph(manejar).suscribir_cuenta() == {"success": True}
