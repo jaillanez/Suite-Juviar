@@ -34,6 +34,32 @@ class FacturaEntrada(BaseModel):
     codigo_autorizacion: str = Field(default="", max_length=20)
 
 
+# La foto llega ya comprimida por el navegador (~1,5 MB); el servidor acepta hasta 2 MB.
+FotoBase64 = Annotated[str, Field(min_length=1, max_length=2_800_000)]
+
+
+class FacturaQREntrada(BaseModel):
+    qr: str = Field(min_length=1, max_length=2000)
+    foto_base64: FotoBase64
+    empresa: Literal["ENAV", "JUBIAR"] | None = None
+
+
+class FotoEntrada(BaseModel):
+    foto_base64: FotoBase64
+
+
+class FacturaConfirmadaEntrada(BaseModel):
+    factura: FacturaEntrada
+    foto_base64: FotoBase64
+
+
+def _foto(texto: str) -> bytes:
+    try:
+        return base64.b64decode(texto, validate=True)
+    except (ValueError, binascii.Error) as exc:
+        raise HTTPException(400, "La foto no llegó bien: sacala de nuevo.") from exc
+
+
 class ConstanciaEntrada(BaseModel):
     contenido_base64: str = Field(min_length=1, max_length=14_000_000)
     resultado: Literal["ok", "alerta"]
@@ -109,6 +135,29 @@ def crear_router(servicio: GestionarControles, entorno: str = "prueba") -> APIRo
         return Response(contenido, media_type="application/pdf",
                         headers={"Content-Disposition": f'attachment; filename="{nombre}"',
                                  "X-Content-Type-Options": "nosniff"})
+
+    @app.get("/facturas/{factura_id}/foto", dependencies=operar)
+    def foto(factura_id: str):
+        tipo, contenido = hacer(lambda: servicio.foto(factura_id))
+        return Response(contenido, media_type=tipo,
+                        headers={"Content-Disposition": "inline", "X-Content-Type-Options": "nosniff",
+                                 "Cache-Control": "no-store"})
+
+    # --- Desde el celular: una foto de la factura ---------------------------
+    @app.post("/celular/qr", dependencies=operar)
+    def desde_qr(entrada: FacturaQREntrada, sesion: SesionActual):
+        foto = _foto(entrada.foto_base64)
+        return hacer(lambda: servicio.cargar_desde_qr(entrada.qr, foto, entrada.empresa, sesion.actor))
+
+    @app.post("/celular/leer", dependencies=operar)
+    def leer(entrada: FotoEntrada, sesion: SesionActual):
+        foto = _foto(entrada.foto_base64)
+        return hacer(lambda: servicio.leer_foto(foto, sesion.actor))
+
+    @app.post("/celular/confirmar", dependencies=operar)
+    def confirmar(entrada: FacturaConfirmadaEntrada, sesion: SesionActual):
+        foto = _foto(entrada.foto_base64)
+        return hacer(lambda: servicio.cargar_confirmada(entrada.factura.model_dump(), foto, sesion.actor))
 
     @app.post("/padrones/{nombre}/actualizar", dependencies=operar)
     def actualizar(nombre: Literal["apocrifas", "rg18"]):

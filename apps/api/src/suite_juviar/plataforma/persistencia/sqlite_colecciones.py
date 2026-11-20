@@ -81,6 +81,14 @@ class MapaSQLite[K, V](MutableMapping[K, V]):
         if not cursor.rowcount:
             raise KeyError(clave)
 
+    def __contains__(self, clave: object) -> bool:
+        # Sin traer el valor: los archivos guardados pueden pesar megas.
+        with self._base.bloqueo:
+            return self._base.cn.execute(
+                "SELECT 1 FROM objeto_persistente WHERE espacio=? AND clave=? LIMIT 1",
+                (self._espacio, self._serializar(clave)),
+            ).fetchone() is not None
+
     def __iter__(self) -> Iterator[K]:
         with self._base.bloqueo:
             filas = self._base.cn.execute(

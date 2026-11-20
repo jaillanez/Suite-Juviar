@@ -17,6 +17,7 @@ from suite_juviar.modulos.controles_arca.infrastructure import padrones as padro
 from suite_juviar.modulos.controles_arca.infrastructure.arca import ConectorARCAWeb
 from suite_juviar.modulos.controles_arca.infrastructure.certificados import CertificadosRSA
 from suite_juviar.modulos.controles_arca.infrastructure.cifrado import CifradorARCA
+from suite_juviar.modulos.controles_arca.infrastructure.lector import LectorFacturasLocal
 from suite_juviar.modulos.controles_arca.infrastructure.pdf import ConstanciaPDF
 from suite_juviar.modulos.controles_arca.infrastructure.sqlite import ControlesSQLite
 from suite_juviar.modulos.epp_analitica.api.app import crear_router as crear_analitica
@@ -142,6 +143,8 @@ def construir_controles_arca(ruta_modulos: str, clave_parametros: str, entorno: 
         repo, ConstanciaPDF(), padrones_arca.DescargaHTTP(),
         ConectorARCAWeb(repo.tickets, cifrador) if cifrador else None,
         CertificadosRSA(), cifrador,
+        # Facturas sin QR: OCR en el servidor; IA externa sólo con autorización expresa.
+        lector=LectorFacturasLocal(),
     )
     # Bajada diaria de los listados de ARCA; nunca en las pruebas.
     por_defecto = "0" if entorno in {"prueba", "test"} else "1"

@@ -4,12 +4,12 @@ import base64
 import json
 import os
 import re
-import subprocess
-import tempfile
 import urllib.error
 import urllib.request
 from io import BytesIO
 from pathlib import Path
+
+from suite_juviar.plataforma.ocr import leer_texto_imagen
 
 
 def usaria_ia_externa(nombre: str) -> bool:
@@ -134,18 +134,4 @@ El resumen debe ser breve y útil para novedades de liquidación de sueldos."""
 
 def _leer_imagen(contenido: bytes, extension: str) -> str:
     """OCR local con tesseract: esta lectura no envía el archivo fuera del servidor."""
-    ruta = None
-    try:
-        with tempfile.NamedTemporaryFile(suffix=extension, delete=False) as archivo:
-            archivo.write(contenido)
-            ruta = Path(archivo.name)
-        proceso = subprocess.run(
-            ["tesseract", str(ruta), "stdout", "-l", "eng", "--psm", "6"],
-            capture_output=True, text=True, timeout=30, check=False,
-        )
-        return proceso.stdout if proceso.returncode == 0 else ""
-    except (OSError, subprocess.TimeoutExpired):
-        return ""
-    finally:
-        if ruta:
-            ruta.unlink(missing_ok=True)
+    return leer_texto_imagen(contenido, extension)

@@ -21,6 +21,34 @@ control 4, `CUIT_4_NNNNNNNN_DD-MM-AAAA` (ej. `30693135679_4_00000001_26-09-2017`
 es la del control (hora de Argentina). Los PDF de los controles automáticos los arma Gestión
 con el resultado, la fecha y hora y la fuente consultada.
 
+## Desde el celular
+
+Administración (o Superadministrador) entra a **`/factura`** en el celular (también está como tarea
+«Controlar una factura» en `/celular`), toca **«Sacar foto»** y le saca una foto a la factura del
+proveedor. Funciona con la cámara común del celular (iPhone y Android), sin pedir permisos aparte.
+
+- **Con QR** (factura electrónica, RG 4291): el celular lee el QR de la foto (lector del propio
+  navegador si lo tiene; si no, ZXing). El servidor decodifica y valida el QR (sólo
+  `https://www.afip.gob.ar/fe/qr/` o `arca.gob.ar`), da de alta la factura con el alta de siempre
+  y corre los cinco controles. La empresa sale del CUIT receptor del QR comparado con los CUIT de
+  ENAV y JUBIAR de Parámetros; si no coincide, la elige la persona.
+- **Sin QR** (factura vieja, controlador fiscal, papel o QR ilegible): la foto se lee con OCR en el
+  servidor (tesseract) y con reglas se proponen CUIT, punto de venta y número, fecha, importe y
+  CAE. La persona los revisa y corrige; **recién cuando confirma** se da de alta y se controla.
+  La foto sólo sale a DeepSeek si hay clave (`SJ_SALUD_IA_API_KEY`) **y** autorización expresa
+  `SJ_CONTROLES_ARCA_IA_EXTERNA_AUTORIZADA=si`; en ese caso el celular avisa antes de mandarla.
+- Si la factura ya estaba (mismo CUIT emisor, tipo, punto de venta y número) no se duplica: se
+  muestran sus controles.
+- El resultado se ve como semáforo: verde bien, rojo alerta, amarillo no se pudo consultar o
+  falta configurar, gris pendiente (el control impositivo sigue siendo a mano desde Gestión).
+- La foto queda guardada con la factura («Ver foto de la factura» en Gestión). El celular la
+  achica a JPEG de hasta 1,5 MB; el servidor acepta JPEG, PNG o WEBP de hasta 2 MB y revisa el
+  tipo por el contenido del archivo.
+
+Endpoints (permiso `controles_fiscales.operar`): `POST /api/v1/controles-arca/celular/qr`,
+`POST .../celular/leer` (sólo propone datos, no carga nada), `POST .../celular/confirmar` y
+`GET .../facturas/{id}/foto`.
+
 ## Listados de ARCA (verificados el 18-11-2026)
 
 - Apócrifas: `https://servicioscf.afip.gob.ar/Facturacion/facturasApocrifas/DownloadFile.aspx`

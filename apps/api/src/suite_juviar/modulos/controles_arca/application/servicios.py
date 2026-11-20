@@ -9,6 +9,7 @@ from threading import RLock
 from typing import Any
 from uuid import uuid4
 
+from ..domain.lectura import extraer_datos, leer_qr, validar_foto
 from ..domain.modelos import (
     AMBIENTES,
     AUTORIZACIONES,
@@ -40,6 +41,7 @@ from ..domain.puertos import (
     ConectorARCA,
     DescargaPadrones,
     GeneradorPDF,
+    LectorFacturas,
     RepositorioControles,
 )
 
@@ -68,6 +70,11 @@ def _hora(momento: datetime) -> str:
     return momento.astimezone(HORA_ARGENTINA).strftime("%d/%m/%Y %H:%M")
 
 
+def _clave_foto(factura_id: str) -> str:
+    """La foto de la factura se guarda junto a los PDF de los controles."""
+    return f"{factura_id}:foto"
+
+
 def _pesos(valor: float) -> str:
     return "$ " + f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
@@ -75,8 +82,9 @@ def _pesos(valor: float) -> str:
 class GestionarControles:
     def __init__(self, repo: RepositorioControles, pdf: GeneradorPDF, descargas: DescargaPadrones,
                  conector: ConectorARCA | None = None, certificados: Certificados | None = None,
-                 cifrador: Cifrador | None = None, reloj=_ahora) -> None:
+                 cifrador: Cifrador | None = None, reloj=_ahora, lector: LectorFacturas | None = None) -> None:
         self.repo = repo
+        self.lector = lector
         self.pdf = pdf
         self.descargas = descargas
         self.conector = conector
@@ -129,6 +137,8 @@ class GestionarControles:
                 *(f"Falta cargar en Parámetros el CUIT de {e}." for e in EMPRESAS if not p.cuit_empresas.get(e)),
             ) if m],
             "padrones": self.padrones_info(),
+            # La foto de una factura sin QR se manda a una IA externa sólo si se autorizó en el servidor.
+            "lectura_ia_externa": bool(self.lector and self.lector.ia_externa),
         }
 
     # --- Facturas --------------------------------------------------------
@@ -183,7 +193,7 @@ class GestionarControles:
             "autorizacion_nombre": AUTORIZACIONES[factura.autorizacion],
             "codigo_autorizacion": factura.codigo_autorizacion, "cargada_por": factura.cargada_por,
             "cargada_en": factura.cargada_en, "alerta": factura.alerta, "controles": controles,
-            "controlada": bool(factura.resultados),
+            "controlada": bool(factura.resultados), "tiene_foto": _clave_foto(factura.id) in self.repo.archivos,
         }
 
     # --- Controles -------------------------------------------------------
@@ -327,6 +337,86 @@ class GestionarControles:
         if r is None or contenido is None:
             raise LookupError("Ese control no tiene PDF guardado.")
         return f"{r.archivo}.pdf", contenido
+
+    # --- Desde el celular: foto de la factura ---------------------------
+    def buscar_factura(self, cuit_emisor: str, tipo: int, punto_venta: int, numero: int) -> Factura | None:
+        """Misma factura = mismo emisor, tipo, punto de venta y número (sin importar la empresa)."""
+        # Igual que en el alta: el CUIT se guarda sin espacios ni guiones.
+        clave = ("".join(str(cuit_emisor).split()).replace("-", ""), int(tipo), int(punto_venta), int(numero))
+        return next((f for f in self.repo.facturas.values()
+                     if (f.cuit_emisor, f.tipo_comprobante, f.punto_venta, f.numero) == clave), None)
+
+    def empresa_de(self, cuit: str) -> str | None:
+        """Qué empresa del grupo es el receptor, según los CUIT cargados en Parámetros."""
+        return next((e for e, c in self.parametros().cuit_empresas.items() if c and c == cuit), None)
+
+    def _registrar(self, datos: dict[str, Any], foto: bytes, actor: str) -> dict[str, Any]:
+        """Da de alta la factura con el alta de siempre (o toma la que ya estaba), guarda la foto y controla."""
+        with self._bloqueo:
+            factura = self.buscar_factura(datos["cuit_emisor"], datos["tipo_comprobante"], datos["punto_venta"],
+                                          datos["numero"])
+            ya_cargada = factura is not None
+            if factura is None:
+                factura = self.crear_factura(datos, actor)
+            if _clave_foto(factura.id) not in self.repo.archivos:
+                self.repo.archivos[_clave_foto(factura.id)] = foto
+        # Una factura que ya estaba con controles se muestra como está: no se vuelve a consultar.
+        if not factura.resultados:
+            factura = self.correr(factura.id, actor)
+        return {"estado": "listo", "ya_cargada": ya_cargada, "factura": self.vista(factura)}
+
+    def cargar_desde_qr(self, texto_qr: str, foto: bytes, empresa: str | None, actor: str) -> dict[str, Any]:
+        """Con el QR de ARCA los datos son los autorizados: se da de alta y se controla sin más."""
+        validar_foto(foto)
+        qr = leer_qr(texto_qr)
+        datos = {
+            "cuit_emisor": qr.cuit_emisor, "razon_social": "", "tipo_comprobante": qr.tipo_comprobante,
+            "punto_venta": qr.punto_venta, "numero": qr.numero, "fecha": qr.fecha, "importe_total": qr.importe_total,
+            "autorizacion": qr.autorizacion, "codigo_autorizacion": qr.codigo_autorizacion,
+        }
+        receptora = self.empresa_de(qr.nro_doc_receptor) if qr.nro_doc_receptor else None
+        elegida = receptora or empresa
+        if elegida is None and self.buscar_factura(qr.cuit_emisor, qr.tipo_comprobante, qr.punto_venta,
+                                                   qr.numero) is None:
+            # El receptor del QR no es ninguna de las dos empresas (o falta su CUIT en Parámetros).
+            return {"estado": "elegir_empresa", "datos": {**datos, "nro_doc_receptor": qr.nro_doc_receptor}}
+        # Sin empresa sólo se llega acá si la factura ya estaba: se toma la cargada y la empresa no se usa.
+        return self._registrar({**datos, "empresa": elegida or ""}, foto, actor)
+
+    def leer_foto(self, foto: bytes, actor: str) -> dict[str, Any]:
+        """Sin QR: propone los datos leídos de la foto. No da de alta ni controla nada."""
+        tipo = validar_foto(foto)
+        texto, motor, aviso = "", "ninguno", ""
+        if self.lector is not None:
+            if self.lector.ia_externa:
+                _registro.info("Foto de factura enviada a IA externa por %s.", actor)
+            try:
+                texto, motor = self.lector.leer(foto, tipo)
+            except RuntimeError as exc:
+                aviso = str(exc)
+        p = self.parametros()
+        datos = extraer_datos(texto, p.cuit_empresas, _dia(self._reloj()))
+        encontrados = sum(v is not None for v in datos.values())
+        return {
+            "datos": datos, "motor": motor, "texto_detectado": bool(texto.strip()),
+            "mensaje": aviso or ("No se pudo leer el texto de la foto: cargá los datos mirando la factura."
+                                 if not texto.strip() else
+                                 "Revisá cada dato contra la factura y corregí lo que haga falta."
+                                 if encontrados else
+                                 "Se leyó la foto pero no se encontraron los datos: cargalos mirando la factura."),
+        }
+
+    def cargar_confirmada(self, datos: dict[str, Any], foto: bytes, actor: str) -> dict[str, Any]:
+        """Datos sin QR que la persona ya revisó: se da de alta y se controla."""
+        validar_foto(foto)
+        return self._registrar(datos, foto, actor)
+
+    def foto(self, factura_id: str) -> tuple[str, bytes]:
+        self.obtener(factura_id)
+        contenido = self.repo.archivos.get(_clave_foto(factura_id))
+        if contenido is None:
+            raise LookupError("Esa factura no tiene foto.")
+        return validar_foto(contenido), contenido
 
     # --- Listados completos de ARCA -------------------------------------
     def _padron(self, nombre: str) -> Padron:
