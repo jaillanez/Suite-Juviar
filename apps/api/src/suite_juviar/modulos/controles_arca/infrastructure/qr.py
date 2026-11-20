@@ -29,7 +29,7 @@ except ImportError:  # pragma: no cover - la imagen de Gestión la instala
 _registro = logging.getLogger(__name__)
 
 TIEMPO_MAXIMO = 4.0  # segundos para todas las pasadas
-MAXIMO_PIXELES = 40_000_000  # una foto de 2 MB más grande que esto no es una foto de celular
+MAXIMO_PIXELES = 25_000_000  # una foto de 2 MB más grande que esto no es una foto de celular
 LADO_TRABAJO = 2400  # la foto se achica a esto antes de empezar
 LADO_MAXIMO_AGRANDADA = 3200
 
@@ -47,6 +47,8 @@ def _abrir(contenido: bytes) -> Image.Image | None:
         imagen = Image.open(io.BytesIO(contenido))
         if imagen.width * imagen.height > MAXIMO_PIXELES:
             return None
+        # JPEG: se decodifica ya achicado, sin pasar por la foto entera en memoria.
+        imagen.draft("RGB", (LADO_TRABAJO, LADO_TRABAJO))
         imagen = ImageOps.exif_transpose(imagen)  # fotos de celular giradas por EXIF
         imagen.load()
     except (OSError, ValueError, Image.DecompressionBombError):

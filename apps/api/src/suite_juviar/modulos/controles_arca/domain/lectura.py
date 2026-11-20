@@ -128,6 +128,10 @@ def leer_qr(texto: str) -> DatosQR:
     moneda = datos.get("moneda")
     if not isinstance(moneda, str) or not re.fullmatch(r"[A-Z0-9]{3}", moneda):
         raise QRInvalido("La moneda del QR no es válida.")
+    cotizacion = _decimal(datos, "ctz", obligatorio=False)
+    if moneda != "PES" and (cotizacion is None or not 0 < cotizacion < 1e7):
+        # Sin cotización no se puede mostrar el equivalente en pesos: que se cargue a mano.
+        raise QRInvalido("El QR de una factura en moneda extranjera no trae una cotización válida.")
     tipo_cod = datos.get("tipoCodAut")
     if tipo_cod not in _AUTORIZACION_QR:
         raise QRInvalido("El QR no dice si la factura tiene CAE o CAEA.")
@@ -141,7 +145,7 @@ def leer_qr(texto: str) -> DatosQR:
         tipo_comprobante=_entero(datos, "tipoCmp", 1, 999),
         numero=_entero(datos, "nroCmp", 1, 99_999_999),
         importe_total=_decimal(datos, "importe"), moneda=moneda,
-        cotizacion=_decimal(datos, "ctz", obligatorio=False) or 1.0,
+        cotizacion=1.0 if moneda == "PES" else cotizacion,
         tipo_doc_receptor=_entero(datos, "tipoDocRec", 0, 999, obligatorio=False),
         nro_doc_receptor="" if not nro_doc else str(nro_doc),
         autorizacion=_AUTORIZACION_QR[tipo_cod], codigo_autorizacion=str(codigo).strip(),

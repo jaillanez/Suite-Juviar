@@ -87,7 +87,9 @@ def test_qr_de_arca_se_lee_en_todas_sus_variantes():
     url_qr(datos_qr(importe=0)), url_qr(datos_qr(importe=-5)), url_qr(datos_qr(importe=1e13)),
     url_qr(datos_qr(importe="1,5")), url_qr(datos_qr(importe=None)),
     url_qr(datos_qr(fecha="10/11/2026")), url_qr(datos_qr(fecha="2026-02-30")), url_qr(datos_qr(fecha=20261110)),
-    url_qr(datos_qr(moneda="pesos")), url_qr(datos_qr(tipoCodAut="X")), url_qr(datos_qr(tipoCodAut=None)),
+    url_qr(datos_qr(moneda="pesos")),
+    # En moneda extranjera la cotización es obligatoria y razonable.
+    url_qr(datos_qr(moneda="DOL", ctz=None)), url_qr(datos_qr(moneda="DOL", ctz=0)), url_qr(datos_qr(moneda="DOL", ctz=1e8)), url_qr(datos_qr(tipoCodAut="X")), url_qr(datos_qr(tipoCodAut=None)),
     url_qr(datos_qr(codAut=1234)), url_qr(datos_qr(codAut="7123456789012a")),
     url_qr({k: v for k, v in datos_qr().items() if k != "cuit"}),
 ])
