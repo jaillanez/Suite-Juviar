@@ -19,7 +19,7 @@ Los nombres de los PDF siguen la costumbre de Administración:
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import MISSING, dataclass, field, fields
 from datetime import date, datetime, timedelta, timezone
 from enum import IntEnum, StrEnum
 from urllib.parse import urlsplit, urlunsplit
@@ -34,6 +34,7 @@ HORA_ARGENTINA = timezone(timedelta(hours=-3), "ART")
 _HOSTS_ARCA = (".afip.gob.ar", ".afip.gov.ar", ".arca.gob.ar")
 _CUIT = re.compile(r"^\d{11}$")
 _CODIGO = re.compile(r"^\d{14}$")
+_MONEDA = re.compile(r"^[A-Z0-9]{3}$")
 _PESOS = (5, 4, 3, 2, 7, 6, 5, 4, 3, 2)
 
 
@@ -94,6 +95,33 @@ TIPOS_COMPROBANTE = {
     206: "Factura de crédito MiPyME B", 207: "Nota de débito MiPyME B", 208: "Nota de crédito MiPyME B",
     211: "Factura de crédito MiPyME C", 212: "Nota de débito MiPyME C", 213: "Nota de crédito MiPyME C",
 }
+
+# Códigos de moneda de ARCA (tabla de monedas de factura electrónica). El QR puede traer
+# cualquier otro código de tres letras o números: se guarda tal cual.
+MONEDAS = {"PES": "Pesos argentinos", "DOL": "Dólar estadounidense", "060": "Euro"}
+# Cómo se muestra la moneda: la sigla que conoce todo el mundo; si no está, el código de ARCA.
+SIGLAS_MONEDA = {"PES": "$", "DOL": "USD", "060": "EUR"}
+PESOS = "PES"
+
+
+def sigla_moneda(moneda: str) -> str:
+    return SIGLAS_MONEDA.get(moneda, moneda)
+
+
+def numero_ar(valor: float, decimales: int = 2) -> str:
+    """1524.5 → «1.524,50»: separador de miles con punto y coma decimal, como se escribe acá."""
+    return f"{valor:,.{decimales}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def importe_escrito(importe: float, moneda: str = PESOS, cotizacion: float = 1.0) -> str:
+    """«$ 12.100,50» en pesos; «USD 297,36 (≈ $ 453.325,32 a 1.524,50)» en moneda extranjera."""
+    if moneda == PESOS:
+        return f"$ {numero_ar(importe)}"
+    # La cotización con los decimales que traiga (ARCA admite hasta seis), y al menos dos.
+    decimales = max(2, len(f"{cotizacion:.6f}".rstrip("0").partition(".")[2]))
+    return (f"{sigla_moneda(moneda)} {numero_ar(importe)} "
+            f"(≈ $ {numero_ar(importe * cotizacion)} a {numero_ar(cotizacion, decimales)})")
+
 
 URL_APOCRIFAS = "https://servicioscf.afip.gob.ar/Facturacion/facturasApocrifas/DownloadFile.aspx"
 URL_RG18 = "https://servicioscf.afip.gob.ar/Publico/rg18/Archivos/RG18.csv"
@@ -181,8 +209,21 @@ class Factura:
     cargada_por: str
     cargada_en: datetime
     resultados: tuple[Resultado, ...] = ()
+    # Moneda del comprobante (código de ARCA) y cotización a pesos del día de la factura.
+    # El importe total está en esa moneda: así lo constata ARCA.
+    moneda: str = PESOS
+    cotizacion: float = 1.0
 
     def __post_init__(self) -> None:
+        if not isinstance(self.moneda, str) or not _MONEDA.match(self.moneda):
+            raise ValueError("La moneda tiene que ser un código de ARCA de tres letras o números (PES, DOL, 060…).")
+        if self.moneda == PESOS:
+            object.__setattr__(self, "cotizacion", 1.0)
+        elif isinstance(self.cotizacion, bool) or not isinstance(self.cotizacion, int | float) \
+                or not 0 < self.cotizacion < 1e7:
+            raise ValueError("La cotización tiene que ser más de cero.")
+        else:
+            object.__setattr__(self, "cotizacion", float(self.cotizacion))
         if self.empresa not in EMPRESAS:
             raise ValueError("Elegí a qué empresa se le facturó: ENAV o JUBIAR.")
         if not cuit_valido(self.cuit_emisor):
@@ -208,8 +249,33 @@ class Factura:
         elif not _CODIGO.match(self.codigo_autorizacion):
             raise ValueError(f"El {self.autorizacion} tiene que tener 14 números.")
 
+    # Las facturas se guardan con pickle. Las guardadas antes de agregar un campo traen menos
+    # valores: el __setstate__ que arma dataclasses con slots dejaría ese campo sin asignar
+    # (AttributeError al leerlo), así que los que faltan toman su valor por defecto.
+    def __getstate__(self) -> list[object]:
+        return [getattr(self, f.name) for f in fields(self)]
+
+    def __setstate__(self, estado: list[object] | tuple[object, ...]) -> None:
+        campos = fields(self)
+        if len(estado) > len(campos):
+            raise ValueError("La factura guardada tiene más datos de los que se conocen.")
+        for campo, valor in zip(campos, estado, strict=False):
+            object.__setattr__(self, campo.name, valor)
+        for campo in campos[len(estado):]:
+            if campo.default is MISSING:
+                raise ValueError(f"A la factura guardada le falta «{campo.name}».")
+            object.__setattr__(self, campo.name, campo.default)
+
     def resultado(self, control: Control) -> Resultado | None:
         return next((r for r in self.resultados if r.control == control), None)
+
+    @property
+    def importe_pesos(self) -> float:
+        return round(self.importe_total * self.cotizacion, 2)
+
+    @property
+    def importe_texto(self) -> str:
+        return importe_escrito(self.importe_total, self.moneda, self.cotizacion)
 
     @property
     def alerta(self) -> bool:

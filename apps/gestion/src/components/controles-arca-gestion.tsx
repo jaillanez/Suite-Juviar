@@ -8,12 +8,12 @@ type EstadoControl = "ok" | "alerta" | "pendiente" | "no_aplica" | "sin_configur
 type ControlVista = { numero: number; nombre: string; estado: EstadoControl; estado_nombre: string; detalle: string; fuente: string; fecha: string | null; actor: string; nota: string; archivo: string; puede_subir: boolean };
 type Factura = Record<string, unknown> & {
   id: string; empresa: string; cuit_emisor: string; razon_social: string; tipo_nombre: string; comprobante: string; fecha: string;
-  importe_total: number; autorizacion: string; autorizacion_nombre: string; codigo_autorizacion: string; cargada_por: string; cargada_en: string;
+  importe_total: number; moneda: string; cotizacion: number; importe_pesos: number; importe_texto: string; autorizacion: string; autorizacion_nombre: string; codigo_autorizacion: string; cargada_por: string; cargada_en: string;
   alerta: boolean; controlada: boolean; tiene_foto: boolean; controles: ControlVista[];
 };
 type Padron = { nombre: string; titulo: string; descargado_en: string | null; generado: string; cuits: number };
 type Catalogo = {
-  empresas: string[]; tipos_comprobante: Record<string, string>; autorizaciones: Record<string, string>;
+  empresas: string[]; tipos_comprobante: Record<string, string>; autorizaciones: Record<string, string>; monedas: Record<string, string>;
   controles: { numero: number; nombre: string; descripcion: string; activo: boolean }[];
   enlaces_impositivo: string[]; ambiente_nombre: string; faltantes: string[]; padrones: Padron[];
 };
@@ -21,6 +21,8 @@ type Catalogo = {
 const fecha = (v: string | null) => v ? new Date(v).toLocaleString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }) : "—";
 const dia = (v: string) => v.split("-").reverse().join("/");
 const pesos = (v: number) => v.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
+// En moneda extranjera el servidor arma «USD 297,36 (≈ $ 453.325,32 a 1.524,50)»; en pesos, como siempre.
+const importe = (f: Factura) => f.moneda && f.moneda !== "PES" && f.importe_texto ? f.importe_texto : pesos(f.importe_total);
 const mensaje = (x: unknown, defecto: string) => x instanceof Error ? x.message : defecto;
 const SIMBOLO: Record<EstadoControl, string> = { ok: "✓", alerta: "!", pendiente: "…", no_aplica: "–", sin_configurar: "?", error: "×", sin_correr: "·" };
 
@@ -74,7 +76,7 @@ function VentanaFactura({ inicial, catalogo, cerrar, cambio }: { inicial: Factur
       <div><dt>Se le facturó a</dt><dd>{factura.empresa}</dd></div>
       <div><dt>Proveedor</dt><dd>{factura.razon_social || "Sin razón social"} · CUIT {factura.cuit_emisor}</dd></div>
       <div><dt>Fecha</dt><dd>{dia(factura.fecha)}</dd></div>
-      <div><dt>Importe total</dt><dd>{pesos(factura.importe_total)}</dd></div>
+      <div><dt>Importe total</dt><dd>{importe(factura)}</dd></div>
       <div><dt>Autorización</dt><dd>{factura.autorizacion_nombre}{factura.codigo_autorizacion && ` ${factura.codigo_autorizacion}`}</dd></div>
       <div><dt>Cargada</dt><dd>{factura.cargada_por} · {fecha(factura.cargada_en)}</dd></div>
     </dl>
@@ -113,7 +115,7 @@ export function ControlesArcaGestion() {
   const [catalogo, setCatalogo] = useState<Catalogo | null>(null); const [facturas, setFacturas] = useState<Factura[] | null>(null);
   const [error, setError] = useState(""); const [soloAlertas, setSoloAlertas] = useState(false);
   const [elegida, setElegida] = useState<Factura | null>(null); const [alta, setAlta] = useState(false);
-  const [autorizacion, setAutorizacion] = useState("CAE");
+  const [autorizacion, setAutorizacion] = useState("CAE"); const [moneda, setMoneda] = useState("PES");
   const leer = useCallback(() => Promise.all([api<Catalogo>("controles-arca/catalogo"), api<Factura[]>(`controles-arca/facturas?solo_alertas=${soloAlertas}`)])
     .then(([c, f]) => { setCatalogo(c); setFacturas(f); setError(""); })
     .catch(x => setError(mensaje(x, "No se pudieron leer las facturas."))), [soloAlertas]);
@@ -128,7 +130,7 @@ export function ControlesArcaGestion() {
     <section className="tarjeta">
       <div className="acciones">
         <label className="casilla"><input type="checkbox" checked={soloAlertas} onChange={e => setSoloAlertas(e.target.checked)} /> Sólo las que tienen alerta</label>
-        <button className="primario" disabled={!catalogo} onClick={() => { setAutorizacion("CAE"); setAlta(true); }}>Cargar factura</button>
+        <button className="primario" disabled={!catalogo} onClick={() => { setAutorizacion("CAE"); setMoneda("PES"); setAlta(true); }}>Cargar factura</button>
       </div>
       {facturas && (facturas.length ? <Tabla etiqueta="Facturas de proveedores" filas={facturas} alElegir={setElegida} claseFila={f => f.alerta ? "fila-alerta" : ""} columnas={[
         { clave: "alerta", titulo: "Estado", valor: f => f.alerta ? <span className="estado estado-arca estado-arca-alerta">Alerta</span> : f.controlada ? (f.controles.some(c => ["pendiente", "error", "sin_configurar"].includes(c.estado)) ? "Faltan controles" : "Controlada") : "Sin controlar" },
@@ -136,7 +138,7 @@ export function ControlesArcaGestion() {
         { clave: "razon_social", titulo: "Proveedor", valor: f => <>{f.razon_social || "—"}<br /><small>{f.cuit_emisor}</small></> },
         { clave: "comprobante", titulo: "Comprobante" },
         { clave: "fecha", titulo: "Fecha", valor: f => dia(f.fecha) },
-        { clave: "importe_total", titulo: "Importe", valor: f => pesos(f.importe_total) },
+        { clave: "importe_total", titulo: "Importe", valor: f => importe(f) },
         { clave: "controles", titulo: "Controles", valor: f => <span className="chips-arca">{f.controles.map(c => <Chip key={c.numero} c={c} />)}</span> },
       ]} /> : <Vacio>{soloAlertas ? "No hay facturas con alerta." : "Todavía no se cargó ninguna factura."}</Vacio>)}
       <p className="ayuda">1 control impositivo · 2 inscripción · 3 apócrifas · 4 CAE/CAI/CAEA · 5 agentes de retención. ✓ bien · ! alerta · … pendiente · – no corresponde · ? falta configurar · × no se pudo consultar.</p>
@@ -147,6 +149,7 @@ export function ControlesArcaGestion() {
         empresa: f.get("empresa"), cuit_emisor: String(f.get("cuit_emisor") ?? "").replace(/\D/g, ""), razon_social: f.get("razon_social") ?? "",
         tipo_comprobante: Number(f.get("tipo_comprobante")), punto_venta: Number(f.get("punto_venta")), numero: Number(f.get("numero")),
         fecha: f.get("fecha"), importe_total: Number(f.get("importe_total")), autorizacion: f.get("autorizacion"),
+        moneda, cotizacion: moneda === "PES" ? 1 : Number(f.get("cotizacion")),
         codigo_autorizacion: autorizacion === "CF" ? "" : String(f.get("codigo_autorizacion") ?? "").replace(/\D/g, ""),
       }) });
       setAlta(false); void leer(); setElegida(nueva);
@@ -159,7 +162,9 @@ export function ControlesArcaGestion() {
         <label>Punto de venta<input name="punto_venta" type="number" min="1" max="99999" step="1" required /></label>
         <label>Número<input name="numero" type="number" min="1" max="99999999" step="1" required /></label>
         <label>Fecha<input name="fecha" type="date" required max={new Date().toISOString().slice(0, 10)} /></label>
-        <label>Importe total ($)<input name="importe_total" type="number" min="0.01" step="0.01" required /></label>
+        <label>Moneda<select name="moneda" value={moneda} onChange={e => setMoneda(e.target.value)}>{Object.entries(catalogo.monedas ?? { PES: "Pesos argentinos" }).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+        <label>Importe total {moneda === "PES" ? "($)" : "(en esa moneda)"}<input name="importe_total" type="number" min="0.01" step="0.01" required /></label>
+        {moneda !== "PES" && <label>Cotización (pesos por unidad)<input name="cotizacion" type="number" min="0.000001" step="any" required /></label>}
         <label>Autorización<select name="autorizacion" value={autorizacion} onChange={e => setAutorizacion(e.target.value)}>{Object.entries(catalogo.autorizaciones).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
         {autorizacion !== "CF" && <label>Código {autorizacion} (14 números)<input name="codigo_autorizacion" required inputMode="numeric" pattern="\d{14}" maxLength={14} /></label>}
       </div>

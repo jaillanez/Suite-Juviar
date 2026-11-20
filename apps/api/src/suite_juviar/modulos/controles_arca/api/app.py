@@ -29,7 +29,9 @@ class FacturaEntrada(BaseModel):
     punto_venta: int = Field(gt=0, le=99999)
     numero: int = Field(gt=0, le=99999999)
     fecha: date
-    importe_total: Importe
+    importe_total: Importe  # en la moneda de la factura
+    moneda: str = Field(default="PES", pattern=r"^[A-Z0-9]{3}$")
+    cotizacion: float = Field(default=1.0, gt=0, lt=1e7, allow_inf_nan=False)
     autorizacion: Literal["CAE", "CAEA", "CAI", "CF"]
     codigo_autorizacion: str = Field(default="", max_length=20)
 
@@ -46,6 +48,11 @@ class FacturaQREntrada(BaseModel):
 
 class FotoEntrada(BaseModel):
     foto_base64: FotoBase64
+    # Si el servidor encuentra el QR y el receptor no es del grupo, con qué empresa cargarla.
+    empresa: Literal["ENAV", "JUBIAR"] | None = None
+    # «solo_qr»: buscar sólo el QR (antes de pedir permiso para mandar la foto a la IA externa);
+    # «solo_texto»: sólo leer el texto (el QR ya se buscó).
+    modo: Literal["todo", "solo_qr", "solo_texto"] = "todo"
 
 
 class FacturaConfirmadaEntrada(BaseModel):
@@ -152,7 +159,7 @@ def crear_router(servicio: GestionarControles, entorno: str = "prueba") -> APIRo
     @app.post("/celular/leer", dependencies=operar)
     def leer(entrada: FotoEntrada, sesion: SesionActual):
         foto = _foto(entrada.foto_base64)
-        return hacer(lambda: servicio.leer_foto(foto, sesion.actor))
+        return hacer(lambda: servicio.leer_foto(foto, sesion.actor, entrada.empresa, entrada.modo))
 
     @app.post("/celular/confirmar", dependencies=operar)
     def confirmar(entrada: FacturaConfirmadaEntrada, sesion: SesionActual):
