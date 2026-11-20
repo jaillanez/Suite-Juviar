@@ -9,13 +9,14 @@ from threading import RLock
 from typing import Any
 from uuid import uuid4
 
-from ..domain.lectura import extraer_datos, leer_qr, validar_foto
+from ..domain.lectura import QRInvalido, extraer_datos, leer_qr, validar_foto
 from ..domain.modelos import (
     AMBIENTES,
     AUTORIZACIONES,
     DESCRIPCION_CONTROL,
     EMPRESAS,
     HORA_ARGENTINA,
+    MONEDAS,
     NOMBRES_CONTROL,
     NOMBRES_ESTADO,
     TIPOS_COMPROBANTE,
@@ -42,6 +43,7 @@ from ..domain.puertos import (
     DescargaPadrones,
     GeneradorPDF,
     LectorFacturas,
+    LectorQR,
     RepositorioControles,
 )
 
@@ -75,16 +77,14 @@ def _clave_foto(factura_id: str) -> str:
     return f"{factura_id}:foto"
 
 
-def _pesos(valor: float) -> str:
-    return "$ " + f"{valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-
 class GestionarControles:
     def __init__(self, repo: RepositorioControles, pdf: GeneradorPDF, descargas: DescargaPadrones,
                  conector: ConectorARCA | None = None, certificados: Certificados | None = None,
-                 cifrador: Cifrador | None = None, reloj=_ahora, lector: LectorFacturas | None = None) -> None:
+                 cifrador: Cifrador | None = None, reloj=_ahora, lector: LectorFacturas | None = None,
+                 lector_qr: LectorQR | None = None) -> None:
         self.repo = repo
         self.lector = lector
+        self.lector_qr = lector_qr
         self.pdf = pdf
         self.descargas = descargas
         self.conector = conector
@@ -127,7 +127,7 @@ class GestionarControles:
         acceso, motivo = self._acceso(p, descifrar=False)
         return {
             "empresas": list(EMPRESAS), "tipos_comprobante": {str(k): v for k, v in TIPOS_COMPROBANTE.items()},
-            "autorizaciones": AUTORIZACIONES, "estados": {e.value: n for e, n in NOMBRES_ESTADO.items()},
+            "autorizaciones": AUTORIZACIONES, "monedas": MONEDAS, "estados": {e.value: n for e, n in NOMBRES_ESTADO.items()},
             "controles": [{"numero": int(c), "nombre": NOMBRES_CONTROL[c], "descripcion": DESCRIPCION_CONTROL[c],
                            "activo": int(c) in p.controles_activos} for c in Control],
             "enlaces_impositivo": list(p.enlaces_impositivo), "ambiente": p.ambiente,
@@ -158,6 +158,8 @@ class GestionarControles:
             (datos.get("razon_social") or "").strip(), int(datos["tipo_comprobante"]), int(datos["punto_venta"]),
             int(datos["numero"]), fecha, float(datos["importe_total"]), autorizacion,
             "".join((datos.get("codigo_autorizacion") or "").split()), actor, self._reloj(),
+            moneda=datos.get("moneda") or "PES",
+            cotizacion=1.0 if datos.get("cotizacion") is None else float(datos["cotizacion"]),
         )
         with self._bloqueo:
             if any((f.empresa, f.cuit_emisor, f.tipo_comprobante, f.punto_venta, f.numero)
@@ -189,7 +191,9 @@ class GestionarControles:
             "razon_social": factura.razon_social, "tipo_comprobante": factura.tipo_comprobante,
             "tipo_nombre": TIPOS_COMPROBANTE[factura.tipo_comprobante], "punto_venta": factura.punto_venta,
             "numero": factura.numero, "comprobante": factura.comprobante, "fecha": factura.fecha,
-            "importe_total": factura.importe_total, "autorizacion": factura.autorizacion,
+            "importe_total": factura.importe_total, "moneda": factura.moneda, "cotizacion": factura.cotizacion,
+            "importe_pesos": factura.importe_pesos, "importe_texto": factura.importe_texto,
+            "autorizacion": factura.autorizacion,
             "autorizacion_nombre": AUTORIZACIONES[factura.autorizacion],
             "codigo_autorizacion": factura.codigo_autorizacion, "cargada_por": factura.cargada_por,
             "cargada_en": factura.cargada_en, "alerta": factura.alerta, "controles": controles,
@@ -290,7 +294,7 @@ class GestionarControles:
             ("Proveedor", f"{factura.razon_social or 'Sin razón social cargada'} (CUIT {factura.cuit_emisor})"),
             ("Comprobante", factura.comprobante),
             ("Fecha de la factura", factura.fecha.strftime("%d/%m/%Y")),
-            ("Importe total", _pesos(factura.importe_total)),
+            ("Importe total", factura.importe_texto),
             ("Autorización", f"{AUTORIZACIONES[factura.autorizacion]} {factura.codigo_autorizacion}".strip()),
             ("Fuente consultada", r.fuente),
             ("Fecha y hora de la consulta", _hora(r.fecha)),
@@ -372,7 +376,7 @@ class GestionarControles:
         datos = {
             "cuit_emisor": qr.cuit_emisor, "razon_social": "", "tipo_comprobante": qr.tipo_comprobante,
             "punto_venta": qr.punto_venta, "numero": qr.numero, "fecha": qr.fecha, "importe_total": qr.importe_total,
-            "autorizacion": qr.autorizacion, "codigo_autorizacion": qr.codigo_autorizacion,
+            "moneda": qr.moneda, "cotizacion": qr.cotizacion, "autorizacion": qr.autorizacion, "codigo_autorizacion": qr.codigo_autorizacion,
         }
         receptora = self.empresa_de(qr.nro_doc_receptor) if qr.nro_doc_receptor else None
         elegida = receptora or empresa
@@ -383,10 +387,44 @@ class GestionarControles:
         # Sin empresa sólo se llega acá si la factura ya estaba: se toma la cargada y la empresa no se usa.
         return self._registrar({**datos, "empresa": elegida or ""}, foto, actor)
 
-    def leer_foto(self, foto: bytes, actor: str) -> dict[str, Any]:
-        """Sin QR: propone los datos leídos de la foto. No da de alta ni controla nada."""
+    def buscar_qr_en_foto(self, foto: bytes) -> str | None:
+        """Segundo intento de leer el QR, en el servidor: lee códigos borrosos que el celular no lee.
+
+        Devuelve el texto del primer QR que sea de una factura electrónica de ARCA válida.
+        """
+        if self.lector_qr is None:
+            return None
+        try:
+            textos = self.lector_qr.leer(foto)
+        except Exception:  # noqa: BLE001 - si el lector falla se sigue con la lectura del texto
+            _registro.exception("No se pudo buscar el QR de la foto en el servidor.")
+            return None
+        for texto in textos:
+            try:
+                leer_qr(texto)
+            except QRInvalido:
+                continue
+            return texto
+        return None
+
+    def leer_foto(self, foto: bytes, actor: str, empresa: str | None = None, modo: str = "todo") -> dict[str, Any]:
+        """Foto en la que el celular no encontró el QR.
+
+        Primero se busca el QR en el servidor (``modo`` «todo» o «solo_qr»): si aparece uno de ARCA
+        se sigue igual que con el QR leído en el celular (alta y controles, o elegir la empresa) y la
+        respuesta trae además ``qr`` con el texto leído. Si no, se lee el texto de la foto (``modo``
+        «todo» o «solo_texto») y se proponen los datos: no da de alta ni controla nada.
+        """
         tipo = validar_foto(foto)
+        if modo not in {"todo", "solo_qr", "solo_texto"}:
+            raise ValueError("Modo de lectura desconocido.")
+        if modo != "solo_texto" and (texto_qr := self.buscar_qr_en_foto(foto)):
+            _registro.info("QR de la factura leído en el servidor (%s).", actor)
+            return {**self.cargar_desde_qr(texto_qr, foto, empresa, actor), "qr": texto_qr}
         texto, motor, aviso = "", "ninguno", ""
+        if modo == "solo_qr":
+            return {"datos": extraer_datos("", {}, _dia(self._reloj())), "motor": motor, "texto_detectado": False,
+                    "mensaje": "No se encontró el QR en la foto."}
         if self.lector is not None:
             if self.lector.ia_externa:
                 _registro.info("Foto de factura enviada a IA externa por %s.", actor)

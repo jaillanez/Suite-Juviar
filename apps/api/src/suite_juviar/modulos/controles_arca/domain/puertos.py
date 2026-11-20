@@ -62,5 +62,13 @@ class LectorFacturas(Protocol):
         ...
 
 
+class LectorQR(Protocol):
+    """Busca códigos QR en la foto de la factura, dentro del servidor."""
+
+    def leer(self, contenido: bytes) -> list[str]:
+        """Textos de los QR encontrados (vacío si no hay o la foto no se puede abrir)."""
+        ...
+
+
 class GeneradorPDF(Protocol):
     def constancia(self, titulo: str, filas: list[tuple[str, str]], alerta: bool) -> bytes: ...

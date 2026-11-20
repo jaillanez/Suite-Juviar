@@ -32,6 +32,14 @@ proveedor. Funciona con la cámara común del celular (iPhone y Android), sin pe
   `https://www.afip.gob.ar/fe/qr/` o `arca.gob.ar`), da de alta la factura con el alta de siempre
   y corre los cinco controles. La empresa sale del CUIT receptor del QR comparado con los CUIT de
   ENAV y JUBIAR de Parámetros; si no coincide, la elige la persona.
+- **QR que el celular no lee** (impresión borrosa de una factura escaneada): antes de leer el
+  texto, el servidor vuelve a buscar el QR en la foto con `zxing-cpp` y varias pasadas (foto tal
+  cual, grises con más contraste, umbral adaptativo, enfoque, recortes por zona empezando abajo a
+  la izquierda y agrandados), con un tope de 4 segundos. Si encuentra un QR de ARCA válido sigue
+  igual que con el QR leído en el celular (alta, controles, no duplica, elegir empresa) y la
+  respuesta trae además el `qr` leído. La foto no sale del servidor para esto. Si hay IA externa
+  autorizada, primero se busca sólo el QR (`modo: "solo_qr"`) y recién después se pide permiso
+  para mandar la foto (`modo: "solo_texto"`).
 - **Sin QR** (factura vieja, controlador fiscal, papel o QR ilegible): la foto se lee con OCR en el
   servidor (tesseract) y con reglas se proponen CUIT, punto de venta y número, fecha, importe y
   CAE. La persona los revisa y corrige; **recién cuando confirma** se da de alta y se controla.
@@ -44,6 +52,16 @@ proveedor. Funciona con la cámara común del celular (iPhone y Android), sin pe
 - La foto queda guardada con la factura («Ver foto de la factura» en Gestión). El celular la
   achica a JPEG de hasta 1,5 MB; el servidor acepta JPEG, PNG o WEBP de hasta 2 MB y revisa el
   tipo por el contenido del archivo.
+
+### Moneda
+
+Cada factura guarda la moneda (código de ARCA: `PES`, `DOL`, `060` euro u otro de tres letras o
+números) y la cotización. Con QR se toman del QR; en el alta a mano se elige la moneda (pesos por
+defecto) y, si no es pesos, se carga la cotización. El importe total queda en la moneda de la
+factura y así se constata en ARCA (WSCDC). En pantalla y en los PDF se muestra
+«USD 297,36 (≈ $ 453.325,32 a 1.524,50)»: la sigla (DOL → USD, 060 → EUR, el resto con su
+código), el importe y el equivalente en pesos (importe × cotización). Las facturas cargadas
+antes de este cambio se leen como pesos con cotización 1.
 
 Endpoints (permiso `controles_fiscales.operar`): `POST /api/v1/controles-arca/celular/qr`,
 `POST .../celular/leer` (sólo propone datos, no carga nada), `POST .../celular/confirmar` y

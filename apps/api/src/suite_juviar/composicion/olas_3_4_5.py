@@ -19,6 +19,7 @@ from suite_juviar.modulos.controles_arca.infrastructure.certificados import Cert
 from suite_juviar.modulos.controles_arca.infrastructure.cifrado import CifradorARCA
 from suite_juviar.modulos.controles_arca.infrastructure.lector import LectorFacturasLocal
 from suite_juviar.modulos.controles_arca.infrastructure.pdf import ConstanciaPDF
+from suite_juviar.modulos.controles_arca.infrastructure.qr import LectorQRServidor
 from suite_juviar.modulos.controles_arca.infrastructure.sqlite import ControlesSQLite
 from suite_juviar.modulos.epp_analitica.api.app import crear_router as crear_analitica
 from suite_juviar.modulos.epp_analitica.application.servicios import AnalizarEPP
@@ -210,6 +211,8 @@ def construir_controles_arca(ruta_modulos: str, clave_parametros: str, entorno: 
         CertificadosRSA(), cifrador,
         # Facturas sin QR: OCR en el servidor; IA externa sólo con autorización expresa.
         lector=LectorFacturasLocal(),
+        # Segundo intento de leer el QR en el servidor, con códigos borrosos.
+        lector_qr=LectorQRServidor(),
     )
     # Bajada diaria de los listados de ARCA; nunca en las pruebas.
     por_defecto = "0" if entorno in {"prueba", "test"} else "1"

@@ -391,11 +391,13 @@ function FirmarCapacitacion({ volver }: { volver: () => void }) {
 
 type EstadoArca = "ok" | "alerta" | "pendiente" | "no_aplica" | "sin_configurar" | "error" | "sin_correr";
 type ControlArca = { numero: number; nombre: string; estado: EstadoArca; estado_nombre: string; detalle: string };
-type FacturaArca = { id: string; empresa: string; cuit_emisor: string; razon_social: string; comprobante: string; fecha: string; importe_total: number; alerta: boolean; controles: ControlArca[] };
+type FacturaArca = { id: string; empresa: string; cuit_emisor: string; razon_social: string; comprobante: string; fecha: string; importe_total: number; moneda?: string; importe_texto?: string; alerta: boolean; controles: ControlArca[] };
 type DatosFactura = { empresa?: string | null; cuit_emisor: string | null; tipo_comprobante: number | null; punto_venta: number | null; numero: number | null; fecha: string | null; importe_total: number | null; autorizacion: string | null; codigo_autorizacion: string | null };
 type RespuestaFactura = { estado: "listo"; ya_cargada: boolean; factura: FacturaArca } | { estado: "elegir_empresa"; datos: DatosFactura & { nro_doc_receptor: string } };
 type Propuesta = { datos: DatosFactura; motor: string; texto_detectado: boolean; mensaje: string };
-type CatalogoArca = { empresas: string[]; tipos_comprobante: Record<string, string>; autorizaciones: Record<string, string>; faltantes: string[]; lectura_ia_externa: boolean };
+// Si el servidor encuentra el QR que el celular no pudo leer, contesta como /celular/qr y agrega el QR leído.
+type RespuestaLeer = Propuesta | (RespuestaFactura & { qr: string });
+type CatalogoArca = { empresas: string[]; tipos_comprobante: Record<string, string>; autorizaciones: Record<string, string>; monedas?: Record<string, string>; faltantes: string[]; lectura_ia_externa: boolean };
 type Foto = { qr: string; foto_base64: string; vista: string };
 
 // Semáforo: verde bien, rojo alerta, amarillo no se pudo controlar, gris pendiente o no corresponde.
@@ -416,9 +418,10 @@ function ControlarFactura({ volver }: { volver: () => void }) {
   const [elegir, setElegir] = useState<(DatosFactura & { nro_doc_receptor: string }) | null>(null);
   const [propuesta, setPropuesta] = useState<Propuesta | null>(null);
   const [enVivo, setEnVivo] = useState(false);
+  const [qrServidor, setQrServidor] = useState(""); const [moneda, setMoneda] = useState("PES");
   useEffect(() => { api<CatalogoArca>("controles-arca/catalogo").then(setCatalogo).catch(x => setError(mensaje(x, "No pudimos leer la configuración de los controles."))); }, []);
   useEffect(() => () => { if (foto) URL.revokeObjectURL(foto.vista); }, [foto]);
-  function otra() { setFoto(null); setResultado(null); setElegir(null); setPropuesta(null); setError(""); }
+  function otra() { setFoto(null); setResultado(null); setElegir(null); setPropuesta(null); setError(""); setQrServidor(""); setMoneda("PES"); }
 
   function mostrar(r: RespuestaFactura) {
     if (r.estado === "listo") { setResultado({ ya_cargada: r.ya_cargada, factura: r.factura }); setElegir(null); setPropuesta(null); }
@@ -430,15 +433,32 @@ function ControlarFactura({ volver }: { volver: () => void }) {
     catch (x) { setError(mensaje(x, "No se pudo controlar la factura. Revisá la conexión y probá de nuevo.")); }
     finally { setOcupado(""); }
   }
+  const aMano: Propuesta = { datos: SIN_DATOS, motor: "ninguno", texto_detectado: false, mensaje: "Cargá los datos mirando la factura." };
+  async function leer(f: Foto, modo: "todo" | "solo_qr" | "solo_texto") {
+    return api<RespuestaLeer>("controles-arca/celular/leer", { method: "POST", body: JSON.stringify({ foto_base64: f.foto_base64, modo }) });
+  }
+  /** El servidor encontró el QR (muchas veces borroso) que el celular no leyó: es como haberlo leído acá. */
+  function conQrDelServidor(r: RespuestaLeer): boolean {
+    if (!("estado" in r)) return false;
+    setQrServidor(r.qr); mostrar(r); return true;
+  }
   async function sinQr(f: Foto) {
-    // Sin QR los datos se leen de la foto y la persona los confirma: nunca se controla sin confirmar.
-    if (catalogo?.lectura_ia_externa && !window.confirm("La factura no tiene QR. Para leerla, la foto se va a enviar a un servicio de IA externo (DeepSeek). ¿Continuar?")) {
-      setPropuesta({ datos: SIN_DATOS, motor: "ninguno", texto_detectado: false, mensaje: "Cargá los datos mirando la factura." });
-      return;
-    }
-    setOcupado("Leyendo la factura…"); setError("");
-    try { setPropuesta(await api<Propuesta>("controles-arca/celular/leer", { method: "POST", body: JSON.stringify({ foto_base64: f.foto_base64 }) })); }
-    catch (x) { setError(mensaje(x, "No se pudo leer la foto.")); setPropuesta({ datos: SIN_DATOS, motor: "ninguno", texto_detectado: false, mensaje: "Cargá los datos mirando la factura." }); }
+    // Primero el servidor busca el QR con más pasadas. Si no está, los datos se leen de la foto y la
+    // persona los confirma: nunca se controla sin confirmar.
+    const iaExterna = Boolean(catalogo?.lectura_ia_externa);
+    setOcupado("Buscando el QR en la foto…"); setError("");
+    try {
+      // Con IA externa, antes de pedir permiso para mandar la foto se busca sólo el QR (no sale nada).
+      const r = await leer(f, iaExterna ? "solo_qr" : "todo");
+      if (conQrDelServidor(r)) return;
+      if (!iaExterna) { setPropuesta(r as Propuesta); return; }
+    } catch (x) {
+      if (!iaExterna) { setError(mensaje(x, "No se pudo leer la foto.")); setPropuesta(aMano); return; }
+    } finally { setOcupado(""); }
+    if (!window.confirm("La factura no tiene QR. Para leerla, la foto se va a enviar a un servicio de IA externo (DeepSeek). ¿Continuar?")) { setPropuesta(aMano); return; }
+    setOcupado("Leyendo la factura…");
+    try { setPropuesta(await leer(f, "solo_texto") as Propuesta); }
+    catch (x) { setError(mensaje(x, "No se pudo leer la foto.")); setPropuesta(aMano); }
     finally { setOcupado(""); }
   }
   function leidaEnVivo(f: Foto) { setEnVivo(false); otra(); setFoto(f); void conQr(f); }
@@ -458,7 +478,8 @@ function ControlarFactura({ volver }: { volver: () => void }) {
     const factura = {
       empresa: f.get("empresa"), cuit_emisor: String(f.get("cuit_emisor")).replace(/\D/g, ""), tipo_comprobante: Number(f.get("tipo_comprobante")),
       punto_venta: Number(f.get("punto_venta")), numero: Number(f.get("numero")), fecha: f.get("fecha"),
-      importe_total: importeEscrito(String(f.get("importe_total"))), autorizacion,
+      importe_total: importeEscrito(String(f.get("importe_total"))), autorizacion, moneda,
+      cotizacion: moneda === "PES" ? 1 : importeEscrito(String(f.get("cotizacion") ?? "")),
       codigo_autorizacion: autorizacion === "CF" ? "" : String(f.get("codigo_autorizacion") ?? "").replace(/\D/g, ""),
     };
     setOcupado("Controlando en ARCA…"); setError("");
@@ -476,7 +497,7 @@ function ControlarFactura({ volver }: { volver: () => void }) {
     <div className="cel-ficha"><dl>
       <div><dt>Proveedor</dt><dd>{fa.razon_social || `CUIT ${fa.cuit_emisor}`}</dd></div>
       <div><dt>Se le facturó a</dt><dd>{fa.empresa}</dd></div>
-      <div><dt>Fecha e importe</dt><dd>{fa.fecha.split("-").reverse().join("/")} · {pesosAR(fa.importe_total)}</dd></div>
+      <div><dt>Fecha e importe</dt><dd>{fa.fecha.split("-").reverse().join("/")} · {fa.importe_texto ?? pesosAR(fa.importe_total)}</dd></div>
     </dl></div>
     <ul className="cel-semaforo">{[...fa.controles].sort((a, b) => a.numero - b.numero).map(c => { const s = SEMAFORO[c.estado]; return <li key={c.numero} className={`cel-semaforo-${s.color}`}>
       <span className="cel-luz" aria-hidden="true">{s.simbolo}</span>
@@ -499,7 +520,7 @@ function ControlarFactura({ volver }: { volver: () => void }) {
   if (elegir && foto) return <Pantalla titulo="¿A quién se le facturó?" volver={otra}>
     <p className="cel-texto">El QR dice que se le facturó al CUIT {elegir.nro_doc_receptor || "(sin dato)"}, que no es el de ENAV ni el de JUBIAR cargados en Parámetros. Elegí la empresa.</p>
     {error && <p className="cel-error" role="alert">{error}</p>}
-    <div className="cel-lista">{empresas.map(e => <button key={e} className="cel-opcion" onClick={() => void conQr(foto, e)}><strong>{e}</strong></button>)}</div>
+    <div className="cel-lista">{empresas.map(e => <button key={e} className="cel-opcion" onClick={() => void conQr({ ...foto, qr: qrServidor || foto.qr }, e)}><strong>{e}</strong></button>)}</div>
   </Pantalla>;
 
   if (propuesta && foto) { const d = propuesta.datos; return <Pantalla titulo="Revisá los datos" volver={otra}>
@@ -513,7 +534,9 @@ function ControlarFactura({ volver }: { volver: () => void }) {
       <label>Punto de venta<input name="punto_venta" type="number" inputMode="numeric" min={1} max={99999} defaultValue={d.punto_venta ?? ""} required /></label>
       <label>Número<input name="numero" type="number" inputMode="numeric" min={1} max={99999999} defaultValue={d.numero ?? ""} required /></label>
       <label>Fecha<input name="fecha" type="date" defaultValue={d.fecha ?? ""} required /></label>
-      <label>Importe total<input name="importe_total" inputMode="decimal" defaultValue={d.importe_total == null ? "" : String(d.importe_total).replace(".", ",")} pattern="[0-9.,]+" required /></label>
+      <label>Moneda<select name="moneda" value={moneda} onChange={e => setMoneda(e.target.value)}>{Object.entries(catalogo?.monedas ?? { PES: "Pesos argentinos" }).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+      <label>Importe total{moneda === "PES" ? "" : " (en esa moneda)"}<input name="importe_total" inputMode="decimal" defaultValue={d.importe_total == null ? "" : String(d.importe_total).replace(".", ",")} pattern="[0-9.,]+" required /></label>
+      {moneda !== "PES" && <label>Cotización (pesos por unidad, la de la factura)<input name="cotizacion" inputMode="decimal" pattern="[0-9.,]+" required /></label>}
       <label>Autorización<select name="autorizacion" defaultValue={d.autorizacion ?? ""} required><option value="" disabled>CAE, CAEA, CAI o controlador fiscal</option>{Object.entries(catalogo?.autorizaciones ?? {}).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
       <label>Código de autorización (14 números; vacío si es controlador fiscal)<input name="codigo_autorizacion" inputMode="numeric" defaultValue={d.codigo_autorizacion ?? ""} pattern="[0-9]{14}" /></label>
       <button className="cel-boton">Confirmar y controlar</button>
