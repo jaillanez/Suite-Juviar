@@ -49,25 +49,61 @@ function lienzo(img: HTMLImageElement, lado: number): HTMLCanvasElement {
 
 type Detector = { detect: (fuente: CanvasImageSource) => Promise<Array<{ rawValue: string }>> };
 
-async function buscarQr(img: HTMLImageElement): Promise<string> {
-  // Primero el lector del propio celular (Android con Chrome lo trae); si no, ZXing.
-  const Nativo = (globalThis as unknown as { BarcodeDetector?: new (o: { formats: string[] }) => Detector }).BarcodeDetector;
-  if (Nativo) {
-    try {
-      const leidos = await new Nativo({ formats: ["qr_code"] }).detect(img);
-      const qr = leidos.map(l => l.rawValue).find(esQrDeArca);
-      if (qr) return qr;
-    } catch { /* se prueba con ZXing */ }
+/** Copia con más contraste en blanco y negro: ayuda con fotos de pantalla, reflejos o poca luz. */
+function contrastado(origen: HTMLCanvasElement): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = origen.width; canvas.height = origen.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return origen;
+  ctx.drawImage(origen, 0, 0);
+  const datos = ctx.getImageData(0, 0, canvas.width, canvas.height); const p = datos.data;
+  let min = 255, max = 0;
+  for (let i = 0; i < p.length; i += 4) { const g = (p[i] * 299 + p[i + 1] * 587 + p[i + 2] * 114) / 1000; p[i] = g; if (g < min) min = g; if (g > max) max = g; }
+  const rango = Math.max(1, max - min);
+  for (let i = 0; i < p.length; i += 4) { const g = ((p[i] - min) * 255) / rango; const v = g < 128 ? 0 : 255; p[i] = p[i + 1] = p[i + 2] = v; }
+  ctx.putImageData(datos, 0, 0);
+  return canvas;
+}
+
+/** Recortes de la foto (3×3 con solapamiento): un QR chico se lee mejor cuando ocupa más del cuadro. */
+function recortes(origen: HTMLCanvasElement): HTMLCanvasElement[] {
+  const salida: HTMLCanvasElement[] = [];
+  const ancho = Math.round(origen.width / 2), alto = Math.round(origen.height / 2);
+  for (const fy of [0, 0.25, 0.5]) for (const fx of [0, 0.25, 0.5]) {
+    const c = document.createElement("canvas"); c.width = ancho; c.height = alto;
+    const ctx = c.getContext("2d"); if (!ctx) continue;
+    ctx.drawImage(origen, Math.round(origen.width * fx), Math.round(origen.height * fy), ancho, alto, 0, 0, ancho, alto);
+    salida.push(c);
   }
+  // Abajo a la izquierda, donde ARCA pone el QR, primero.
+  return [salida[6], salida[7], salida[3], ...salida.filter((_, i) => ![6, 7, 3].includes(i))];
+}
+
+async function leerCanvas(canvas: HTMLCanvasElement, nativo: Detector | null,
+                          zxing: { decodeFromCanvas: (c: HTMLCanvasElement) => { getText: () => string } }): Promise<string> {
+  if (nativo) {
+    try { const qr = (await nativo.detect(canvas)).map(l => l.rawValue).find(esQrDeArca); if (qr) return qr.trim(); } catch { /* sigue ZXing */ }
+  }
+  try { const texto = zxing.decodeFromCanvas(canvas).getText().trim(); if (esQrDeArca(texto)) return texto; } catch { /* no estaba */ }
+  return "";
+}
+
+async function buscarQr(img: HTMLImageElement): Promise<string> {
+  // Varias pasadas antes de darlo por perdido: tamaños, contraste y recortes por zona.
+  const Nativo = (globalThis as unknown as { BarcodeDetector?: new (o: { formats: string[] }) => Detector }).BarcodeDetector;
+  let nativo: Detector | null = null;
+  try { nativo = Nativo ? new Nativo({ formats: ["qr_code"] }) : null; } catch { nativo = null; }
   const [{ BrowserQRCodeReader }, { DecodeHintType }] = await Promise.all([import("@zxing/browser"), import("@zxing/library")]);
-  const lector = new BrowserQRCodeReader(new Map([[DecodeHintType.TRY_HARDER, true]]));
-  // El QR suele ser chico en la foto: se prueba a dos tamaños.
-  for (const lado of [1600, 2800]) {
-    try {
-      const texto = lector.decodeFromCanvas(lienzo(img, lado)).getText().trim();
-      if (esQrDeArca(texto)) return texto;
-    } catch { /* no se encontró a este tamaño */ }
-    if (Math.max(img.naturalWidth, img.naturalHeight) <= lado) break;
+  const zxing = new BrowserQRCodeReader(new Map([[DecodeHintType.TRY_HARDER, true]]));
+  const mayor = Math.max(img.naturalWidth, img.naturalHeight);
+  const lados = [1200, 1800, 2600, mayor].filter((l, i, t) => l <= mayor && t.indexOf(l) === i);
+  for (const lado of lados) {
+    const base = lienzo(img, lado);
+    for (const c of [base, contrastado(base)]) { const qr = await leerCanvas(c, nativo, zxing); if (qr) return qr; }
+  }
+  const grande = lienzo(img, Math.min(mayor, 3200));
+  for (const c of recortes(grande)) {
+    for (const v of [c, contrastado(c)]) { const qr = await leerCanvas(v, nativo, zxing); if (qr) return qr; }
   }
   return "";
 }
@@ -92,6 +128,19 @@ async function base64(blob: Blob): Promise<string> {
   let texto = "";
   for (let i = 0; i < bytes.length; i += 0x8000) texto += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(texto);
+}
+
+/** Cuadro tomado de la cámara en vivo cuando reconoció el QR: queda como foto de la factura. */
+export async function fotoDesdeVideo(video: HTMLVideoElement, qr: string): Promise<{ qr: string; foto_base64: string; vista: string }> {
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  const ctx = canvas.getContext("2d");
+  if (!ctx || !canvas.width) throw new Error("No se pudo tomar la imagen de la cámara.");
+  ctx.drawImage(video, 0, 0);
+  let blob: Blob | null = null;
+  for (const calidad of [0.85, 0.7, 0.55]) { blob = await aBlob(canvas, calidad); if (blob.size <= TOPE_FOTO) break; }
+  if (!blob || blob.size > TOPE_FOTO) throw new Error("La imagen de la cámara es muy pesada.");
+  return { qr, foto_base64: await base64(blob), vista: URL.createObjectURL(blob) };
 }
 
 /** Lee el QR (si hay) y deja la foto en JPEG de hasta 1,5 MB, lista para subir. */
