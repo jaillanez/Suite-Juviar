@@ -61,12 +61,12 @@ async def _cuerpo(request: Request) -> bytes:
     return cuerpo
 
 
-async def _encolar(cuerpo: bytes, cola: Cola) -> dict[str, int]:
+async def _encolar(cuerpo: bytes, cola: Cola, numero_id: str | None = None) -> dict[str, int]:
     try:
         payload = json.loads(cuerpo)
     except (UnicodeDecodeError, ValueError):
         raise HTTPException(status_code=400) from None
-    mensajes = extraer_mensajes(payload)
+    mensajes = extraer_mensajes(payload, numero_id)
     nuevos = 0
     for mensaje in mensajes:
         nuevos += int(await run_in_threadpool(cola.encolar, mensaje))
@@ -102,9 +102,12 @@ async def recibir_meta(
     request: Request, cola: Cola = Depends(obtener_cola)  # noqa: B008
 ) -> dict[str, int]:
     clave = _meta("META_CLAVE_APP")
+    numero_id = os.environ.get("META_NUMERO_ID", "").strip()
+    if not numero_id:
+        raise HTTPException(status_code=404)
     cuerpo = await _cuerpo(request)
     firma = request.headers.get("x-hub-signature-256", "")
     esperada = "sha256=" + hmac.new(clave.encode(), cuerpo, hashlib.sha256).hexdigest()
     if not hmac.compare_digest(firma.encode(), esperada.encode()):
         raise HTTPException(status_code=403)
-    return await _encolar(cuerpo, cola)
+    return await _encolar(cuerpo, cola, numero_id)
