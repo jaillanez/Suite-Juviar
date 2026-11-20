@@ -7,14 +7,23 @@ import { ErrorVisible, FormularioVentana as Formulario, Pestanas, Tabla, Vacio, 
 type Lectura = { dias_detectados?: number; fecha_desde?: string; fecha_hasta?: string; fecha_reintegro?: string; profesional?: string; mensaje?: string; motor?: string };
 type Confirmacion = "sin_pedir" | "esperando" | "corrigiendo" | "confirmado" | "no_coincide" | "sin_confirmar";
 type Estado = "PENDIENTE" | "EN_LEGAJO" | "ATENDIDO" | "DESCARTADO";
+type EstadoSalud = "" | "CARGADO" | "PENDIENTE";
 type Mensaje = Record<string, unknown> & {
   id: string; legajo: string; nombre: string; empresa: string; tipo: "certificado" | "epp"; texto: string; recibido_en: string;
   con_archivo: boolean; archivo_tipo: string; lectura: Lectura; lectura_error: string; confirmacion: Confirmacion; correccion: string;
   respondido_en: string | null; estado: Estado; resuelto_por: string; resuelto_en: string | null; nota: string;
   datos_confirmados: { dias?: number | null; desde?: string | null; hasta?: string | null; nombre_adjunto?: string };
+  salud: EstadoSalud;
 };
 type Recorrido = Record<string, unknown> & { id: number; sede: string; sede_nombre: string; nombre: string; activo: boolean; personas: number; actualizado_por: string };
 type Sede = { id: string; nombre: string };
+type Persona = Record<string, unknown> & { telefono: string; legajo: string; nombre: string; empresa: string; recorrido_id: number | null; recorrido: string | null; recorrido_sede_nombre: string };
+type Confirmados = { dias?: number | null; desde?: string | null; hasta?: string | null; profesional?: string; nombre_adjunto?: string };
+type PendienteSalud = Record<string, unknown> & {
+  id: string; legajo: string; nombre: string; empresa: string; recibido_en: string; datos_confirmados: Confirmados; tipo_accidente: string;
+  diagnostico_codigo: string; diagnostico_texto: string; resumen: string; motivo: string; pasado_por: string; pasado_en: string | null;
+};
+type Diagnostico = { codigo: string; descripcion: string; padre_codigo?: string | null };
 
 const TIPOS: Record<Mensaje["tipo"], string> = { certificado: "Certificado médico", epp: "Pedido de EPP" };
 const ESTADOS: Record<Estado, string> = { PENDIENTE: "Pendiente de revisión", EN_LEGAJO: "Pasado al legajo", ATENDIDO: "Atendido", DESCARTADO: "Descartado" };
@@ -22,6 +31,9 @@ const CONFIRMACIONES: Record<Confirmacion, string> = {
   sin_pedir: "No se le pidió (no se pudo leer)", esperando: "Esperando su respuesta", corrigiendo: "Dijo que no; falta que escriba la corrección",
   confirmado: "Confirmó que es correcto", no_coincide: "Dijo que no coincide", sin_confirmar: "Sin confirmar",
 };
+/** RRHH ve si el certificado ya está en Salud, nunca el diagnóstico. */
+const estado = (m: Mensaje) => m.estado !== "EN_LEGAJO" ? ESTADOS[m.estado]
+  : m.salud === "CARGADO" ? "En legajo y en Salud" : m.salud === "PENDIENTE" ? "En legajo, pendiente de Salud" : ESTADOS[m.estado];
 const fecha = (v: string | null | undefined) => v ? new Date(v).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" }) : "—";
 const dia = (v: string | null | undefined) => v ? new Date(`${v}T12:00:00`).toLocaleDateString("es-AR") : "—";
 const mensaje = (x: unknown, defecto: string) => x instanceof Error ? x.message : defecto;
@@ -37,7 +49,7 @@ function VentanaMensaje({ m, cerrar, cambio }: { m: Mensaje; cerrar: () => void;
       <div><dt>Empleado</dt><dd>{m.nombre}</dd></div>
       <div><dt>Legajo</dt><dd>{m.legajo} · {m.empresa}</dd></div>
       <div><dt>Llegó</dt><dd>{fecha(m.recibido_en)}</dd></div>
-      <div><dt>Estado</dt><dd>{ESTADOS[m.estado]}{m.resuelto_por ? ` · ${m.resuelto_por} · ${fecha(m.resuelto_en)}` : ""}</dd></div>
+      <div><dt>Estado</dt><dd>{estado(m)}{m.resuelto_por ? ` · ${m.resuelto_por} · ${fecha(m.resuelto_en)}` : ""}</dd></div>
       <div><dt>Texto</dt><dd>{m.texto || "—"}</dd></div>
       <div><dt>Archivo</dt><dd>{m.con_archivo ? <button onClick={() => void abrirArchivo(`rrhh-whatsapp/mensajes/${m.id}/archivo`)}>Ver archivo</button> : "—"}</dd></div>
       {m.tipo === "certificado" && <>
@@ -61,7 +73,7 @@ function VentanaMensaje({ m, cerrar, cambio }: { m: Mensaje; cerrar: () => void;
         profesional: texto("profesional"), nota: texto("nota") }) });
       listo();
     }}>
-      <p className="ayuda">Los datos vienen de la lectura automática del certificado: revisalos contra el archivo y corregí lo que haga falta. {m.confirmacion === "no_coincide" && m.correccion ? `El empleado avisó: «${m.correccion}».` : ""}</p>
+      <p className="ayuda">Los datos vienen de la lectura automática del certificado: revisalos contra el archivo y corregí lo que haga falta. El certificado va también a Salud: si se leyó un diagnóstico del catálogo médico se carga solo; si no, lo completa el servicio médico. El diagnóstico no se muestra acá. {m.confirmacion === "no_coincide" && m.correccion ? `El empleado avisó: «${m.correccion}».` : ""}</p>
       <label>Nombre del adjunto<input name="nombre" maxLength={120} defaultValue={`Certificado médico ${new Date(m.recibido_en).toLocaleDateString("es-AR").replaceAll("/", "-")}`} /></label>
       <label>Días<input name="dias" type="number" min={1} max={365} defaultValue={l.dias_detectados ?? ""} /></label>
       <label>Desde<input name="desde" type="date" defaultValue={l.fecha_desde ?? ""} /></label>
@@ -103,7 +115,7 @@ function Bandeja() {
         { clave: "texto", titulo: "Texto", valor: m => m.texto || "—" },
         { clave: "con_archivo", titulo: "Archivo", valor: m => m.con_archivo ? "Sí" : "—" },
         { clave: "confirmacion", titulo: "Respuesta del empleado", valor: m => confirmacion(m) },
-        { clave: "estado", titulo: "Estado", valor: m => ESTADOS[m.estado] },
+        { clave: "estado", titulo: "Estado", valor: m => estado(m) },
       ]} />}
     {abierto && <VentanaMensaje m={abierto} cerrar={() => setAbierto(null)} cambio={() => void cargar()} />}
   </section>;
@@ -119,7 +131,7 @@ function Recorridos() {
   useEffect(() => { void cargar(); api<Sede[]>("rrhh-whatsapp/sedes").then(setSedes).catch(() => setSedes([])); }, []);
   const actual = editando === "nuevo" ? null : editando;
   return <section className="tarjeta">
-    <div className="titulo-fila"><div><h2>Recorridos del micro</h2><p className="ayuda">Cuando llega el micro, la guardia de la bodega toca «Llegó el micro» y elige el recorrido: el bot avisa por WhatsApp al personal de ese recorrido. A cada persona se le asigna su recorrido en «Personal en el bot».</p></div>
+    <div className="titulo-fila"><div><h2>Recorridos del micro</h2><p className="ayuda">Cuando llega el micro, la guardia de la bodega toca «Llegó el micro» y elige el recorrido: el bot avisa por WhatsApp al personal de ese recorrido. A cada persona se le asigna su recorrido abajo, en «Personal y su recorrido».</p></div>
       <button className="primario" onClick={() => setEditando("nuevo")}>Nuevo recorrido</button></div>
     {error && <ErrorVisible mensaje={error} />}
     {!lista ? <p className="ayuda">Cargando…</p> : !lista.length ? <Vacio>Todavía no hay recorridos.</Vacio> :
@@ -141,11 +153,91 @@ function Recorridos() {
   </section>;
 }
 
+/** RRHH le asigna a cada empleado su recorrido. El alta y la baja siguen en «Personal en el bot». */
+function PersonalRecorridos() {
+  const [lista, setLista] = useState<Persona[] | null>(null); const [recorridos, setRecorridos] = useState<Recorrido[]>([]);
+  const [error, setError] = useState(""); const [editando, setEditando] = useState<Persona | null>(null);
+  async function cargar() {
+    try { const [personas, todos] = await Promise.all([api<Persona[]>("rrhh-whatsapp/personal"), api<Recorrido[]>("rrhh-whatsapp/recorridos")]); setLista(personas); setRecorridos(todos.filter(r => r.activo)); setError(""); }
+    catch (x) { setLista([]); setError(mensaje(x, "No se pudo leer el personal del bot.")); }
+  }
+  useEffect(() => { void cargar(); }, []);
+  return <section className="tarjeta">
+    <h2>Personal y su recorrido</h2>
+    <p className="ayuda">Personal activo en el bot. Tocá una persona para elegir su recorrido del micro. Para dar de alta o de baja a alguien, pedíselo al administrador («Personal en el bot»).</p>
+    {error && <ErrorVisible mensaje={error} />}
+    {!lista ? <p className="ayuda">Cargando…</p> : !lista.length ? <Vacio>No hay personal activo en el bot.</Vacio> :
+      <Tabla etiqueta="Personal y su recorrido" filas={lista} porPagina={15} alElegir={setEditando} columnas={[
+        { clave: "nombre", titulo: "Empleado", valor: p => `${p.nombre} (${p.legajo} · ${p.empresa})` },
+        { clave: "recorrido", titulo: "Recorrido del micro", valor: p => p.recorrido ? `${p.recorrido_sede_nombre} · ${p.recorrido}` : "Sin recorrido" },
+      ]} />}
+    {editando && <Formulario titulo={`Recorrido de ${editando.nombre}`} boton="Guardar recorrido" cerrar={() => setEditando(null)} enviar={async f => {
+      const elegido = String(f.get("recorrido") ?? "");
+      await api(`rrhh-whatsapp/personal/${editando.telefono}/recorrido`, { method: "PUT", body: JSON.stringify({ recorrido_id: elegido ? Number(elegido) : null }) });
+      setEditando(null); await cargar();
+    }}>
+      <label>Recorrido del micro<select name="recorrido" defaultValue={editando.recorrido_id ? String(editando.recorrido_id) : ""}>
+        <option value="">Sin recorrido</option>
+        {recorridos.map(r => <option key={r.id} value={r.id}>{r.sede_nombre} · {r.nombre}</option>)}
+      </select></label>
+      <p className="ayuda">Cuando la guardia avisa que llegó el micro de este recorrido, el bot le manda el aviso por WhatsApp.</p>
+    </Formulario>}
+  </section>;
+}
+
+/** Servicio médico: certificados que RRHH pasó al legajo y no entraron solos a Salud (falta el diagnóstico). */
+export function PendientesSalud({ catalogo, cargado }: { catalogo: Diagnostico[]; cargado?: () => void }) {
+  const [lista, setLista] = useState<PendienteSalud[] | null>(null); const [error, setError] = useState("");
+  const [abierto, setAbierto] = useState<PendienteSalud | null>(null);
+  const diagnosticos = catalogo.filter(d => d.padre_codigo);
+  async function cargar() {
+    try { setLista(await api<PendienteSalud[]>("rrhh-whatsapp/salud/pendientes")); setError(""); }
+    catch (x) { setLista([]); setError(mensaje(x, "No se pudieron leer los certificados pendientes.")); }
+  }
+  useEffect(() => { void cargar(); }, []);
+  const d = abierto?.datos_confirmados;
+  const sugerido = abierto ? diagnosticos.find(x => x.codigo === abierto.diagnostico_codigo)?.codigo ?? "" : "";
+  return <section className="tarjeta">
+    <h2>Certificados que llegaron por WhatsApp</h2>
+    <p className="ayuda">RRHH ya los pasó al legajo con los días, las fechas y el profesional. No entraron solos a Salud porque no se leyó un diagnóstico del catálogo (o falta algún dato): elegí el diagnóstico y cargalo. RRHH no ve el diagnóstico.</p>
+    {error && <ErrorVisible mensaje={error} />}
+    {!lista ? <p className="ayuda">Cargando…</p> : !lista.length ? <Vacio>No hay certificados pendientes.</Vacio> :
+      <Tabla etiqueta="Certificados pendientes de Salud" filas={lista} alElegir={setAbierto} columnas={[
+        { clave: "recibido_en", titulo: "Llegó", valor: p => fecha(p.recibido_en) },
+        { clave: "nombre", titulo: "Empleado", valor: p => `${p.nombre} (${p.legajo} · ${p.empresa})` },
+        { clave: "datos_confirmados", titulo: "Reposo", valor: p => `${p.datos_confirmados.dias ? `${p.datos_confirmados.dias} días` : "—"} · ${dia(p.datos_confirmados.desde)} a ${dia(p.datos_confirmados.hasta)}` },
+        { clave: "motivo", titulo: "Por qué quedó pendiente" },
+      ]} />}
+    {abierto && d && <Formulario titulo={`Cargar en Salud · ${abierto.nombre}`} boton="Cargar en Salud" tamano="ancha" cerrar={() => setAbierto(null)} enviar={async f => {
+      const texto = (k: string) => String(f.get(k) ?? "");
+      await api(`rrhh-whatsapp/salud/pendientes/${abierto.id}/cargar`, { method: "POST", body: JSON.stringify({
+        diagnostico_codigo: texto("diagnostico"), desde: texto("desde") || null, hasta: texto("hasta") || null,
+        dias: f.get("dias") ? Number(f.get("dias")) : null, profesional: texto("profesional"), resumen: texto("resumen"), tipo_accidente: texto("tipo_accidente") }) });
+      setAbierto(null); await cargar(); cargado?.();
+    }}>
+      <dl className="ficha">
+        <div><dt>Legajo</dt><dd>{abierto.legajo} · {abierto.empresa}</dd></div>
+        <div><dt>Pasado al legajo</dt><dd>{abierto.pasado_por} · {fecha(abierto.pasado_en)}</dd></div>
+        <div><dt>Archivo</dt><dd><button type="button" onClick={() => void abrirArchivo(`rrhh-whatsapp/salud/pendientes/${abierto.id}/archivo`)}>Ver certificado</button></dd></div>
+        <div><dt>Diagnóstico leído</dt><dd>{[abierto.diagnostico_codigo, abierto.diagnostico_texto].filter(Boolean).join(" · ") || "No se leyó"}</dd></div>
+        <div><dt>Por qué quedó pendiente</dt><dd>{abierto.motivo || "—"}</dd></div>
+      </dl>
+      <label>Diagnóstico<select name="diagnostico" required defaultValue={sugerido}><option value="" disabled>Elegí del catálogo</option>{diagnosticos.map(x => <option key={x.codigo} value={x.codigo}>{x.descripcion} · {x.codigo}</option>)}</select></label>
+      <label>Días<input name="dias" type="number" min={1} max={365} defaultValue={d.dias ?? ""} /></label>
+      <label>Desde<input name="desde" type="date" defaultValue={d.desde ?? ""} /></label>
+      <label>Hasta<input name="hasta" type="date" defaultValue={d.hasta ?? ""} /></label>
+      <label>Profesional<input name="profesional" maxLength={120} defaultValue={d.profesional ?? ""} /></label>
+      <label>Tipo de accidente<select name="tipo_accidente" defaultValue={abierto.tipo_accidente || "NO_INFORMADO"}>{["NO_INFORMADO", "NO_ES_ACCIDENTE", "ACCIDENTE_LABORAL", "IN_ITINERE", "ACCIDENTE_A_REVISAR"].map(t => <option key={t} value={t}>{t.replaceAll("_", " ").toLowerCase()}</option>)}</select></label>
+      <label>Resumen<input name="resumen" maxLength={500} defaultValue={abierto.resumen} /></label>
+    </Formulario>}
+  </section>;
+}
+
 /** Lo que llega por WhatsApp para RRHH y los recorridos del micro del personal. */
 export function RrhhWhatsappGestion() {
   const [vista, setVista] = useState<"bandeja" | "recorridos">("bandeja");
   return <>
     <Pestanas opciones={[["bandeja", "Bandeja"], ["recorridos", "Recorridos del micro"]] as const} activa={vista} cambiar={setVista} />
-    {vista === "bandeja" ? <Bandeja /> : <Recorridos />}
+    {vista === "bandeja" ? <Bandeja /> : <><Recorridos /><PersonalRecorridos /></>}
   </>;
 }

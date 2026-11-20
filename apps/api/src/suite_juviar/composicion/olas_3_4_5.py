@@ -151,6 +151,21 @@ def construir_routers(rrhh):
     }
 
 
+class SaludParaBandeja:
+    """La bandeja de RRHH carga en Salud sin ver el catálogo ni los diagnósticos."""
+
+    def __init__(self, salud: GestionarSalud) -> None:
+        self._salud = salud
+
+    def cargar(self, legajo, diagnostico_codigo, desde, hasta, dias, profesional, nombre_adjunto, contenido,
+               resumen, tipo_accidente) -> str:
+        return self._salud.cargar(legajo, diagnostico_codigo, desde, hasta, dias, profesional, nombre_adjunto,
+                                  contenido, resumen, tipo_accidente).id
+
+    def auditar(self, actor: str, legajo: str | None, accion: str) -> None:
+        self._salud.auditar(actor, legajo, accion)
+
+
 def construir_bandeja_rrhh(entorno: str, ruta_modulos: str, clave_adjuntos: bytes, dsn_fila: str,
                            legajo: GestionarLegajo, salud: GestionarSalud) -> BandejaRRHH:
     """Certificados y pedidos de EPP del personal, CV por WhatsApp y recorridos del micro (infra/042)."""
@@ -176,6 +191,7 @@ def construir_bandeja_rrhh(entorno: str, ruta_modulos: str, clave_adjuntos: byte
         lambda cv: cvs.ejecutar(cv.telefono, cv.nombre_archivo, cv.contenido, cv.recibido_en,
                                 f"{cv.telefono}:{cv.id}:{cv.recibido_en.isoformat()}"),
         {sede: NOMBRES_SEDES.get(sede, sede.replace("-", " ").title()) for sede in sedes_fila()},
+        salud=SaludParaBandeja(salud),
     )
 
 

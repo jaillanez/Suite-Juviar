@@ -28,9 +28,24 @@ se ve empleado (legajo, nombre y empresa salen del teléfono), tipo, texto, arch
 - Certificado: Gestión lo lee con el mismo lector de Salud (`analizar_certificado`; la IA externa sólo
   si está permitida igual que en Salud) y deja días, fechas y profesional **precargados** para que
   RRHH los confirme o corrija. «Pasar al legajo» guarda el archivo como adjunto del legajo del
-  empleado. El diagnóstico que pueda leer el lector no se muestra (queda para Salud).
+  empleado **y lo carga en Salud** (ver abajo).
 - Pedido de EPP: «Marcar atendido» con una nota (en EPP no hay un pedido de entrega al que enlazarlo).
 - Cualquiera: «Descartar» con motivo. Todo deja quién y cuándo.
+
+**El certificado en Salud.** El diagnóstico es secreto médico: RRHH nunca lo ve (ni en la bandeja ni
+en las respuestas de la API). Lo que leyó el lector de diagnóstico y resumen se guarda aparte, cifrado
+con el resto de la bandeja, y sólo lo ve el perfil médico.
+
+- Al pasar al legajo, si se leyó un diagnóstico que está en el catálogo de Salud y hay fechas, días y
+  profesional (los que confirmó RRHH; sin días, salen de las fechas), el certificado se carga solo en
+  Salud con el mismo archivo. En la bandeja RRHH ve «En legajo y en Salud».
+- Si falta el diagnóstico (o no es del catálogo, o falta un dato, o Salud no responde), queda «En
+  legajo, pendiente de Salud». El servicio médico lo ve en Salud → «Por WhatsApp» (permisos
+  `salud.diagnostico.leer` y `salud.certificado.gestionar`): el archivo, los datos que confirmó RRHH,
+  el diagnóstico leído si hubo y por qué quedó pendiente. Elige el diagnóstico del catálogo (puede
+  corregir fechas, días o profesional) y lo carga.
+- Queda en la bitácora de Salud: la carga automática (con el usuario de RRHH que la disparó), la
+  consulta de los pendientes, cada vez que se abre el archivo y la carga del médico.
 
 **Confirmación del empleado**: después de leer el certificado, el bot le manda al empleado los días y
 las fechas leídos y le pregunta «1 = Sí, es correcto / 2 = No». Si contesta 2, le pide que escriba lo
@@ -40,8 +55,10 @@ a las 24 horas (después queda «sin confirmar» y una respuesta vieja no se eng
 
 ## Aviso del micro de personal
 
-En Gestión se cargan los **recorridos** (bodega, nombre, activo) y en «Personal en el bot» se le
-asigna a cada empleado el suyo. La guardia, en su consola, toca **«Llegó el micro»** y elige el
+En Gestión → «WhatsApp del personal» → «Recorridos del micro», RRHH carga los **recorridos** (bodega,
+nombre, activo) y en «Personal y su recorrido» le asigna a cada empleado el suyo (permiso
+`rrhh.micro.gestionar`). RRHH sólo cambia el recorrido: el alta, la baja y el tipo del personal
+siguen en «Personal en el bot» (Superadministrador), que también puede asignarlo. La guardia, en su consola, toca **«Llegó el micro»** y elige el
 recorrido: el bot avisa por WhatsApp al personal activo de ese recorrido. No se acepta otro aviso del
 mismo recorrido dentro de 5 minutos (doble toque). Un aviso que no salió en 30 minutos ya no se manda.
 

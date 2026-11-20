@@ -13,10 +13,11 @@ from ..domain.modelos import (
     EXTENSIONES,
     CVEntrante,
     EstadoMensaje,
+    EstadoSalud,
     MensajeRRHH,
     TipoMensaje,
 )
-from ..domain.puertos import PuertaDMZ, RepositorioBandeja
+from ..domain.puertos import DestinoSalud, PuertaDMZ, RepositorioBandeja
 
 _registro = logging.getLogger(__name__)
 
@@ -24,6 +25,8 @@ _registro = logging.getLogger(__name__)
 # traer el diagnóstico: quedan sólo en Salud, con su propio permiso.
 CAMPOS_LECTURA = ("dias_detectados", "fecha_desde", "fecha_hasta", "fecha_reintegro", "profesional",
                   "tipo_accidente", "paciente_nombre", "paciente_dni", "motor", "mensaje")
+# Lo que se guarda aparte, sólo para Salud (perfil médico).
+CAMPOS_SALUD = ("diagnostico_codigo", "diagnostico_texto", "resumen")
 SIN_LECTURA = "No pudimos leer los datos de tu certificado médico. RRHH lo va a revisar."
 
 
@@ -57,6 +60,26 @@ def limpiar_lectura(lectura: dict[str, Any]) -> dict[str, Any]:
     return {clave: valor for clave, valor in datos.items() if valor is not None}
 
 
+def lectura_para_salud(lectura: dict[str, Any]) -> dict[str, str]:
+    datos = {clave: str(lectura.get(clave) or "").strip()[:500] for clave in CAMPOS_SALUD}
+    datos["diagnostico_codigo"] = datos["diagnostico_codigo"].upper()[:50]
+    return {clave: valor for clave, valor in datos.items() if valor}
+
+
+def _datos_certificado(datos: dict[str, Any]) -> tuple[date | None, date | None, int | None]:
+    """Fechas y días de un certificado, validados entre sí. Sin días, salen de las fechas."""
+    desde, hasta, dias = _fecha(datos.get("desde")), _fecha(datos.get("hasta")), datos.get("dias")
+    if desde and hasta and hasta < desde:
+        raise ValueError("La fecha hasta no puede ser anterior a la fecha desde.")
+    if dias is not None and _dias(dias) is None:
+        raise ValueError("Los días tienen que ser entre 1 y 365.")
+    if desde and hasta and dias is not None and int(dias) != (hasta - desde).days + 1:
+        raise ValueError(f"Los días deben coincidir con las fechas: {(hasta - desde).days + 1}.")
+    if dias is None and desde and hasta:
+        dias = (hasta - desde).days + 1
+    return desde, hasta, _dias(dias) if dias is not None else None
+
+
 def texto_confirmacion(lectura: dict[str, Any] | None) -> tuple[str, bool]:
     """Lo que se le manda al empleado: los días y las fechas que se leyeron, para que confirme.
     Sin ningún dato leído no se pide confirmación."""
@@ -86,6 +109,7 @@ class BandejaRRHH:
         incorporar_cv: Callable[[CVEntrante], bool],
         sedes: dict[str, str],
         reloj: Callable[[], datetime] = _ahora,
+        salud: DestinoSalud | None = None,
     ) -> None:
         self.repo = repo
         self.puerta = puerta
@@ -94,6 +118,7 @@ class BandejaRRHH:
         self._incorporar_cv = incorporar_cv
         self.sedes = sedes
         self._reloj = reloj
+        self._salud = salud
         self._bloqueo = RLock()
 
     # --- Sincronización con la DMZ -----------------------------------------
@@ -135,11 +160,11 @@ class BandejaRRHH:
         assert mensaje.archivo is not None
         nombre = f"certificado-{mensaje.id}{EXTENSIONES[mensaje.archivo_tipo]}"
         try:
-            lectura = limpiar_lectura(self._leer(nombre, mensaje.archivo, mensaje.legajo) or {})
+            cruda = self._leer(nombre, mensaje.archivo, mensaje.legajo) or {}
         except Exception as exc:  # noqa: BLE001 - un lector caído no frena la bandeja
             _registro.warning("No se pudo leer el certificado %s: %s", mensaje.id, exc.__class__.__name__)
             return replace(mensaje, lectura={}, lectura_error="No se pudo leer el certificado.")
-        return replace(mensaje, lectura=lectura)
+        return replace(mensaje, lectura=limpiar_lectura(cruda), lectura_salud=lectura_para_salud(cruda))
 
     def _avisar_pendientes(self) -> None:
         """Le manda al empleado lo que se leyó (o que RRHH lo revisa). Si la base no responde, se
@@ -206,6 +231,8 @@ class BandejaRRHH:
             "respondido_en": m.respondido_en, "estado": m.estado.value, "resuelto_por": m.resuelto_por,
             "resuelto_en": m.resuelto_en, "nota": m.nota, "adjunto_id": m.adjunto_id,
             "datos_confirmados": m.datos_confirmados,
+            # De Salud, RRHH sólo ve si quedó cargado o pendiente; nunca el diagnóstico ni el motivo.
+            "salud": m.salud.value,
         }
 
     def listar(self, estado: str | None = None) -> list[dict[str, Any]]:
@@ -227,20 +254,14 @@ class BandejaRRHH:
             mensaje = self._pendiente(mensaje_id)
             if mensaje.tipo is not TipoMensaje.CERTIFICADO or mensaje.archivo is None:
                 raise ValueError("Sólo un certificado con su archivo pasa al legajo.")
-            desde, hasta, dias = _fecha(datos.get("desde")), _fecha(datos.get("hasta")), datos.get("dias")
-            if desde and hasta and hasta < desde:
-                raise ValueError("La fecha hasta no puede ser anterior a la fecha desde.")
-            if dias is not None and _dias(dias) is None:
-                raise ValueError("Los días tienen que ser entre 1 y 365.")
-            if desde and hasta and dias is not None and int(dias) != (hasta - desde).days + 1:
-                raise ValueError(f"Los días deben coincidir con las fechas: {(hasta - desde).days + 1}.")
+            desde, hasta, dias = _datos_certificado(datos)
             nombre = (str(datos.get("nombre") or "").strip()
                       or f"Certificado médico {mensaje.recibido_en:%Y-%m-%d}")[:120]
             if not nombre.lower().endswith(EXTENSIONES[mensaje.archivo_tipo]):
                 nombre += EXTENSIONES[mensaje.archivo_tipo]
             adjunto_id = self._adjuntar(mensaje.legajo, nombre, mensaje.archivo, actor)
             confirmados = {
-                "dias": _dias(dias) if dias is not None else None,
+                "dias": dias,
                 "desde": desde.isoformat() if desde else None, "hasta": hasta.isoformat() if hasta else None,
                 "profesional": str(datos.get("profesional") or "").strip()[:120],
                 "nombre_adjunto": nombre,
@@ -249,7 +270,104 @@ class BandejaRRHH:
                                adjunto_id=adjunto_id, datos_confirmados=confirmados,
                                nota=str(datos.get("nota") or "").strip()[:300])
             self.repo.guardar(resuelto)
+            # El legajo ya tiene el archivo; ahora Salud. Si no se puede solo, lo completa el médico.
+            resuelto = self._cargar_en_salud(resuelto, resuelto.lectura_salud.get("diagnostico_codigo", ""),
+                                             confirmados, actor, automatico=True)
+            self.repo.guardar(resuelto)
             return resuelto
+
+    def _cargar_en_salud(self, mensaje: MensajeRRHH, diagnostico: str, datos: dict[str, Any], actor: str,
+                         automatico: bool) -> MensajeRRHH:
+        """Carga el certificado en Salud. Automático (lo dispara RRHH): si falta algo o Salud lo
+        rechaza, queda pendiente para el perfil médico. A mano (el médico): el error se informa."""
+        assert mensaje.archivo is not None
+        desde, hasta, dias = _fecha(datos.get("desde")), _fecha(datos.get("hasta")), _dias(datos.get("dias"))
+        profesional = str(datos.get("profesional") or "").strip()
+        faltan = [nombre for nombre, valor in (("diagnóstico", diagnostico.strip()), ("fecha desde", desde),
+                                               ("fecha hasta", hasta), ("días", dias),
+                                               ("profesional", profesional)) if not valor]
+        pendiente = replace(mensaje, salud=EstadoSalud.PENDIENTE)
+        if self._salud is None:
+            if not automatico:
+                raise RuntimeError("Salud no está conectada.")
+            return replace(pendiente, salud_motivo="Salud no está conectada.")
+        if faltan:
+            if not automatico:
+                raise ValueError(f"Falta: {', '.join(faltan)}.")
+            return replace(pendiente, salud_motivo=f"Falta: {', '.join(faltan)}.")
+        assert desde and hasta and dias
+        resumen = str(datos.get("resumen") or mensaje.lectura_salud.get("resumen") or "")[:500]
+        tipo_accidente = str(datos.get("tipo_accidente") or (mensaje.lectura or {}).get("tipo_accidente")
+                             or "NO_INFORMADO")
+        try:
+            certificado_id = self._salud.cargar(
+                mensaje.legajo, diagnostico.strip().upper(), desde, hasta, dias, profesional,
+                str(mensaje.datos_confirmados.get("nombre_adjunto") or f"certificado-{mensaje.id}"),
+                mensaje.archivo, resumen, tipo_accidente)
+        except ValueError as exc:
+            if not automatico:
+                raise
+            return replace(pendiente, salud_motivo=str(exc)[:300])
+        except Exception:  # el legajo ya quedó; Salud se completa a mano
+            if not automatico:
+                raise
+            _registro.warning("No se pudo cargar en Salud el certificado %s.", mensaje.id, exc_info=True)
+            return replace(pendiente, salud_motivo="Salud no respondió.")
+        self._salud.auditar(actor, mensaje.legajo, "CARGA_CERTIFICADO_WHATSAPP_AUTOMATICA" if automatico
+                            else "CARGA_CERTIFICADO_WHATSAPP")
+        return replace(mensaje, salud=EstadoSalud.CARGADO, salud_motivo="", salud_certificado_id=certificado_id,
+                       salud_por=actor, salud_en=self._reloj())
+
+    # --- Salud (perfil médico) -------------------------------------------------
+    def _pendiente_salud(self, mensaje_id: str) -> MensajeRRHH:
+        mensaje = self.obtener(mensaje_id)
+        if mensaje.salud is not EstadoSalud.PENDIENTE or mensaje.archivo is None:
+            raise LookupError("Ese certificado no está pendiente de Salud.")
+        return mensaje
+
+    def vista_salud(self, m: MensajeRRHH) -> dict[str, Any]:
+        """Lo que ve el servicio médico: lo que confirmó RRHH y el diagnóstico leído, si hubo."""
+        return {
+            "id": m.id, "legajo": m.legajo, "nombre": m.nombre, "empresa": m.empresa,
+            "recibido_en": m.recibido_en, "archivo_tipo": m.archivo_tipo,
+            "datos_confirmados": m.datos_confirmados,
+            "tipo_accidente": (m.lectura or {}).get("tipo_accidente", "NO_INFORMADO"),
+            "diagnostico_codigo": m.lectura_salud.get("diagnostico_codigo", ""),
+            "diagnostico_texto": m.lectura_salud.get("diagnostico_texto", ""),
+            "resumen": m.lectura_salud.get("resumen", ""), "motivo": m.salud_motivo,
+            "pasado_por": m.resuelto_por, "pasado_en": m.resuelto_en, "salud": m.salud.value,
+            "salud_por": m.salud_por, "salud_en": m.salud_en,
+        }
+
+    def pendientes_salud(self, actor: str) -> list[dict[str, Any]]:
+        filas = [m for m in self.repo.listar() if m.salud is EstadoSalud.PENDIENTE]
+        if self._salud is not None:
+            self._salud.auditar(actor, None, "CONSULTA_PENDIENTES_WHATSAPP")
+        return [self.vista_salud(m) for m in sorted(filas, key=lambda m: m.recibido_en)]
+
+    def archivo_salud(self, mensaje_id: str, actor: str) -> MensajeRRHH:
+        mensaje = self._pendiente_salud(mensaje_id)
+        if self._salud is not None:
+            self._salud.auditar(actor, mensaje.legajo, "CONSULTA_ADJUNTO_WHATSAPP")
+        return mensaje
+
+    def completar_salud(self, mensaje_id: str, datos: dict[str, Any], actor: str) -> MensajeRRHH:
+        """El médico elige el diagnóstico del catálogo (y corrige fechas o profesional si hace falta)."""
+        with self._bloqueo:
+            mensaje = self._pendiente_salud(mensaje_id)
+            confirmados = mensaje.datos_confirmados
+            elegidos = {clave: datos.get(clave) if datos.get(clave) not in (None, "") else confirmados.get(clave)
+                        for clave in ("desde", "hasta", "dias", "profesional")}
+            if datos.get("desde") or datos.get("hasta"):
+                # Si el médico corrige las fechas, los días salen de las fechas nuevas.
+                elegidos["dias"] = datos.get("dias")
+            desde, hasta, dias = _datos_certificado(elegidos)
+            elegidos.update(desde=desde, hasta=hasta, dias=dias, resumen=datos.get("resumen"),
+                            tipo_accidente=datos.get("tipo_accidente"))
+            cargado = self._cargar_en_salud(mensaje, str(datos.get("diagnostico_codigo") or ""), elegidos, actor,
+                                            automatico=False)
+            self.repo.guardar(cargado)
+            return cargado
 
     def atender(self, mensaje_id: str, nota: str, actor: str) -> MensajeRRHH:
         """Pedido de EPP resuelto (no hay en EPP un pedido de entrega al que enlazarlo: queda la nota)."""
@@ -284,3 +402,12 @@ class BandejaRRHH:
         if not 2 <= len(nombre) <= 80:
             raise ValueError("El nombre del recorrido tiene que tener entre 2 y 80 letras.")
         return self.puerta.guardar_recorrido(recorrido_id, sede, nombre, activo, actor)
+
+    def personal(self) -> list[dict[str, Any]]:
+        return [{**p, "recorrido_sede_nombre": self.sedes.get(p.get("recorrido_sede") or "",
+                                                              p.get("recorrido_sede") or "")}
+                for p in self.puerta.personal()]
+
+    def asignar_recorrido(self, telefono: str, recorrido_id: int | None, actor: str) -> dict[str, Any]:
+        """RRHH sólo cambia el recorrido; el alta, la baja y los datos siguen en «Personal en el bot»."""
+        return self.puerta.asignar_recorrido(telefono, recorrido_id, actor)

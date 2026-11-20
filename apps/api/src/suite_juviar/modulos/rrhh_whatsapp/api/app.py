@@ -1,4 +1,8 @@
-"""Bandeja de RRHH (certificados médicos y pedidos de EPP por WhatsApp) y recorridos del micro."""
+"""Bandeja de RRHH (certificados médicos y pedidos de EPP por WhatsApp) y recorridos del micro.
+
+Los certificados que no pudieron entrar solos a Salud los completa el servicio médico en
+`/salud/pendientes`, con los permisos de Salud: RRHH no ve ahí ni el diagnóstico ni el motivo.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +10,7 @@ import logging
 import threading
 from datetime import date
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Path, Response
 from pydantic import BaseModel, Field
 
 from suite_juviar.plataforma.identidad.api.dependencias import (
@@ -38,6 +42,20 @@ class MotivoEntrada(BaseModel):
     motivo: str = Field(min_length=1, max_length=300)
 
 
+class SaludEntrada(BaseModel):
+    diagnostico_codigo: str = Field(min_length=1, max_length=50)
+    dias: int | None = Field(default=None, ge=1, le=365)
+    desde: date | None = None
+    hasta: date | None = None
+    profesional: str = Field(default="", max_length=120)
+    resumen: str = Field(default="", max_length=500)
+    tipo_accidente: str = Field(default="", max_length=30)
+
+
+class AsignacionEntrada(BaseModel):
+    recorrido_id: int | None = Field(default=None, ge=1)
+
+
 class RecorridoEntrada(BaseModel):
     sede: str = Field(max_length=30)
     nombre: str = Field(min_length=2, max_length=80)
@@ -51,6 +69,8 @@ def crear_router(servicio: BandejaRRHH, entorno: str = "prueba", sincronizar_cad
     app = APIRouter()
     bandeja = [Depends(exigir_permiso("rrhh.bandeja.gestionar"))]
     micro = [Depends(exigir_permiso("rrhh.micro.gestionar"))]
+    # Secreto médico: sólo el perfil médico (lee diagnósticos y carga certificados).
+    salud = [Depends(exigir_permiso("salud.diagnostico.leer")), Depends(exigir_permiso("salud.certificado.gestionar"))]
 
     def hacer(funcion):
         try:
@@ -92,6 +112,44 @@ def crear_router(servicio: BandejaRRHH, entorno: str = "prueba", sincronizar_cad
     @app.post("/mensajes/{mensaje_id}/descartar", dependencies=bandeja)
     def descartar(mensaje_id: str, entrada: MotivoEntrada, sesion: SesionActual):
         return hacer(lambda: servicio.vista(servicio.descartar(mensaje_id, entrada.motivo, sesion.actor)))
+
+    @app.get("/salud/pendientes", dependencies=salud)
+    def pendientes_salud(sesion: SesionActual):
+        return servicio.pendientes_salud(sesion.actor)
+
+    @app.get("/salud/pendientes/{mensaje_id}/archivo", dependencies=salud)
+    def archivo_salud(mensaje_id: str, sesion: SesionActual):
+        mensaje = hacer(lambda: servicio.archivo_salud(mensaje_id, sesion.actor))
+        return Response(mensaje.archivo, media_type=mensaje.archivo_tipo,
+                        headers={"Content-Disposition": "inline", "X-Content-Type-Options": "nosniff",
+                                 "Cache-Control": "no-store"})
+
+    @app.post("/salud/pendientes/{mensaje_id}/cargar", dependencies=salud)
+    def completar_salud(mensaje_id: str, entrada: SaludEntrada, sesion: SesionActual):
+        try:
+            return hacer(lambda: servicio.vista_salud(
+                servicio.completar_salud(mensaje_id, entrada.model_dump(), sesion.actor)))
+        except RuntimeError as exc:
+            raise HTTPException(503, str(exc)) from exc
+
+    @app.get("/personal", dependencies=micro)
+    def personal():
+        try:
+            return servicio.personal()
+        except Exception as exc:
+            _registro.warning("No se pudo leer el personal del bot.", exc_info=True)
+            raise HTTPException(503, "No se pudo leer la base de la fila.") from exc
+
+    @app.put("/personal/{telefono}/recorrido", dependencies=micro)
+    def asignar_recorrido(entrada: AsignacionEntrada, sesion: SesionActual,
+                          telefono: str = Path(pattern=r"^\d{8,20}$")):
+        """Sólo el recorrido: el alta, la baja y los datos del personal siguen en «Personal en el bot»."""
+        try:
+            return servicio.asignar_recorrido(telefono, entrada.recorrido_id, sesion.actor)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(503, str(exc)) from exc
 
     @app.get("/sedes", dependencies=micro)
     def sedes():

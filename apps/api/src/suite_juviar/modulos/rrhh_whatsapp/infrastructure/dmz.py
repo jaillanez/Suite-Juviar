@@ -40,6 +40,12 @@ class PuertaSinConfigurar:
     def guardar_recorrido(self, recorrido_id, sede, nombre, activo, actor) -> dict[str, Any]:
         raise RuntimeError("Falta configurar la conexión con la base de la fila.")
 
+    def personal(self) -> list[dict[str, Any]]:
+        raise RuntimeError("Falta configurar la conexión con la base de la fila.")
+
+    def asignar_recorrido(self, telefono, recorrido_id, actor) -> dict[str, Any]:
+        raise RuntimeError("Falta configurar la conexión con la base de la fila.")
+
 
 class PuertaDMZ:
     def __init__(self, dsn: str) -> None:
@@ -101,3 +107,23 @@ class PuertaDMZ:
         except psycopg.errors.RaiseException as exc:
             raise ValueError(exc.diag.message_primary or "la base rechazó el recorrido") from exc
         return dict(fila)
+
+    def personal(self) -> list[dict[str, Any]]:
+        with self._conectar() as cn:
+            filas = cn.execute(
+                """SELECT p.telefono, p.legajo, p.nombre, p.empresa, p.recorrido_id,
+                          r.nombre AS recorrido, r.sede AS recorrido_sede
+                     FROM consulta.telefono_personal p
+                     LEFT JOIN fila.recorrido_micro r ON r.id = p.recorrido_id
+                    WHERE p.activo ORDER BY p.nombre""").fetchall()
+        return [dict(f) for f in filas]
+
+    def asignar_recorrido(self, telefono: str, recorrido_id: int | None, actor: str) -> dict[str, Any]:
+        # La función de la base sólo cambia el recorrido y lo deja en el historial del celular.
+        try:
+            with self._conectar() as cn:
+                fila = cn.execute("SELECT * FROM consulta.asignar_recorrido_personal(%s, %s, %s)",
+                                  (telefono, recorrido_id, actor)).fetchone()
+        except psycopg.errors.RaiseException as exc:
+            raise ValueError(exc.diag.message_primary or "la base rechazó el recorrido") from exc
+        return {"telefono": fila["telefono"], "recorrido_id": fila["recorrido_id"]}

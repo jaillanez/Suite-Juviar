@@ -203,3 +203,26 @@ def test_cada_rol_no_puede_lo_de_los_otros():
     with (psycopg.connect(_como("consulta_webhook"), autocommit=True) as cn,
           pytest.raises(psycopg.errors.InsufficientPrivilege)):
         cn.execute("SELECT fila.recibir_cv_whatsapp('5492649000003', 'cv.pdf', NULL, 'application/pdf')")
+
+
+def test_rrhh_asigna_el_recorrido_y_queda_en_el_historial():
+    puerta = PuertaDMZ(_como("gestion_tablero"))
+    rawson = puerta.guardar_recorrido(None, "chimbas", "Prueba Rawson", True, "rrhh")["id"]
+    inactivo = puerta.guardar_recorrido(None, "chimbas", "Prueba Vieja", False, "rrhh")["id"]
+    personal = {p["telefono"]: p for p in puerta.personal()}
+    assert personal[EMPLEADO]["recorrido_id"] is None and personal[EMPLEADO]["legajo"] == "9001"
+    assert puerta.asignar_recorrido(EMPLEADO, rawson, "rrhh-1") == {"telefono": EMPLEADO, "recorrido_id": rawson}
+    fila = {p["telefono"]: p for p in puerta.personal()}[EMPLEADO]
+    assert (fila["recorrido"], fila["recorrido_sede"]) == ("Prueba Rawson", "chimbas")
+    [(tipo, actor)] = _admin(
+        "SELECT tipo, actor FROM consulta.personal_evento WHERE telefono = %s ORDER BY id DESC LIMIT 1", EMPLEADO)
+    assert (tipo, actor) == ("cambio", "rrhh-1")
+    with pytest.raises(ValueError, match="inactivo"):
+        puerta.asignar_recorrido(EMPLEADO, inactivo, "rrhh-1")
+    with pytest.raises(ValueError, match="no está activo"):
+        puerta.asignar_recorrido(DESCONOCIDO, rawson, "rrhh-1")
+    puerta.asignar_recorrido(EMPLEADO, None, "rrhh-1")
+    assert {p["telefono"]: p for p in puerta.personal()}[EMPLEADO]["recorrido_id"] is None
+    # Con el rol de Gestión no se cambia nada más del personal por fuera de las funciones.
+    with _gestion() as cn, pytest.raises(psycopg.errors.InsufficientPrivilege):
+        cn.execute("UPDATE consulta.telefono_personal SET tipo = 'mando_medio' WHERE telefono = %s", (EMPLEADO,))
