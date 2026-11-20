@@ -4,6 +4,7 @@ import { FormEvent, PointerEvent, ReactNode, useCallback, useEffect, useRef, use
 import { Empresa, Perfil, perfiles } from "@/lib/acceso";
 import { api } from "@/lib/api";
 import { importeEscrito, prepararFoto } from "@/lib/foto-factura";
+import { LectorQrFactura } from "./lector-qr-factura";
 
 // Pantallas para el celular: una tarea por pantalla, botones grandes y palabras simples.
 // Las usa gente que no maneja tecnología, así que cada paso dice qué hacer y qué pasó.
@@ -414,6 +415,7 @@ function ControlarFactura({ volver }: { volver: () => void }) {
   const [resultado, setResultado] = useState<{ ya_cargada: boolean; factura: FacturaArca } | null>(null);
   const [elegir, setElegir] = useState<(DatosFactura & { nro_doc_receptor: string }) | null>(null);
   const [propuesta, setPropuesta] = useState<Propuesta | null>(null);
+  const [enVivo, setEnVivo] = useState(false);
   useEffect(() => { api<CatalogoArca>("controles-arca/catalogo").then(setCatalogo).catch(x => setError(mensaje(x, "No pudimos leer la configuración de los controles."))); }, []);
   useEffect(() => () => { if (foto) URL.revokeObjectURL(foto.vista); }, [foto]);
   function otra() { setFoto(null); setResultado(null); setElegir(null); setPropuesta(null); setError(""); }
@@ -439,6 +441,8 @@ function ControlarFactura({ volver }: { volver: () => void }) {
     catch (x) { setError(mensaje(x, "No se pudo leer la foto.")); setPropuesta({ datos: SIN_DATOS, motor: "ninguno", texto_detectado: false, mensaje: "Cargá los datos mirando la factura." }); }
     finally { setOcupado(""); }
   }
+  function leidaEnVivo(f: Foto) { setEnVivo(false); otra(); setFoto(f); void conQr(f); }
+  function camaraEnVivo() { otra(); setEnVivo(true); }
   async function elegida(archivo: File | undefined) {
     if (!archivo) return;
     otra(); setOcupado("Buscando el código QR…");
@@ -479,10 +483,13 @@ function ControlarFactura({ volver }: { volver: () => void }) {
       <span><strong>{c.nombre}</strong><em>{c.estado_nombre}</em>{c.detalle && <small>{c.detalle}</small>}</span>
     </li>; })}</ul>
     <p className="cel-pie">Los PDF de cada control y el control impositivo están en Gestión, en Controles ARCA.</p>
-    {camara}
-    <button className="cel-boton" onClick={() => entrada.current?.click()}>Otra factura</button>
+    <button className="cel-boton" onClick={camaraEnVivo}>Otra factura</button>
     <button className="cel-boton cel-secundario" onClick={volver}>Volver al inicio</button>
   </Pantalla>; }
+
+  if (enVivo) return <Pantalla titulo="Leer el QR de la factura" volver={() => setEnVivo(false)}>
+    <LectorQrFactura leida={leidaEnVivo} cancelar={() => setEnVivo(false)} />
+  </Pantalla>;
 
   if (ocupado) return <Pantalla titulo="Controlar una factura" volver={volver}>
     {foto && <img className="cel-foto" src={foto.vista} alt="Foto de la factura" />}
@@ -512,14 +519,16 @@ function ControlarFactura({ volver }: { volver: () => void }) {
       <button className="cel-boton">Confirmar y controlar</button>
     </form>
     {camara}
+    <button className="cel-boton cel-secundario" onClick={camaraEnVivo}>Probar leyendo el QR con la cámara</button>
     <button className="cel-boton cel-secundario" onClick={() => entrada.current?.click()}>Sacar otra foto</button>
   </Pantalla>; }
 
   return <Pantalla titulo="Controlar una factura" volver={volver}>
-    <p className="cel-texto">Sacale una foto a la factura del proveedor, de frente y con el código QR entero. Se controla sola en ARCA y queda guardada en Gestión con la foto.</p>
+    <p className="cel-texto">Apuntá la cámara al código QR de la factura del proveedor: se lee solo, se controla en ARCA y queda guardada en Gestión con la imagen.</p>
     {catalogo?.faltantes.map(f => <p key={f} className="cel-aviso">{f}</p>)}
     {error && <p className="cel-error" role="alert">{error}</p>}
     {camara}
-    <button className="cel-boton" onClick={() => entrada.current?.click()}>Sacar foto</button>
+    <button className="cel-boton" onClick={camaraEnVivo}>Leer el QR con la cámara</button>
+    <button className="cel-boton cel-secundario" onClick={() => entrada.current?.click()}>Sacar foto (factura sin QR)</button>
   </Pantalla>;
 }
