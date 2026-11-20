@@ -267,6 +267,7 @@ VERIFICACION = "v" * 32
 def cliente_meta(monkeypatch, cliente_webhook):
     monkeypatch.setenv("META_CLAVE_APP", CLAVE_APP)
     monkeypatch.setenv("META_TOKEN_VERIFICACION", VERIFICACION)
+    monkeypatch.setenv("META_NUMERO_ID", "111")
     return cliente_webhook
 
 
@@ -284,7 +285,7 @@ def test_meta_verifica_la_direccion(cliente_meta):
 
 
 def test_meta_encola_solo_con_firma_valida(cliente_meta):
-    cuerpo = json.dumps(payload(TEXTO)).encode()
+    cuerpo = json.dumps(payload_meta("111", TEXTO)).encode()
     assert cliente_meta.post("/webhook/meta", content=cuerpo).status_code == 403
     assert cliente_meta.post("/webhook/meta", content=cuerpo,
                              headers=firmado(cuerpo, "x" * 32)).status_code == 403
@@ -336,3 +337,16 @@ def test_meta_suscribe_la_cuenta():
         assert pedido.method == "POST" and pedido.url.path == "/v23.0/999/subscribed_apps"
         return httpx.Response(200, json={"success": True})
     assert cliente_graph(manejar).suscribir_cuenta() == {"success": True}
+
+
+def payload_meta(numero_id, *mensajes):
+    valor = {"messaging_product": "whatsapp", "metadata": {"phone_number_id": numero_id},
+             "messages": list(mensajes)}
+    return {"entry": [{"changes": [{"value": valor}]}]}
+
+
+def test_meta_ignora_mensajes_de_otro_numero(cliente_meta):
+    cuerpo = json.dumps(payload_meta("222", TEXTO)).encode()
+    respuesta = cliente_meta.post("/webhook/meta", content=cuerpo, headers=firmado(cuerpo))
+    assert respuesta.json() == {"recibidos": 0, "nuevos": 0}
+    assert cliente_meta.cola.recibidos == []

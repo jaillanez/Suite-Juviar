@@ -43,13 +43,18 @@ def _media_id(mensaje: dict) -> str | None:
     return valor if _MEDIA.fullmatch(valor) else None
 
 
-def extraer_mensajes(payload: object) -> list[MensajeEntrante]:
+def extraer_mensajes(payload: object, numero_id: str | None = None) -> list[MensajeEntrante]:
+    """Con numero_id, sólo los mensajes que llegaron a ese número (una app de Meta puede
+    tener varios números: los de otro sistema no entran al bot)."""
     if not isinstance(payload, dict):
         return []
     salida: list[MensajeEntrante] = []
     for entrada in payload.get("entry") or []:
         for cambio in (entrada or {}).get("changes") or []:
             valor = (cambio or {}).get("value") or {}
+            if numero_id is not None and str(
+                    (valor.get("metadata") or {}).get("phone_number_id") or "") != numero_id:
+                continue
             for mensaje in valor.get("messages") or []:
                 if not isinstance(mensaje, dict):
                     continue
