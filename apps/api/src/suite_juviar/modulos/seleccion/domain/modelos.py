@@ -12,6 +12,7 @@ DUENO_DATO = "RRHH"
 class OrigenCV(StrEnum):
     CARPETA_CHIMBAS = "CARPETA_CHIMBAS"
     CORREO = "CORREO"
+    WHATSAPP = "WHATSAPP"
 
 
 @dataclass(frozen=True, slots=True)

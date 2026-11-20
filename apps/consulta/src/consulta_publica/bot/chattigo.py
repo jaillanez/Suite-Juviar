@@ -129,7 +129,7 @@ class ClienteChattigo:
     ) -> str:
         return self._enviar_mensaje(cuerpo_documento(telefono, url, nombre, epigrafe))
 
-    def descargar_media(self, media_id: str) -> tuple[bytes, str]:
+    def descargar_media(self, media_id: str, maximo: int = MAXIMO_FOTO) -> tuple[bytes, str]:
         """Foto que mandó un usuario: igual que en Meta, primero la dirección y después el archivo."""
         datos = self._enviar("GET", f"/{self._config.version}/{media_id}", None)
         try:
@@ -139,14 +139,17 @@ class ClienteChattigo:
         url, tipo = str(info.get("url") or ""), str(info.get("mime_type") or "")
         if not self._direccion_de_fotos(url):
             raise ErrorChattigo("la foto no trajo una dirección de Chattigo o de WhatsApp")
+        # Meta informa el tamaño antes de bajarlo: lo que se pasa del tope ni se baja.
+        if str(info.get("file_size") or "").isdigit() and int(info["file_size"]) > maximo:
+            raise ErrorChattigo("el archivo es demasiado grande")
         contenido = bytearray()
         with self._cliente.stream("GET", url, headers=self._cabeceras(), follow_redirects=False) as archivo:
             if archivo.status_code >= 400:
                 raise ErrorChattigo(f"no se pudo bajar la foto: HTTP {archivo.status_code}")
             for parte in archivo.iter_bytes():
                 contenido.extend(parte)
-                if len(contenido) > MAXIMO_FOTO:
-                    raise ErrorChattigo("la foto es demasiado grande")
+                if len(contenido) > maximo:
+                    raise ErrorChattigo("el archivo es demasiado grande")
             tipo = tipo or archivo.headers.get("content-type", "")
         return bytes(contenido), tipo.split(";")[0]
 

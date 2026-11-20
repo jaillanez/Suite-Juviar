@@ -25,8 +25,10 @@ Un remito se puede anular mientras no salió; anulado, la guardia ya no lo deja 
 ## WhatsApp
 
 El personal cargado en «Personal en el bot» manda una foto con un texto (por ejemplo
-«BOM-0003 sale a Taller Pérez»). Si el mensaje trae foto o habla de salida, taller,
-mantenimiento o remito, el bot lo registra y responde con un número. En Gestión aparece en
+«BOM-0003 sale a Taller Pérez»). Si el mensaje habla de salida, taller, mantenimiento o remito,
+el bot lo registra y responde con un número. Una foto sin ninguna palabra ya no entra sola: el bot
+pide que diga si es para Mantenimiento, un certificado médico o un pedido de EPP
+(ver `RRHH_WHATSAPP.md`). En Gestión aparece en
 «Mensajes de WhatsApp». Según Parámetros:
 
 - **Para revisar**: el Encargado arma el remito desde el mensaje o lo descarta.

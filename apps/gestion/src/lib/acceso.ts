@@ -1,15 +1,15 @@
 export type Empresa = "ENAV" | "JUBIAR";
 export type Perfil = "SUPERADMIN" | "RRHH" | "MEDICO" | "HYS" | "COMPRAS" | "SUPERVISOR" | "MANTENIMIENTO" | "ENCARGADO_MANTENIMIENTO" | "BODEGA" | "CAMPO" | "BASCULA" | "DEPOSITO" | "LABORATORIO" | "PRODUCCION" | "COMERCIAL" | "ADMINISTRACION";
-export type Seccion = "inicio" | "produccion" | "fila" | "bot" | "epp" | "analitica" | "seleccion" | "capacitaciones" | "legajo" | "salud" | "turnos" | "contactos" | "configuracion" | "usuarios" | "parametros" | "cosecha" | "personal" | "activos" | "mosto" | "controles";
+export type Seccion = "inicio" | "produccion" | "fila" | "bot" | "epp" | "analitica" | "seleccion" | "capacitaciones" | "legajo" | "salud" | "turnos" | "contactos" | "configuracion" | "usuarios" | "parametros" | "cosecha" | "personal" | "activos" | "mosto" | "controles" | "whatsapp-rrhh";
 
 export const todasLasSecciones: Seccion[] = [
   "inicio", "epp", "analitica", "seleccion", "capacitaciones", "legajo",
-  "salud", "turnos", "activos", "controles", "produccion", "fila", "cosecha", "mosto", "bot", "contactos", "personal", "configuracion", "usuarios", "parametros",
+  "salud", "turnos", "whatsapp-rrhh", "activos", "controles", "produccion", "fila", "cosecha", "mosto", "bot", "contactos", "personal", "configuracion", "usuarios", "parametros",
 ];
 
 export const perfiles: Record<Perfil, { nombre: string; secciones: Seccion[] }> = {
   SUPERADMIN: { nombre: "Superadministrador", secciones: todasLasSecciones },
-  RRHH: { nombre: "RRHH general", secciones: ["inicio", "epp", "seleccion", "capacitaciones", "legajo", "turnos", "configuracion"] },
+  RRHH: { nombre: "RRHH general", secciones: ["inicio", "epp", "seleccion", "capacitaciones", "legajo", "turnos", "whatsapp-rrhh", "configuracion"] },
   MEDICO: { nombre: "Servicio médico", secciones: ["inicio", "salud", "configuracion"] },
   HYS: { nombre: "Higiene y Seguridad", secciones: ["inicio", "epp", "analitica", "capacitaciones", "configuracion"] },
   COMPRAS: { nombre: "Compras", secciones: ["inicio", "epp", "analitica", "mosto", "controles", "configuracion"] },
@@ -33,11 +33,12 @@ export const nombres: Record<Seccion, string> = {
   capacitaciones: "Capacitaciones", legajo: "Legajos", salud: "Salud", turnos: "Turnos",
   produccion: "Recepción", fila: "Fila de camiones", bot: "Conversaciones del bot",
   contactos: "Contactos", configuracion: "Empresa y perfil", usuarios: "Usuarios", parametros: "Parámetros", cosecha: "Turnos de cosecha", personal: "Personal en el bot", activos: "Equipos y activos", mosto: "Mosto", controles: "Controles ARCA",
+  "whatsapp-rrhh": "WhatsApp del personal",
 };
 
 export const gruposMenu: { nombre: string; secciones: Seccion[] }[] = [
   { nombre: "General", secciones: ["inicio"] },
-  { nombre: "RRHH", secciones: ["epp", "analitica", "seleccion", "capacitaciones", "legajo", "salud", "turnos"] },
+  { nombre: "RRHH", secciones: ["epp", "analitica", "seleccion", "capacitaciones", "legajo", "salud", "turnos", "whatsapp-rrhh"] },
   { nombre: "Mantenimiento", secciones: ["activos"] },
   { nombre: "Administración", secciones: ["controles"] },
   { nombre: "Producción", secciones: ["produccion", "fila", "cosecha", "mosto"] },

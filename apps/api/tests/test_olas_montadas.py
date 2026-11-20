@@ -10,7 +10,7 @@ def test_los_seis_modulos_exponen_routers_persistentes(monkeypatch, tmp_path):
     routers = construir_routers(rrhh)
     assert set(routers) == {
         "epp-analitica", "legajo", "salud", "turnos", "seleccion", "capacitaciones", "parametros", "activos", "mosto",
-        "controles-arca",
+        "controles-arca", "rrhh-whatsapp",
     }
     assert all(isinstance(router, APIRouter) for router in routers.values())
     assert all(router.routes for router in routers.values())

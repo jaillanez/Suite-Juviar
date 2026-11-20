@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import signal
 import time
 from datetime import UTC, datetime
@@ -33,18 +34,165 @@ def saludo_personal(persona) -> str:
     """Saludo al personal con lo que puede hacer por el bot."""
     nombre = persona.nombre.split(",")[-1].strip().split(" ")[0].title() or persona.nombre
     tipo = TIPOS_PERSONAL.get(persona.tipo, persona.tipo)
-    return f"Hola, {nombre} ({tipo}, {persona.empresa}).\n{AYUDA_MANTENIMIENTO}"
+    return f"Hola, {nombre} ({tipo}, {persona.empresa}).\n{AYUDA_PERSONAL}"
 
 
 PALABRAS_MANTENIMIENTO = ("salida", "sale ", "mantenimiento", "taller", "remito")
+# RRHH (infra/042): el certificado médico y el pedido de EPP se reconocen por estas palabras.
+PALABRAS_CERTIFICADO = re.compile(r"\b(certificados?|m[eé]dic[oa]s?|reposo|licencias?)\b", re.IGNORECASE)
+PALABRAS_EPP = re.compile(
+    r"\b(epp|guantes?|botin(es)?|botín|calzado|cascos?|ropa|anteojos?|protector(es)?)\b", re.IGNORECASE)
 TIPOS_FOTO = {"image/jpeg", "image/png", "image/webp"}
+MINIMO_ARCHIVO, MAXIMO_ARCHIVO = 200, 5_000_000  # certificados y CV (los mismos topes que infra/042)
+EXTENSIONES = {"application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}
 AYUDA_MANTENIMIENTO = ("Para registrar una salida de Mantenimiento mandá una foto con un texto, "
                        "por ejemplo: «BOM-0003 sale a Taller Pérez para bobinar».")
+AYUDA_PERSONAL = ("Por este WhatsApp podés mandar:\n"
+                  f"• Mantenimiento: {AYUDA_MANTENIMIENTO}\n"
+                  "• Certificado médico: la foto o el PDF con la palabra «certificado».\n"
+                  "• Pedido de EPP: lo que necesitás con la palabra «EPP» (podés sumar una foto), "
+                  "por ejemplo: «EPP: guantes talle 9».")
+PEDIR_PALABRA = ("Recibimos el archivo, pero no sabemos para qué es. Mandalo de nuevo con una palabra "
+                 "que lo indique: «mantenimiento», «certificado» (médico) o «EPP».")
+PEDIR_CERTIFICADO = "Para el certificado médico mandá la foto o el PDF con la palabra «certificado»."
+FORMATO_NO_ADMITIDO = "Ese archivo no se puede recibir: mandá un PDF o una foto (JPG o PNG)."
+CV_RECIBIDO = "Recibimos tu CV. Gracias por postularte: lo revisa Recursos Humanos."
+CONFIRMADO = "Gracias, quedó confirmado. RRHH revisa el certificado."
+PEDIR_CORRECCION = "Escribí en un mensaje los días correctos (o lo que esté mal) y se lo pasamos a RRHH."
+CORRECCION_RECIBIDA = "Gracias, le pasamos tu corrección a RRHH, que revisa el certificado."
+
+
+# Texto del aviso del micro: está sólo acá. Meta entrega los mensajes que inicia la empresa fuera
+# de la ventana de 24 h únicamente si son plantillas aprobadas: cuando esté la plantilla, se manda
+# desde acá con el recorrido como parámetro.
+def texto_aviso_micro(recorrido: str) -> str:
+    return f"Llegó el micro de personal del recorrido «{recorrido}»."
+
+
+def _con_archivo(pendiente) -> bool:
+    return getattr(pendiente, "tipo", "text") in {"image", "document"} or bool(getattr(pendiente, "media_id", None))
+
+
+def destino_personal(pendiente) -> str:
+    """certificado, epp, mantenimiento, sin_palabra (mandó un archivo sin decir para qué) o saludo."""
+    texto = pendiente.texto or ""
+    if PALABRAS_CERTIFICADO.search(texto):
+        return "certificado"
+    if PALABRAS_EPP.search(texto):
+        return "epp"
+    if any(p in texto.casefold() for p in PALABRAS_MANTENIMIENTO):
+        return "mantenimiento"
+    return "sin_palabra" if _con_archivo(pendiente) else "saludo"
 
 
 def es_para_mantenimiento(pendiente) -> bool:
-    texto = (pendiente.texto or "").casefold()
-    return bool(getattr(pendiente, "media_id", None)) or any(p in texto for p in PALABRAS_MANTENIMIENTO)
+    return destino_personal(pendiente) == "mantenimiento"
+
+
+def tipo_real(contenido: bytes) -> str | None:
+    """Tipo del archivo por sus primeros bytes, no por lo que dice el mensaje."""
+    if contenido.startswith(b"%PDF-"):
+        return "application/pdf"
+    if contenido.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if contenido.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if contenido[:4] == b"RIFF" and contenido[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+def bajar_archivo(salida, pendiente) -> tuple[bytes | None, str | None, str]:
+    """(contenido, tipo, aviso). Sólo PDF, JPG, PNG o WEBP de hasta 5 MB."""
+    if not getattr(pendiente, "media_id", None):
+        return None, None, FORMATO_NO_ADMITIDO if _con_archivo(pendiente) else ""
+    try:
+        contenido, _ = salida.descargar_media(pendiente.media_id, maximo=MAXIMO_ARCHIVO)
+    except (ErrorChattigo, transporte.ErrorTransporte, AttributeError, OSError) as exc:
+        log.warning("no se pudo bajar el archivo de %s: %s", pendiente.id, exc)
+        return None, None, "El archivo no se pudo bajar (puede ser muy grande): mandalo de nuevo."
+    tipo = tipo_real(contenido)
+    if tipo is None or not MINIMO_ARCHIVO <= len(contenido) <= MAXIMO_ARCHIVO:
+        return None, None, FORMATO_NO_ADMITIDO
+    return contenido, tipo, ""
+
+
+def _nombre_archivo(pendiente, tipo: str, base: str) -> str:
+    return (getattr(pendiente, "media_nombre", None) or f"{base}.{EXTENSIONES[tipo]}")[:120]
+
+
+def registrar_rrhh(bot, salida, pendiente, tipo: str) -> str:
+    """Certificado médico o pedido de EPP: queda pendiente de revisión en la bandeja de RRHH."""
+    texto = (pendiente.texto or "").strip()
+    archivo, archivo_tipo, aviso = (None, None, "")
+    if _con_archivo(pendiente):
+        archivo, archivo_tipo, aviso = bajar_archivo(salida, pendiente)
+    if tipo == "certificado" and archivo is None:
+        return f"{aviso}\n{PEDIR_CERTIFICADO}".strip()
+    nombre = _nombre_archivo(pendiente, archivo_tipo, tipo) if archivo_tipo else None
+    try:
+        numero = bot.registrar_rrhh(pendiente.telefono, tipo, texto, archivo, archivo_tipo, nombre)
+    except ValueError as exc:
+        return f"No se pudo registrar: {exc}."
+    if tipo == "certificado":
+        return (f"Listo, recibimos tu certificado médico (N.º {numero}). Queda para revisión de RRHH; "
+                "en unos minutos te escribimos para confirmar los datos.")
+    aviso = f"\n{aviso}" if aviso else ""
+    return f"Listo, tu pedido de EPP quedó registrado (N.º {numero}). Lo revisa RRHH.{aviso}"
+
+
+def registrar_cv(bot, salida, pendiente) -> str:
+    """Un número que no es productor ni personal manda un archivo: es un CV para Selección."""
+    contenido, tipo, aviso = bajar_archivo(salida, pendiente)
+    if contenido is None or tipo is None:
+        return aviso
+    try:
+        bot.registrar_cv(pendiente.telefono, _nombre_archivo(pendiente, tipo, "cv-whatsapp"), contenido, tipo)
+    except ValueError as exc:
+        return f"No se pudo recibir el CV: {exc}."
+    return CV_RECIBIDO
+
+
+def _si_o_no(texto: str) -> str | None:
+    palabras = re.sub(r"[^\w]+", " ", texto.casefold()).split()
+    if not palabras or len(palabras) > 4:
+        return None
+    if palabras[0] in {"1", "si", "sí"}:
+        return "si"
+    if palabras[0] in {"2", "no"}:
+        return "no"
+    return None
+
+
+def responder_confirmacion(bot, pendiente) -> str | None:
+    """Respuesta del empleado a lo que se leyó de su certificado. None: no era una respuesta."""
+    texto = (pendiente.texto or "").strip()
+    if not hasattr(bot, "confirmacion_pendiente") or _con_archivo(pendiente) or not texto:
+        return None
+    estado = bot.confirmacion_pendiente(pendiente.telefono)
+    if estado == "esperando":
+        respuesta = _si_o_no(texto)
+        nuevo = bot.responder_certificado(pendiente.telefono, respuesta) if respuesta else None
+        return {"confirmado": CONFIRMADO, "corrigiendo": PEDIR_CORRECCION}.get(nuevo or "")
+    if estado == "corrigiendo":
+        nuevo = bot.responder_certificado(pendiente.telefono, "correccion", texto)
+        return CORRECCION_RECIBIDA if nuevo == "no_coincide" else None
+    return None
+
+
+def respuesta_personal(bot, salida, pendiente, persona) -> tuple[str, bool]:
+    """(texto, registró algo). Lo que se registró no se reintenta: quedaría dos veces."""
+    confirmacion = responder_confirmacion(bot, pendiente)
+    if confirmacion is not None:
+        return confirmacion, True
+    destino = destino_personal(pendiente)
+    if destino in {"certificado", "epp"} and hasattr(bot, "registrar_rrhh"):
+        return registrar_rrhh(bot, salida, pendiente, destino), True
+    if destino == "mantenimiento" and hasattr(bot, "registrar_mantenimiento"):
+        return registrar_mantenimiento(bot, salida, pendiente), True
+    if destino == "sin_palabra":
+        return PEDIR_PALABRA, False
+    return saludo_personal(persona), False
 
 
 def registrar_mantenimiento(bot, salida, pendiente) -> str:
@@ -102,17 +250,13 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
         # de otro, nunca de los dos: infra/034).
         persona = bot.personal(pendiente.telefono) if hasattr(bot, "personal") else None
         if persona is not None:
-            registro = hasattr(bot, "registrar_mantenimiento") and es_para_mantenimiento(pendiente)
-            if registro:
-                try:
-                    texto = registrar_mantenimiento(bot, salida, pendiente)
-                except (psycopg.Error, OSError) as exc:  # no quedó nada registrado: se puede reintentar
-                    bot.reintentar(pendiente.id, str(exc), MAX_INTENTOS)
-                    log.warning("no se pudo registrar para mantenimiento (intento %s): %s",
-                                pendiente.intentos + 1, exc)
-                    continue
-            else:
-                texto = saludo_personal(persona)
+            try:
+                texto, registro = respuesta_personal(bot, salida, pendiente, persona)
+            except (psycopg.Error, OSError) as exc:  # no quedó nada registrado: se puede reintentar
+                bot.reintentar(pendiente.id, str(exc), MAX_INTENTOS)
+                log.warning("no se pudo registrar el mensaje del personal (intento %s): %s",
+                            pendiente.intentos + 1, exc)
+                continue
             try:
                 wamid = salida.enviar_texto(pendiente.telefono, texto)
             except (ErrorChattigo, transporte.ErrorTransporte, psycopg.Error, RuntimeError,
@@ -127,6 +271,23 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
             bot.cerrar(pendiente.id, "respondido", respuesta=texto, wamid_salida=wamid)
             continue
         cuentas = bot.cuentas(pendiente.telefono)
+        if not cuentas and _con_archivo(pendiente) and hasattr(bot, "registrar_cv"):
+            # Ni productor ni personal: el archivo es un CV para Selección (infra/042).
+            try:
+                texto = registrar_cv(bot, salida, pendiente)
+            except (psycopg.Error, OSError) as exc:  # no quedó nada registrado: se puede reintentar
+                bot.reintentar(pendiente.id, str(exc), MAX_INTENTOS)
+                log.warning("no se pudo registrar el CV (intento %s): %s", pendiente.intentos + 1, exc)
+                continue
+            try:
+                wamid = salida.enviar_texto(pendiente.telefono, texto)
+            except (ErrorChattigo, transporte.ErrorTransporte, psycopg.Error, RuntimeError,
+                    ValueError, OSError) as exc:
+                # Ya quedó registrado: reintentar lo registraría dos veces.
+                bot.cerrar(pendiente.id, "error", respuesta=texto, error=f"registrado; falló la respuesta: {exc}")
+                continue
+            bot.cerrar(pendiente.id, "respondido", respuesta=texto, wamid_salida=wamid)
+            continue
         permisos = bot.permisos(pendiente.telefono)
         estado, caducada = bot.estado_y_caducidad(pendiente.telefono)
         try:
@@ -227,7 +388,7 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
             log.warning("envío falló (intento %s): %s", pendiente.intentos + 1, exc)
             continue
         bot.cerrar(pendiente.id, "respondido", respuesta=texto, wamid_salida=wamid)
-    return len(pendientes) + enviar_avisos(bot, salida)
+    return len(pendientes) + enviar_avisos(bot, salida) + enviar_avisos_personal(bot, salida)
 
 
 def enviar_avisos(bot, salida) -> int:
@@ -237,15 +398,31 @@ def enviar_avisos(bot, salida) -> int:
     hecho, así el ciclo principal no se queda girando sin pausa."""
     if not hasattr(bot, "tomar_avisos"):
         return 0
+    return _enviar_cola(bot.tomar_avisos, bot.marcar_aviso, salida, lambda aviso: aviso["texto"])
+
+
+def enviar_avisos_personal(bot, salida) -> int:
+    """Mensajes al personal (infra/042): llegó el micro de su recorrido, o lo que se leyó de su
+    certificado para que lo confirme. Se manejan igual que los avisos de la bodega."""
+    if not hasattr(bot, "tomar_avisos_personal"):
+        return 0
+
+    def texto(aviso: dict) -> str:
+        return texto_aviso_micro(aviso["recorrido"]) if aviso["tipo"] == "micro" else aviso["texto"]
+
+    return _enviar_cola(bot.tomar_avisos_personal, bot.marcar_aviso_personal, salida, texto)
+
+
+def _enviar_cola(tomar, marcar, salida, texto_de) -> int:
     try:
-        avisos = bot.tomar_avisos()
-    except psycopg.Error as exc:  # base sin infra/038 todavía: no frena las respuestas
+        avisos = tomar()
+    except psycopg.Error as exc:  # base sin la migración todavía: no frena las respuestas
         log.warning("no se pudieron leer los avisos: %s", exc.__class__.__name__)
         return 0
     enviados = 0
     for aviso in avisos:
         try:
-            wamid, error = salida.enviar_texto(aviso["telefono"], aviso["texto"]), None
+            wamid, error = salida.enviar_texto(aviso["telefono"], texto_de(aviso)), None
             enviados += 1
         except (ErrorChattigo, transporte.ErrorTransporte, RuntimeError, ValueError, OSError) as exc:
             wamid, error = None, str(exc)
@@ -255,7 +432,7 @@ def enviar_avisos(bot, salida) -> int:
         intentos = 3 if error is None else 1
         for intento in range(intentos):
             try:
-                bot.marcar_aviso(aviso["id"], wamid, error)
+                marcar(aviso["id"], wamid, error)
                 break
             except psycopg.Error as exc:
                 log.warning("no se pudo marcar el aviso %s (intento %s): %s",

@@ -22,10 +22,11 @@ class RepositorioWebhook:
     def encolar(self, mensaje: MensajeEntrante) -> bool:
         with psycopg.connect(self._dsn) as conexion:
             if mensaje.media_id:
+                # Foto o documento con su nombre y tipo (infra/042).
                 fila = conexion.execute(
-                    "SELECT consulta.encolar_bot_media(%s, %s, %s, %s, %s, %s) AS insertado",
+                    "SELECT consulta.encolar_bot_archivo(%s, %s, %s, %s, %s, %s, %s, %s) AS insertado",
                     (mensaje.wamid, mensaje.telefono, mensaje.tipo, mensaje.texto, mensaje.enviado_en,
-                     mensaje.media_id),
+                     mensaje.media_id, mensaje.media_nombre, mensaje.media_tipo),
                 ).fetchone()
                 return bool(fila[0])
             fila = conexion.execute(
@@ -60,6 +61,8 @@ class Pendiente:
     intentos: int
     tipo: str = "text"
     media_id: str | None = None
+    media_nombre: str | None = None
+    media_tipo: str | None = None
 
 
 class RepositorioBot:
@@ -82,7 +85,7 @@ class RepositorioBot:
                     FOR UPDATE SKIP LOCKED
                     LIMIT %s
                 )
-                RETURNING id, telefono, texto, intentos, tipo, media_id
+                RETURNING id, telefono, texto, intentos, tipo, media_id, media_nombre, media_tipo
                 """,
                 (lote,),
             ).fetchall()
@@ -259,6 +262,47 @@ class RepositorioBot:
             except psycopg.errors.RaiseException as exc:
                 raise ValueError(exc.diag.message_primary or "no se pudo registrar") from exc
         return int(fila["id"])
+
+    # --- RRHH por WhatsApp (infra/042) -------------------------------------------------
+
+    def _funcion(self, consulta: str, parametros: tuple):
+        """Llama una función de la base; sus reglas (P0001) vuelven como ValueError."""
+        with self._conexion() as conexion:
+            try:
+                return conexion.execute(consulta, parametros).fetchone()
+            except psycopg.errors.RaiseException as exc:
+                raise ValueError(exc.diag.message_primary or "no se pudo registrar") from exc
+
+    def registrar_rrhh(self, telefono: str, tipo: str, texto: str, archivo: bytes | None,
+                       archivo_tipo: str | None, archivo_nombre: str | None) -> int:
+        """Certificado médico o pedido de EPP del personal: queda para revisión de RRHH."""
+        fila = self._funcion("SELECT fila.recibir_mensaje_rrhh(%s, %s, %s, %s, %s, %s) AS id",
+                             (telefono, tipo, texto, archivo, archivo_tipo, archivo_nombre))
+        return int(fila["id"])
+
+    def registrar_cv(self, telefono: str, nombre: str, contenido: bytes, tipo: str) -> int:
+        """CV de un número desconocido: Gestión lo incorpora a Selección."""
+        fila = self._funcion("SELECT fila.recibir_cv_whatsapp(%s, %s, %s, %s) AS id",
+                             (telefono, nombre, contenido, tipo))
+        return int(fila["id"])
+
+    def confirmacion_pendiente(self, telefono: str) -> str | None:
+        """'esperando' o 'corrigiendo' si ese celular tiene un certificado esperando su respuesta."""
+        fila = self._funcion("SELECT fila.confirmacion_certificado_pendiente(%s) AS estado", (telefono,))
+        return fila["estado"] if fila else None
+
+    def responder_certificado(self, telefono: str, respuesta: str, correccion: str | None = None) -> str | None:
+        fila = self._funcion("SELECT fila.responder_certificado(%s, %s, %s) AS estado",
+                             (telefono, respuesta, correccion))
+        return fila["estado"] if fila else None
+
+    def tomar_avisos_personal(self, lote: int = 20) -> list[dict]:
+        with self._conexion() as conexion:
+            return conexion.execute("SELECT * FROM fila.tomar_avisos_personal(%s)", (lote,)).fetchall()
+
+    def marcar_aviso_personal(self, id_: int, wamid: str | None, error: str | None) -> None:
+        with self._conexion() as conexion:
+            conexion.execute("SELECT fila.marcar_aviso_personal(%s,%s,%s)", (id_, wamid, error))
 
     def tomar_avisos(self, lote: int = 10) -> list[dict]:
         with self._conexion() as conexion:

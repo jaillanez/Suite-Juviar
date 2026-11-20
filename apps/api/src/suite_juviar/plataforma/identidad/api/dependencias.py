@@ -31,6 +31,8 @@ PERMISOS_POR_PERFIL: dict[str, frozenset[str]] = {
         "suite.acceder", "epp.catalogo.leer", "epp.entrega.leer", "epp.stock.leer",
         "seleccion.gestionar", "capacitacion.gestionar", "legajo.leer", "legajo.adjuntos.gestionar",
         "turnos.cronograma.leer", "turnos.imputacion.aprobar",
+        # Lo que el personal manda por WhatsApp (certificados, EPP) y recorridos del micro.
+        "rrhh.bandeja.gestionar", "rrhh.micro.gestionar",
     }),
     "MEDICO": frozenset({
         "suite.acceder", "salud.diagnostico.leer", "salud.certificado.gestionar",

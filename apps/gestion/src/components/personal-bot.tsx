@@ -5,7 +5,10 @@ import { api } from "@/lib/api";
 import { Confirmacion, ErrorVisible, Tabla, Vacio, Ventana } from "./compartidos";
 
 type Tipo = "personal" | "mando_medio";
-type Registro = Record<string, unknown> & { telefono: string; legajo: string; nombre: string; empresa: string; tipo: Tipo; activo: boolean; alta_por: string; alta_en: string; actualizado_por: string; actualizado_en: string };
+type Registro = Record<string, unknown> & { telefono: string; legajo: string; nombre: string; empresa: string; tipo: Tipo; activo: boolean; alta_por: string; alta_en: string; actualizado_por: string; actualizado_en: string; recorrido_id: number | null; recorrido: string | null };
+type Recorrido = { id: number; sede: string; nombre: string };
+const SEDES: Record<string, string> = { chimbas: "Chimbas", "media-agua": "Media Agua", lavalle: "Lavalle" };
+const nombreRecorrido = (r: { sede: string; nombre: string }) => `${r.nombre} (${SEDES[r.sede] ?? r.sede})`;
 type Persona = { legajo: string; nombre: string; empresa: string; sector: string; puesto: string };
 type Evento = { tipo: string; actor: string; antes: Partial<Registro> | null; despues: Partial<Registro> | null; momento: string };
 
@@ -54,7 +57,9 @@ function Alta({ cerrar, listo }: { cerrar: () => void; listo: () => void }) {
 function Detalle({ registro, cerrar, listo }: { registro: Registro; cerrar: () => void; listo: () => void }) {
   const [tipo, setTipo] = useState<Tipo>(registro.tipo); const [error, setError] = useState("");
   const [eventos, setEventos] = useState<Evento[]>([]); const [confirmarBaja, setConfirmarBaja] = useState(false);
+  const [recorridos, setRecorridos] = useState<Recorrido[]>([]); const [recorrido, setRecorrido] = useState(registro.recorrido_id ? String(registro.recorrido_id) : "");
   useEffect(() => { api<Evento[]>(`personal-bot/${registro.telefono}/historial`).then(setEventos).catch(() => setEventos([])); }, [registro.telefono]);
+  useEffect(() => { api<Recorrido[]>("personal-bot/recorridos").then(setRecorridos).catch(() => setRecorridos([])); }, []);
 
   async function enviar(ruta: string, cuerpo?: object) {
     setError("");
@@ -76,6 +81,14 @@ function Detalle({ registro, cerrar, listo }: { registro: Registro; cerrar: () =
       {registro.activo && <button className="peligro" onClick={() => setConfirmarBaja(true)}>Dar de baja</button>}
       <button className="primario" disabled={registro.activo && tipo === registro.tipo} onClick={() => void enviar("personal-bot", { telefono: registro.telefono, legajo: registro.legajo, tipo })}>{registro.activo ? "Guardar cambio" : "Volver a dar de alta"}</button>
     </div>
+    {registro.activo && <>
+      <label>Recorrido del micro<select value={recorrido} onChange={(e) => setRecorrido(e.target.value)}>
+        <option value="">Sin recorrido</option>
+        {recorridos.map((r) => <option key={r.id} value={r.id}>{nombreRecorrido(r)}</option>)}
+      </select></label>
+      <p className="ayuda">Cuando la guardia avisa que llegó el micro de este recorrido, el bot le manda el aviso por WhatsApp. Los recorridos se cargan en «WhatsApp del personal».</p>
+      <div className="acciones"><button className="primario" disabled={recorrido === (registro.recorrido_id ? String(registro.recorrido_id) : "")} onClick={() => void enviar(`personal-bot/${registro.telefono}/recorrido`, { recorrido_id: recorrido ? Number(recorrido) : null })}>Guardar recorrido</button></div>
+    </>}
     <h3>Historial</h3>
     {eventos.length ? <ul className="historial">{eventos.map((e, i) => <li key={i}><strong>{EVENTOS[e.tipo] ?? e.tipo}</strong> · {e.actor} · {fecha(e.momento)}{e.tipo === "cambio" && e.antes?.tipo && e.despues?.tipo && e.antes.tipo !== e.despues.tipo ? ` · ${TIPOS[e.antes.tipo]} → ${TIPOS[e.despues.tipo]}` : ""}</li>)}</ul> : <Vacio>Sin movimientos.</Vacio>}
     <Confirmacion abierto={confirmarBaja} titulo="Dar de baja" detalle={`El bot deja de reconocer a ${registro.nombre} en ${celular(registro.telefono)}.`} cancelar={() => setConfirmarBaja(false)} confirmar={() => { setConfirmarBaja(false); void enviar(`personal-bot/${registro.telefono}/baja`); }} />
@@ -103,6 +116,7 @@ export function PersonalBot() {
       { clave: "legajo", titulo: "Legajo" },
       { clave: "empresa", titulo: "Empresa" },
       { clave: "tipo", titulo: "Tipo", valor: (r) => TIPOS[r.tipo] },
+      { clave: "recorrido", titulo: "Recorrido del micro", valor: (r) => r.recorrido ? nombreRecorrido({ sede: String(r.recorrido_sede ?? ""), nombre: r.recorrido }) : "—" },
       { clave: "telefono", titulo: "Celular", valor: (r) => celular(r.telefono) },
       { clave: "activo", titulo: "Estado", valor: (r) => r.activo ? "Activo" : "De baja" },
     ]} /> : <Vacio>Todavía no hay personal cargado.</Vacio>}

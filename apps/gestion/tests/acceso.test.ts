@@ -49,6 +49,15 @@ test("Mantenimiento sólo ve equipos y activos", () => {
   assert.equal(puedeEntrar("RRHH", "activos"), false);
 });
 
+test("la bandeja de WhatsApp del personal es de RRHH, no del servicio médico ni de otros", () => {
+  assert.equal(puedeEntrar("RRHH", "whatsapp-rrhh"), true);
+  for (const perfil of ["MEDICO", "HYS", "BODEGA", "MANTENIMIENTO", "DEPOSITO"] as const) {
+    assert.equal(puedeEntrar(perfil, "whatsapp-rrhh"), false);
+  }
+  const rrhh = gruposMenu.find((grupo) => grupo.nombre === "RRHH");
+  assert.equal(rrhh?.secciones.includes("whatsapp-rrhh"), true);
+});
+
 test("Administración sólo ve los controles de ARCA", () => {
   assert.deepEqual(perfiles.ADMINISTRACION.secciones, ["inicio", "controles", "configuracion"]);
   assert.equal(puedeEntrar("COMPRAS", "controles"), true);

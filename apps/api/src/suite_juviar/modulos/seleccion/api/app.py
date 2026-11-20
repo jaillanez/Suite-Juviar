@@ -23,6 +23,7 @@ from ..application.extraccion import ExtraerDatosCV
 from ..application.genero import FEMENINO, MASCULINO, genero_de
 from ..application.ingesta import IngestarCVs
 from ..application.ranking import EvaluarBusqueda, ordenar_resultados
+from ..application.whatsapp import IncorporarCVWhatsapp
 from ..domain.modelos import (
     Busqueda,
     ConfirmacionCampo,
@@ -365,6 +366,17 @@ def construir_correo(ruta_base: str, clave: str) -> CorreoRRHH:
         IngestarCVs(originales),
         ExtraerDatosCV(originales, extracciones, TextoPDF(), CamposPorReglasProvisorias()),
         enviar_por_gmail,
+    )
+
+
+def construir_cvs_whatsapp(ruta_base: str) -> IncorporarCVWhatsapp:
+    """CV que llegan por WhatsApp (infra/042): mismo guardado y extracción que los del mail."""
+    originales = OriginalesSQLite(ruta_base)
+    extracciones = ExtraccionesSQLite(ruta_base)
+    return IncorporarCVWhatsapp(
+        IngestarCVs(originales),
+        ExtraerDatosCV(originales, extracciones, TextoPDF(), CamposPorReglasProvisorias()),
+        extracciones,
     )
 
 

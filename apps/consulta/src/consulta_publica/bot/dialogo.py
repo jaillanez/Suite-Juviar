@@ -41,7 +41,8 @@ TAREA_TURNOS = "pedir_turnos"
 NO_REGISTRADO = (
     "Este número no está registrado para consultar entregas.\n"
     "Pedile a la bodega que lo dé de alta, o a alguien que ya esté registrado "
-    "que te invite."
+    "que te invite.\n"
+    "Para postularte a un trabajo, mandá tu CV en PDF o una foto."
 )
 SIN_PERMISO_INFORMES = (
     "Este número puede ofrecer uva y ver sus turnos, pero no ver entregas.\n"
