@@ -42,7 +42,8 @@ class Certificados(Protocol):
 class ConectorARCA(Protocol):
     def constancia(self, acceso: AccesoARCA, cuit_representada: str, cuit: str) -> Constancia: ...
 
-    def constatar(self, acceso: AccesoARCA, cuit_representada: str, factura: Factura) -> Constatacion: ...
+    def constatar(self, acceso: AccesoARCA, cuit_representada: str, factura: Factura,
+                  cuit_receptor: str) -> Constatacion: ...
 
 
 class DescargaPadrones(Protocol):
