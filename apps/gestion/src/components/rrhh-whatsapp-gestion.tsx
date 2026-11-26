@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { abrirArchivo, api } from "@/lib/api";
+import { hoyLocal, inicioMesLocal } from "@/lib/fechas";
 import { ErrorVisible, FormularioVentana as Formulario, Pestanas, Tabla, Vacio, Ventana } from "./compartidos";
 
 type Lectura = { dias_detectados?: number; fecha_desde?: string; fecha_hasta?: string; fecha_reintegro?: string; profesional?: string; mensaje?: string; motor?: string };
@@ -76,8 +77,8 @@ function VentanaMensaje({ m, cerrar, cambio }: { m: Mensaje; cerrar: () => void;
       <p className="ayuda">Los datos vienen de la lectura automática del certificado: revisalos contra el archivo y corregí lo que haga falta. El certificado va también a Salud: si se leyó un diagnóstico del catálogo médico se carga solo; si no, lo completa el servicio médico. El diagnóstico no se muestra acá. {m.confirmacion === "no_coincide" && m.correccion ? `El empleado avisó: «${m.correccion}».` : ""}</p>
       <label>Nombre del adjunto<input name="nombre" maxLength={120} defaultValue={`Certificado médico ${new Date(m.recibido_en).toLocaleDateString("es-AR").replaceAll("/", "-")}`} /></label>
       <label>Días<input name="dias" type="number" min={1} max={365} defaultValue={l.dias_detectados ?? ""} /></label>
-      <label>Desde<input name="desde" type="date" defaultValue={l.fecha_desde ?? ""} /></label>
-      <label>Hasta<input name="hasta" type="date" defaultValue={l.fecha_hasta ?? ""} /></label>
+      <label>Desde<input name="desde" type="date" defaultValue={l.fecha_desde || inicioMesLocal()} /></label>
+      <label>Hasta<input name="hasta" type="date" defaultValue={l.fecha_hasta || hoyLocal()} /></label>
       <label>Profesional<input name="profesional" maxLength={120} defaultValue={l.profesional ?? ""} /></label>
       <label>Nota <span className="ayuda">(opcional)</span><input name="nota" maxLength={300} /></label>
     </Formulario>}
@@ -224,8 +225,8 @@ export function PendientesSalud({ catalogo, cargado }: { catalogo: Diagnostico[]
       </dl>
       <label>Diagnóstico<select name="diagnostico" required defaultValue={sugerido}><option value="" disabled>Elegí del catálogo</option>{diagnosticos.map(x => <option key={x.codigo} value={x.codigo}>{x.descripcion} · {x.codigo}</option>)}</select></label>
       <label>Días<input name="dias" type="number" min={1} max={365} defaultValue={d.dias ?? ""} /></label>
-      <label>Desde<input name="desde" type="date" defaultValue={d.desde ?? ""} /></label>
-      <label>Hasta<input name="hasta" type="date" defaultValue={d.hasta ?? ""} /></label>
+      <label>Desde<input name="desde" type="date" defaultValue={d.desde || inicioMesLocal()} /></label>
+      <label>Hasta<input name="hasta" type="date" defaultValue={d.hasta || hoyLocal()} /></label>
       <label>Profesional<input name="profesional" maxLength={120} defaultValue={d.profesional ?? ""} /></label>
       <label>Tipo de accidente<select name="tipo_accidente" defaultValue={abierto.tipo_accidente || "NO_INFORMADO"}>{["NO_INFORMADO", "NO_ES_ACCIDENTE", "ACCIDENTE_LABORAL", "IN_ITINERE", "ACCIDENTE_A_REVISAR"].map(t => <option key={t} value={t}>{t.replaceAll("_", " ").toLowerCase()}</option>)}</select></label>
       <label>Resumen<input name="resumen" maxLength={500} defaultValue={abierto.resumen} /></label>

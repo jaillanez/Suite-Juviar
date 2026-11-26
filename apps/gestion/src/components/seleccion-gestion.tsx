@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { rangoMesActual } from "@/lib/fechas";
 import { type EstadoLectura, ORIGEN, avisoFaltantes, campo, leyendo, progresoLectura, resumenFaltantes } from "@/lib/seleccion";
 import { ErrorVisible, Pestanas, Tabla, Vacio, Ventana, urlDeArchivo } from "./compartidos";
 import { MiniaturaArchivo } from "./vista-archivo";
@@ -69,7 +70,7 @@ export function SeleccionGestion() {
   const [busqueda, setBusqueda] = useState(""); const [creando, setCreando] = useState(false); const [ficha, setFicha] = useState<Ficha | null>(null); const [original, setOriginal] = useState(""); const [subiendo, setSubiendo] = useState(false); const [aviso, setAviso] = useState(""); const [cargandoRanking, setCargandoRanking] = useState(false);
   const [error, setError] = useState(""); const [errorCreacion, setErrorCreacion] = useState(""); const [errorBusqueda, setErrorBusqueda] = useState(""); const [errorVentana, setErrorVentana] = useState("");
   const informar = (e: unknown) => setError(mensaje(e));
-  const [desde, setDesde] = useState(""); const [hasta, setHasta] = useState("");
+  const [desde, setDesde] = useState(() => rangoMesActual().desde); const [hasta, setHasta] = useState(() => rangoMesActual().hasta);
   const periodo = (unir: "?" | "&") => { const q = new URLSearchParams(); if (desde) q.set("desde", desde); if (hasta) q.set("hasta", hasta); const t = q.toString(); return t ? `${unir}${t}` : ""; };
   const abierta = busquedas.find(b => b.id === busqueda);
   async function recargar(id = busqueda, avisar: (e: unknown) => void = informar) { try { const [b, c, r, k] = await Promise.all([api<Busqueda[]>("seleccion/busquedas"), api<Cv[]>(`seleccion/cvs${periodo("?")}`), api<Cv[]>(`seleccion/revision${periodo("?")}`), id ? api<Cv[]>(`seleccion/cvs?busqueda_id=${id}${periodo("&")}`) : Promise.resolve([] as Cv[])]); setBusquedas(b); setCvs(c); setRevision(r); setRanking(k); } catch (e) { avisar(e); } }
@@ -114,7 +115,7 @@ export function SeleccionGestion() {
     <div className="ayuda-contextual"><strong>Cómo funciona:</strong> subí los currículums que recibís (PDF o foto) y quedan guardados. Cuando necesites a alguien, escribí a quién buscás y la IA te propone candidatos explicando por qué. Marcá a quién contrataste o a quién no volver a convocar, así no vuelven a aparecer. La decisión es siempre de RRHH.</div>
     <section className="tarjeta periodo-compacto"><h3>Período de carga</h3>
       <p className="ayuda">Mostrá sólo los currículums que entraron al sistema entre estas fechas, por ejemplo los de esta temporada. Vale para la lista, las búsquedas y la búsqueda con IA.</p>
-      <div className="form-linea"><label>Desde<input type="date" value={desde} max={hasta || undefined} onChange={e => setDesde(e.target.value)} /></label><label>Hasta<input type="date" value={hasta} min={desde || undefined} onChange={e => setHasta(e.target.value)} /></label>{(desde || hasta) && <button onClick={() => { setDesde(""); setHasta(""); }}>Ver todas las fechas</button>}</div>
+      <div className="form-linea"><label>Desde<input type="date" value={desde} max={hasta || undefined} onChange={e => setDesde(e.target.value)} /></label><label>Hasta<input type="date" value={hasta} min={desde || undefined} onChange={e => setHasta(e.target.value)} /></label>{(desde !== rangoMesActual().desde || hasta !== rangoMesActual().hasta) && <button onClick={() => { const r = rangoMesActual(); setDesde(r.desde); setHasta(r.hasta); }}>Volver al mes actual</button>}{(desde || hasta) && <button onClick={() => { setDesde(""); setHasta(""); }}>Ver todas las fechas</button>}</div>
       {desde && hasta && desde > hasta && <ErrorVisible mensaje="La fecha «Desde» no puede ser posterior a «Hasta»." />}
     </section>
     <Pestanas activa={pestana} cambiar={setPestana} opciones={[["cvs", "Currículums recibidos"], ["ia", "Buscar con IA"], ["busquedas", "Búsquedas con reglas fijas"], ["revision", `Para revisar a mano (${revision.length})`]] as const} />

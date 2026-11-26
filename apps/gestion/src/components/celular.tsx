@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, PointerEvent, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Empresa, Perfil, perfiles } from "@/lib/acceso";
 import { api } from "@/lib/api";
+import { hoyLocal } from "@/lib/fechas";
 import { importeEscrito, prepararFoto } from "@/lib/foto-factura";
 import { LectorQrFactura } from "./lector-qr-factura";
 
@@ -553,7 +554,7 @@ export function ControlarFactura({ volver, subida }: { volver: () => void; subid
       <label>Tipo de comprobante<select name="tipo_comprobante" defaultValue={d.tipo_comprobante ?? ""} required><option value="" disabled>Elegí el tipo</option>{Object.entries(catalogo?.tipos_comprobante ?? {}).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
       <label>Punto de venta<input name="punto_venta" type="number" inputMode="numeric" min={1} max={99999} defaultValue={d.punto_venta ?? ""} required /></label>
       <label>Número<input name="numero" type="number" inputMode="numeric" min={1} max={99999999} defaultValue={d.numero ?? ""} required /></label>
-      <label>Fecha<input name="fecha" type="date" defaultValue={d.fecha ?? ""} required /></label>
+      <label>Fecha<input name="fecha" type="date" defaultValue={d.fecha || hoyLocal()} max={hoyLocal()} required /></label>
       <label>Moneda<select name="moneda" value={moneda} onChange={e => setMoneda(e.target.value)}>{Object.entries(catalogo?.monedas ?? { PES: "Pesos argentinos" }).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
       <label>Importe total{moneda === "PES" ? "" : " (en esa moneda)"}<input name="importe_total" inputMode="decimal" defaultValue={d.importe_total == null ? "" : String(d.importe_total).replace(".", ",")} pattern="[0-9.,]+" required /></label>
       {moneda !== "PES" && <label>Cotización (pesos por unidad, la de la factura)<input name="cotizacion" inputMode="decimal" pattern="[0-9.,]+" required /></label>}

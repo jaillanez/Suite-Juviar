@@ -11,6 +11,9 @@ import {
 } from "../offline";
 import { ContextoMovil, DATOS_PERFIL } from "../perfiles";
 
+/** Hoy en hora local (no UTC): a las 23:30 de Argentina no salta al día siguiente. */
+function hoyLocal() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+
 const API = process.env.NEXT_PUBLIC_API_URL ?? "/backend/rrhh-epp";
 
 type Resultado = {
@@ -224,7 +227,7 @@ function Deposito({ sesion }: { sesion: ContextoMovil }) {
   const [circuito, setCircuito] = useState<"ESPONTANEA" | "PROGRAMADA">("ESPONTANEA");
   const [motivo, setMotivo] = useState<"" | "ROTURA" | "DESGASTE">("");
   const [temporada, setTemporada] = useState<"VERANO" | "INVIERNO">("VERANO");
-  const [fechaProgramada, setFechaProgramada] = useState("");
+  const [fechaProgramada, setFechaProgramada] = useState(hoyLocal);
   const [programadas, setProgramadas] = useState<PlanProgramado[]>([]);
 
   const obtenerAlmacen = useCallback(() => {

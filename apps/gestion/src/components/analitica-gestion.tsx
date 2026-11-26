@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { api, descargarArchivo } from "@/lib/api";
+import { rangoMesActual } from "@/lib/fechas";
 import { ErrorVisible, Tabla, Vacio, Ventana } from "./compartidos";
 
 type Metrica = Record<string, unknown> & { item_codigo: string; sector: string; puesto: string; consumo: number; reclamos: Record<string, number>; reclamos_total: number; reclamos_proporcion: number; muestra_entregas: number; muestra_duracion: number; duracion_promedio_dias: number | null; estado_duracion: string };
@@ -18,8 +19,7 @@ function porcentaje(valor: number) { return `${(valor * 100).toLocaleString("es-
 function duracion(f: Metrica) { return f.duracion_promedio_dias === null ? `Falta historial (${f.muestra_duracion} reposiciones)` : `${Math.round(f.duracion_promedio_dias)} días`; }
 
 export function AnaliticaGestion() {
-  const hoy = new Date().toISOString().slice(0, 10);
-  const [desde, setDesde] = useState(`${new Date().getFullYear()}-01-01`); const [hasta, setHasta] = useState(hoy);
+  const [desde, setDesde] = useState(() => rangoMesActual().desde); const [hasta, setHasta] = useState(() => rangoMesActual().hasta);
   const [sector, setSector] = useState(""); const [puesto, setPuesto] = useState(""); const [tipo, setTipo] = useState("");
   const [datos, setDatos] = useState<Tablero | null>(null); const [error, setError] = useState("");
   const [sectores, setSectores] = useState<Opcion[]>([]); const [puestos, setPuestos] = useState<Opcion[]>([]); const [catalogo, setCatalogo] = useState<Elemento[]>([]);

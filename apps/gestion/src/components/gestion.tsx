@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { Empresa, gruposMenu, nombres, puedeEntrar, Perfil, perfiles, Seccion } from "@/lib/acceso";
 import { api, ErrorApi } from "@/lib/api";
+import { hoyLocal } from "@/lib/fechas";
 import { UsuariosGestion } from "./usuarios-gestion";
 import { ConfigOrganica } from "./sesion-organica";
 import { ResumenFila, TableroFila } from "./tablero-fila";
@@ -206,7 +207,7 @@ function Contenido({ seccion, sesion, guardar, actualizar }: { seccion: Seccion;
 function AccesoDenegado({ perfil, seccion }: { perfil: Perfil; seccion: Seccion }) {
   const [resultadoApi, setResultadoApi] = useState("Verificando autorización con la API…");
   useEffect(() => {
-    const sondas: Partial<Record<Seccion, string>> = { salud: "salud/catalogo", capacitaciones: "capacitaciones/temas", analitica: `epp-analitica/tablero?desde=${new Date().getFullYear()}-01-01&hasta=${new Date().toISOString().slice(0, 10)}` };
+    const sondas: Partial<Record<Seccion, string>> = { salud: "salud/catalogo", capacitaciones: "capacitaciones/temas", analitica: `epp-analitica/tablero?desde=${new Date().getFullYear()}-01-01&hasta=${hoyLocal()}` };
     const ruta = sondas[seccion];
     if (!ruta) { setResultadoApi("La sección no está habilitada para esta sesión."); return; }
     api(ruta).then(() => setResultadoApi("Advertencia: la API permitió un acceso que la interfaz oculta."))
