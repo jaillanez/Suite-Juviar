@@ -21,6 +21,8 @@ from .conversacion import responder as responder_legacy
 from .dialogo import CADUCADO, ESTADISTICAS, responder
 from .estadisticas import resumir
 from .graficos import generar as generar_grafico
+from .meta_cloud import ErrorPlantilla
+from .plantillas import LLEGADA_MICRO, armar
 from .reporte_pdf import generar as generar_reporte
 from .repositorio import RepositorioBot
 
@@ -62,11 +64,10 @@ PEDIR_CORRECCION = "Escribí en un mensaje los días correctos (o lo que esté m
 CORRECCION_RECIBIDA = "Gracias, le pasamos tu corrección a RRHH, que revisa el certificado."
 
 
-# Texto del aviso del micro: está sólo acá. Meta entrega los mensajes que inicia la empresa fuera
-# de la ventana de 24 h únicamente si son plantillas aprobadas: cuando esté la plantilla, se manda
-# desde acá con el recorrido como parámetro.
+# Texto del aviso del micro: el mismo de la plantilla llegada_micro (por Meta sale la plantilla con
+# el recorrido como parámetro; este texto es para el simulador, Chattigo o si Meta la rechaza).
 def texto_aviso_micro(recorrido: str) -> str:
-    return f"Llegó el micro de personal del recorrido «{recorrido}»."
+    return LLEGADA_MICRO.texto([recorrido])
 
 
 def _con_archivo(pendiente) -> bool:
@@ -392,28 +393,52 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
 
 
 def enviar_avisos(bot, salida) -> int:
-    """Avisos que dejó la bodega al asignar o postergar días (infra/038).
+    """Avisos que dejó la bodega al asignar o postergar días (infra/038) y el de mosto virgen
+    (infra/040). Desde infra/043 traen la plantilla de Meta y sus parámetros.
 
     Devuelve cuántos salieron: los que fallan esperan 10 minutos y no cuentan como trabajo
     hecho, así el ciclo principal no se queda girando sin pausa."""
     if not hasattr(bot, "tomar_avisos"):
         return 0
-    return _enviar_cola(bot.tomar_avisos, bot.marcar_aviso, salida, lambda aviso: aviso["texto"])
+    return _enviar_cola(bot.tomar_avisos, bot.marcar_aviso, salida, lambda aviso: aviso["texto"],
+                        lambda aviso: (aviso.get("plantilla"), aviso.get("parametros")))
 
 
 def enviar_avisos_personal(bot, salida) -> int:
     """Mensajes al personal (infra/042): llegó el micro de su recorrido, o lo que se leyó de su
-    certificado para que lo confirme. Se manejan igual que los avisos de la bodega."""
+    certificado para que lo confirme. Se manejan igual que los avisos de la bodega. La lectura del
+    certificado contesta lo que mandó el empleado (dentro de las 24 h): no lleva plantilla."""
     if not hasattr(bot, "tomar_avisos_personal"):
         return 0
 
     def texto(aviso: dict) -> str:
         return texto_aviso_micro(aviso["recorrido"]) if aviso["tipo"] == "micro" else aviso["texto"]
 
-    return _enviar_cola(bot.tomar_avisos_personal, bot.marcar_aviso_personal, salida, texto)
+    def plantilla(aviso: dict) -> tuple[str | None, list | None]:
+        if aviso["tipo"] == "micro":
+            return LLEGADA_MICRO.nombre, [aviso["recorrido"]]
+        return None, None
+
+    return _enviar_cola(bot.tomar_avisos_personal, bot.marcar_aviso_personal, salida, texto, plantilla)
 
 
-def _enviar_cola(tomar, marcar, salida, texto_de) -> int:
+def enviar_aviso(salida, telefono: str, texto: str, nombre: str | None, parametros) -> tuple[str, str | None]:
+    """(wamid, nota). Por Meta, con plantilla si el aviso la trae; si Meta no la acepta (todavía
+    no está aprobada, por ejemplo) sale el texto y la nota lo deja anotado. En el simulador y por
+    Chattigo, siempre el texto, como antes."""
+    armada = armar(nombre, parametros) if hasattr(salida, "enviar_plantilla") else None
+    if armada is None:
+        return salida.enviar_texto(telefono, texto), None
+    plantilla, valores = armada
+    try:
+        return salida.enviar_plantilla(telefono, plantilla.nombre, plantilla.idioma, valores), None
+    except ErrorPlantilla as exc:
+        log.warning("plantilla %s rechazada (%s): sale como texto", plantilla.nombre, exc.codigo)
+        nota = f"plantilla {plantilla.nombre} rechazada ({exc.codigo}); salió como texto"
+        return salida.enviar_texto(telefono, texto), nota
+
+
+def _enviar_cola(tomar, marcar, salida, texto_de, plantilla_de) -> int:
     try:
         avisos = tomar()
     except psycopg.Error as exc:  # base sin la migración todavía: no frena las respuestas
@@ -421,8 +446,10 @@ def _enviar_cola(tomar, marcar, salida, texto_de) -> int:
         return 0
     enviados = 0
     for aviso in avisos:
+        nota = None
         try:
-            wamid, error = salida.enviar_texto(aviso["telefono"], texto_de(aviso)), None
+            wamid, nota = enviar_aviso(salida, aviso["telefono"], texto_de(aviso), *plantilla_de(aviso))
+            error = None
             enviados += 1
         except (ErrorChattigo, transporte.ErrorTransporte, RuntimeError, ValueError, OSError) as exc:
             wamid, error = None, str(exc)
@@ -432,7 +459,10 @@ def _enviar_cola(tomar, marcar, salida, texto_de) -> int:
         intentos = 3 if error is None else 1
         for intento in range(intentos):
             try:
-                marcar(aviso["id"], wamid, error)
+                if nota:
+                    marcar(aviso["id"], wamid, error, nota)
+                else:
+                    marcar(aviso["id"], wamid, error)
                 break
             except psycopg.Error as exc:
                 log.warning("no se pudo marcar el aviso %s (intento %s): %s",

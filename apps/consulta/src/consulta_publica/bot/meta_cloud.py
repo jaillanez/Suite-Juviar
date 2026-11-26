@@ -24,6 +24,24 @@ HOSTS_FOTOS = (".fbsbx.com", ".whatsapp.net", ".fbcdn.net")
 class ErrorMeta(ErrorChattigo):
     """Falla del canal: el worker la trata igual que las de Chattigo (reintenta)."""
 
+    def __init__(self, mensaje: str, codigo: int | None = None) -> None:
+        super().__init__(mensaje)
+        self.codigo = codigo
+
+
+class ErrorPlantilla(ErrorMeta):
+    """Meta no acepta la plantilla (no existe en ese idioma, no está aprobada, está pausada o
+    los parámetros no coinciden): errores 132000 a 132999 de Cloud API. El aviso puede salir
+    como texto, que llega si la persona escribió en las últimas 24 h."""
+
+
+def _codigo_error(respuesta: httpx.Response) -> int | None:
+    try:
+        codigo = ((respuesta.json() or {}).get("error") or {}).get("code")
+    except (ValueError, AttributeError):
+        return None
+    return codigo if isinstance(codigo, int) else None
+
 
 @dataclass(frozen=True)
 class ConfigMeta:
@@ -61,7 +79,9 @@ class ClienteMeta:
             metodo, f"{GRAPH}/{self._config.version}{ruta}", json=cuerpo, headers=self._cabeceras()
         )
         if respuesta.status_code >= 400:
-            raise ErrorMeta(f"{metodo} {ruta}: HTTP {respuesta.status_code} {respuesta.text[:300]}")
+            codigo = _codigo_error(respuesta)
+            clase = ErrorPlantilla if codigo is not None and 132000 <= codigo <= 132999 else ErrorMeta
+            raise clase(f"{metodo} {ruta}: HTTP {respuesta.status_code} {respuesta.text[:300]}", codigo)
         return respuesta
 
     def _enviar_mensaje(self, cuerpo: dict) -> str:
@@ -79,6 +99,22 @@ class ClienteMeta:
             "to": telefono,
             "type": "text",
             "text": {"preview_url": False, "body": texto},
+        })
+
+    def enviar_plantilla(self, telefono: str, nombre: str, idioma: str, parametros: list[str]) -> str:
+        """Plantilla aprobada (sale aunque la persona no haya escrito en las últimas 24 h)."""
+        plantilla: dict = {"name": nombre, "language": {"code": idioma}}
+        if parametros:
+            plantilla["components"] = [{
+                "type": "body",
+                "parameters": [{"type": "text", "text": valor} for valor in parametros],
+            }]
+        return self._enviar_mensaje({
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": telefono,
+            "type": "template",
+            "template": plantilla,
         })
 
     def enviar_imagen(self, telefono: str, url: str, epigrafe: str | None = None) -> str:
@@ -118,6 +154,29 @@ class ClienteMeta:
         if not self._config.cuenta_id:
             raise RuntimeError("Falta la variable de entorno META_CUENTA_ID")
         return self._pedir("POST", f"/{self._config.cuenta_id}/subscribed_apps").json()
+
+    def _cuenta(self) -> str:
+        if not self._config.cuenta_id:
+            raise RuntimeError("Falta la variable de entorno META_CUENTA_ID")
+        return self._config.cuenta_id
+
+    def plantillas(self, nombre: str | None = None) -> list[dict]:
+        """Plantillas de la cuenta (con su estado de aprobación); con nombre, sólo esa."""
+        consulta = "fields=name,language,status,category,rejected_reason&limit=100"
+        if nombre:
+            consulta += f"&name={nombre}"
+        try:
+            datos = self._pedir("GET", f"/{self._cuenta()}/message_templates?{consulta}").json() or {}
+        except ValueError as exc:
+            raise ErrorMeta("la lista de plantillas devolvió una respuesta inválida") from exc
+        return [p for p in datos.get("data") or [] if not nombre or p.get("name") == nombre]
+
+    def crear_plantilla(self, cuerpo: dict) -> dict:
+        """Manda una plantilla a revisión de Meta."""
+        try:
+            return self._pedir("POST", f"/{self._cuenta()}/message_templates", cuerpo).json() or {}
+        except ValueError as exc:
+            raise ErrorMeta("la plantilla devolvió una respuesta inválida") from exc
 
 
 def _direccion_de_fotos(url: str) -> bool:

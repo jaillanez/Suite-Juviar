@@ -296,21 +296,32 @@ class RepositorioBot:
                              (telefono, respuesta, correccion))
         return fila["estado"] if fila else None
 
+    def _marcar(self, funcion: str, id_: int, wamid: str | None, error: str | None, nota: str | None) -> None:
+        """La nota (salió como texto porque Meta rechazó la plantilla) necesita infra/043; sin la
+        migración se marca igual, sin la nota, para que el aviso no se reenvíe."""
+        if nota:
+            try:
+                with self._conexion() as conexion:
+                    conexion.execute(f"SELECT fila.{funcion}(%s,%s,%s,%s)", (id_, wamid, error, nota))
+                return
+            except psycopg.errors.UndefinedFunction:
+                pass
+        with self._conexion() as conexion:
+            conexion.execute(f"SELECT fila.{funcion}(%s,%s,%s)", (id_, wamid, error))
+
     def tomar_avisos_personal(self, lote: int = 20) -> list[dict]:
         with self._conexion() as conexion:
             return conexion.execute("SELECT * FROM fila.tomar_avisos_personal(%s)", (lote,)).fetchall()
 
-    def marcar_aviso_personal(self, id_: int, wamid: str | None, error: str | None) -> None:
-        with self._conexion() as conexion:
-            conexion.execute("SELECT fila.marcar_aviso_personal(%s,%s,%s)", (id_, wamid, error))
+    def marcar_aviso_personal(self, id_: int, wamid: str | None, error: str | None, nota: str | None = None) -> None:
+        self._marcar("marcar_aviso_personal", id_, wamid, error, nota)
 
     def tomar_avisos(self, lote: int = 10) -> list[dict]:
         with self._conexion() as conexion:
             return conexion.execute("SELECT * FROM fila.tomar_avisos(%s)", (lote,)).fetchall()
 
-    def marcar_aviso(self, id_: int, wamid: str | None, error: str | None) -> None:
-        with self._conexion() as conexion:
-            conexion.execute("SELECT fila.marcar_aviso(%s,%s,%s)", (id_, wamid, error))
+    def marcar_aviso(self, id_: int, wamid: str | None, error: str | None, nota: str | None = None) -> None:
+        self._marcar("marcar_aviso", id_, wamid, error, nota)
 
     def registrar_consulta(self, clientecuit: str, recurso: str, filas: int) -> None:
         with self._conexion() as conexion:
