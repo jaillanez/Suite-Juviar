@@ -21,7 +21,9 @@ from suite_juviar.plataforma.identidad.api import router as identidad_router
 from suite_juviar.plataforma.identidad.api.dependencias import (
     PERMISOS_POR_PERFIL,
     configurar_ingreso,
+    configurar_recuperacion,
     configurar_subida,
+    enviar_correo_interno,
     exigir_identidad_configurada,
     exigir_permiso,
     identidad_es_simulada,
@@ -30,7 +32,9 @@ from suite_juviar.plataforma.identidad.api.ingreso import router as ingreso_rout
 from suite_juviar.plataforma.identidad.api.ingreso import usuarios as usuarios_router
 from suite_juviar.plataforma.identidad.api.subida import router as subida_router
 from suite_juviar.plataforma.identidad.application.ingreso import ServicioIngreso
+from suite_juviar.plataforma.identidad.application.recuperacion import ServicioRecuperacion
 from suite_juviar.plataforma.identidad.application.subida_pin import ServicioSubidaPin
+from suite_juviar.plataforma.identidad.infrastructure.recuperacion_sqlite import RecuperacionSQLite
 from suite_juviar.plataforma.identidad.infrastructure.subida_sqlite import SubidaPinSQLite
 from suite_juviar.plataforma.identidad.infrastructure.usuarios_sqlite import UsuariosSQLite
 from suite_juviar.plataforma.terceros.api.contactos import configurar as configurar_contactos
@@ -65,9 +69,14 @@ registrar_manejadores(
 
 app.include_router(identidad_router, prefix="/api/v1")
 if not identidad_es_simulada():
-    configurar_ingreso(ServicioIngreso(
-        UsuariosSQLite(os.getenv("SJ_USUARIOS_SQLITE_PATH", "datos/usuarios.sqlite3")),
-        frozenset(PERMISOS_POR_PERFIL),
+    ruta_usuarios = os.getenv("SJ_USUARIOS_SQLITE_PATH", "datos/usuarios.sqlite3")
+    usuarios_sqlite = UsuariosSQLite(ruta_usuarios)
+    configurar_ingreso(ServicioIngreso(usuarios_sqlite, frozenset(PERMISOS_POR_PERFIL)))
+    # «¿Olvidaste tu contraseña?»: el correo sale desde la casilla de RRHH de Parámetros
+    # (lo conecta composicion/olas_3_4_5.py) con un enlace a la dirección pública de Gestión.
+    configurar_recuperacion(ServicioRecuperacion(
+        usuarios_sqlite, RecuperacionSQLite(ruta_usuarios), enviar_correo_interno,
+        os.getenv("SJ_URL_PUBLICA_GESTION", "").strip() or "https://juviar-enav.com.ar",
     ))
 app.include_router(ingreso_router, prefix="/api/v1")
 # Link personal + PIN para quien sólo sube facturas desde el celular (pantalla /subir).

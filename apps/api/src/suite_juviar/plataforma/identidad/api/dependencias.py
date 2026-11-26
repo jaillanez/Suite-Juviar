@@ -9,6 +9,7 @@ from typing import Annotated
 from fastapi import Cookie, Depends, Header, HTTPException, status
 
 from ..application.ingreso import ServicioIngreso
+from ..application.recuperacion import ServicioRecuperacion
 from ..application.subida_pin import ServicioSubidaPin
 from ..domain.sesion import Sesion
 from ..domain.subida_pin import PERMISO_SUBIDA
@@ -73,6 +74,10 @@ COOKIE_SUBIDA = "sj_subida"
 CABECERA_SUBIDA = "X-Ingreso-Subida"
 _ingreso: ServicioIngreso | None = None
 _subida: ServicioSubidaPin | None = None
+_recuperacion: ServicioRecuperacion | None = None
+# Envío de correos internos (casilla de RRHH de Parámetros). Lo conecta la composición:
+# identidad no conoce el módulo de selección.
+_envio_correo: Callable[[str, str, str], bool] | None = None
 
 
 def configurar_ingreso(servicio: ServicioIngreso | None) -> None:
@@ -95,6 +100,27 @@ def servicio_subida() -> ServicioSubidaPin:
     if _subida is None:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "El ingreso con PIN no está configurado.")
     return _subida
+
+
+def configurar_recuperacion(servicio: ServicioRecuperacion | None) -> None:
+    global _recuperacion
+    _recuperacion = servicio
+
+
+def servicio_recuperacion() -> ServicioRecuperacion:
+    if _recuperacion is None:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "El ingreso no está configurado.")
+    return _recuperacion
+
+
+def configurar_envio_correo(enviar: Callable[[str, str, str], bool] | None) -> None:
+    global _envio_correo
+    _envio_correo = enviar
+
+
+def enviar_correo_interno(destino: str, asunto: str, cuerpo: str) -> bool:
+    """False si todavía no hay con qué mandar (ninguna casilla de RRHH cargada)."""
+    return bool(_envio_correo and _envio_correo(destino, asunto, cuerpo))
 
 
 def sesion_de_subida(token: str | None) -> Sesion:

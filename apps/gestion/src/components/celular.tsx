@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, PointerEvent, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Empresa, Perfil, perfiles } from "@/lib/acceso";
 import { api } from "@/lib/api";
@@ -91,7 +92,7 @@ function Ingreso({ entrar }: { entrar: (yo: Yo) => void }) {
       <label>Contraseña<span className="cel-clave"><input name="clave" type={ver ? "text" : "password"} autoComplete="current-password" required /><button type="button" onClick={() => setVer(v => !v)}>{ver ? "Ocultar" : "Ver"}</button></span></label>
       <button className="cel-boton" disabled={enviando}>{enviando ? "Entrando…" : "Entrar"}</button>
     </form>
-    <p className="cel-pie">¿Te olvidaste la contraseña? Pedile una nueva a Sistemas.</p>
+    <p className="cel-pie"><Link href="/recuperar">¿Olvidaste tu contraseña?</Link></p>
   </main>;
 }
 
