@@ -299,6 +299,8 @@ class RepositorioBot:
     def _marcar(self, funcion: str, id_: int, wamid: str | None, error: str | None, nota: str | None) -> None:
         """La nota (salió como texto porque Meta rechazó la plantilla) necesita infra/043; sin la
         migración se marca igual, sin la nota, para que el aviso no se reenvíe."""
+        if funcion not in {"marcar_aviso", "marcar_aviso_personal"}:
+            raise ValueError(funcion)
         if nota:
             try:
                 with self._conexion() as conexion:
