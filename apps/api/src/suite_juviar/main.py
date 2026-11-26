@@ -21,13 +21,17 @@ from suite_juviar.plataforma.identidad.api import router as identidad_router
 from suite_juviar.plataforma.identidad.api.dependencias import (
     PERMISOS_POR_PERFIL,
     configurar_ingreso,
+    configurar_subida,
     exigir_identidad_configurada,
     exigir_permiso,
     identidad_es_simulada,
 )
 from suite_juviar.plataforma.identidad.api.ingreso import router as ingreso_router
 from suite_juviar.plataforma.identidad.api.ingreso import usuarios as usuarios_router
+from suite_juviar.plataforma.identidad.api.subida import router as subida_router
 from suite_juviar.plataforma.identidad.application.ingreso import ServicioIngreso
+from suite_juviar.plataforma.identidad.application.subida_pin import ServicioSubidaPin
+from suite_juviar.plataforma.identidad.infrastructure.subida_sqlite import SubidaPinSQLite
 from suite_juviar.plataforma.identidad.infrastructure.usuarios_sqlite import UsuariosSQLite
 from suite_juviar.plataforma.terceros.api.contactos import configurar as configurar_contactos
 from suite_juviar.plataforma.terceros.api.contactos import router as contactos_router
@@ -66,6 +70,11 @@ if not identidad_es_simulada():
         frozenset(PERMISOS_POR_PERFIL),
     ))
 app.include_router(ingreso_router, prefix="/api/v1")
+# Link personal + PIN para quien sólo sube facturas desde el celular (pantalla /subir).
+configurar_subida(ServicioSubidaPin(
+    SubidaPinSQLite(os.getenv("SJ_USUARIOS_SQLITE_PATH", "datos/usuarios.sqlite3"))
+))
+app.include_router(subida_router, prefix="/api/v1")
 app.include_router(usuarios_router, prefix="/api/v1")
 app.include_router(recepcion_router, prefix="/api/v1")
 # En el servidor de Gestión, SJ_DATABASE_URL usa el rol terceros_gestor (sólo contactos de

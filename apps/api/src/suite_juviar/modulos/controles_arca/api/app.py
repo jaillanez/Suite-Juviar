@@ -3,16 +3,20 @@ from __future__ import annotations
 import base64
 import binascii
 from datetime import date
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Response
 from pydantic import BaseModel, Field
 
 from suite_juviar.plataforma.identidad.api.dependencias import (
     SesionActual,
+    exigir_alguno,
     exigir_identidad_configurada,
     exigir_permiso,
+    servicio_subida,
 )
+from suite_juviar.plataforma.identidad.domain.sesion import Sesion
+from suite_juviar.plataforma.identidad.domain.subida_pin import PERMISO_SUBIDA
 
 from ..application.servicios import FaltaClaveServidor, GestionarControles
 from ..domain.modelos import ErrorARCA
@@ -88,15 +92,53 @@ class CertificadoEntrada(BaseModel):
     certificado_pem: str = Field(min_length=1, max_length=20000)
 
 
+Empresas = list[Literal["ENAV", "JUBIAR"]]
+Pin = Annotated[str, Field(pattern=r"^[0-9]{3}$")]
+
+
+class PersonaSubidaEntrada(BaseModel):
+    nombre: str = Field(min_length=1, max_length=80)
+    empresas: Empresas = Field(min_length=1, max_length=2)
+    pin: Pin | None = None  # vacío: lo elige el sistema
+
+
+class PinEntrada(BaseModel):
+    pin: Pin | None = None
+
+
+def _limite(sesion: Sesion) -> tuple[str, ...] | None:
+    """Quien sube con PIN sólo carga en sus empresas; Gestión, en cualquiera."""
+    return sesion.empresas if sesion.subida_pin else None
+
+
+def _para(sesion: Sesion, respuesta: dict[str, Any]) -> dict[str, Any]:
+    """Con PIN, una factura que ya había cargado otra persona se muestra sin sus datos de Gestión."""
+    if not sesion.subida_pin or respuesta.get("estado") != "listo":
+        return respuesta
+    factura = respuesta["factura"]
+    if factura["cargada_por"] == sesion.actor:
+        return respuesta
+    return {
+        "estado": "listo", "ya_cargada": True, "ajena": True,
+        "factura": {k: factura[k] for k in ("comprobante", "empresa", "cuit_emisor", "fecha", "importe_total",
+                                            "moneda", "importe_texto")},
+        **({"qr": respuesta["qr"]} if "qr" in respuesta else {}),
+    }
+
+
 def crear_router(servicio: GestionarControles, entorno: str = "prueba") -> APIRouter:
     exigir_identidad_configurada(entorno)
     app = APIRouter()
     operar = [Depends(exigir_permiso("controles_fiscales.operar"))]
     administrar = [Depends(exigir_permiso("parametros.gestionar"))]
+    # Pantalla del celular: Gestión con «operar» o la sesión acotada de link + PIN (/subir).
+    celular = [Depends(exigir_alguno("controles_fiscales.operar", PERMISO_SUBIDA))]
 
     def hacer(funcion):
         try:
             return funcion()
+        except PermissionError as exc:
+            raise HTTPException(403, str(exc)) from exc
         except LookupError as exc:
             raise HTTPException(404, str(exc)) from exc
         except FaltaClaveServidor as exc:
@@ -151,20 +193,88 @@ def crear_router(servicio: GestionarControles, entorno: str = "prueba") -> APIRo
                                  "Cache-Control": "no-store"})
 
     # --- Desde el celular: una foto de la factura ---------------------------
-    @app.post("/celular/qr", dependencies=operar)
+    # Con PIN sólo se pasa por acá: cargar la factura de la foto y ver las propias.
+    @app.get("/celular/catalogo", dependencies=celular)
+    def catalogo_celular(sesion: SesionActual):
+        c = servicio.catalogo()
+        limite = _limite(sesion)
+        return {
+            "empresas": [e for e in c["empresas"] if limite is None or e in limite],
+            **{k: c[k] for k in ("tipos_comprobante", "autorizaciones", "monedas", "faltantes",
+                                 "lectura_ia_externa")},
+        }
+
+    @app.post("/celular/qr", dependencies=celular)
     def desde_qr(entrada: FacturaQREntrada, sesion: SesionActual):
         foto = _foto(entrada.foto_base64)
-        return hacer(lambda: servicio.cargar_desde_qr(entrada.qr, foto, entrada.empresa, sesion.actor))
+        return _para(sesion, hacer(lambda: servicio.cargar_desde_qr(
+            entrada.qr, foto, entrada.empresa, sesion.actor, _limite(sesion))))
 
-    @app.post("/celular/leer", dependencies=operar)
+    @app.post("/celular/leer", dependencies=celular)
     def leer(entrada: FotoEntrada, sesion: SesionActual):
         foto = _foto(entrada.foto_base64)
-        return hacer(lambda: servicio.leer_foto(foto, sesion.actor, entrada.empresa, entrada.modo))
+        return _para(sesion, hacer(lambda: servicio.leer_foto(
+            foto, sesion.actor, entrada.empresa, entrada.modo, _limite(sesion))))
 
-    @app.post("/celular/confirmar", dependencies=operar)
+    @app.post("/celular/confirmar", dependencies=celular)
     def confirmar(entrada: FacturaConfirmadaEntrada, sesion: SesionActual):
         foto = _foto(entrada.foto_base64)
-        return hacer(lambda: servicio.cargar_confirmada(entrada.factura.model_dump(), foto, sesion.actor))
+        return _para(sesion, hacer(lambda: servicio.cargar_confirmada(
+            entrada.factura.model_dump(), foto, sesion.actor, _limite(sesion))))
+
+    def _propia(factura_id: str, sesion: Sesion):
+        factura = hacer(lambda: servicio.obtener(factura_id))
+        if sesion.subida_pin and factura.cargada_por != sesion.actor:
+            # Igual que si no existiera: con PIN no se ven facturas de otros.
+            raise HTTPException(404, "No existe esa factura.")
+        return factura
+
+    @app.get("/celular/facturas/{factura_id}", dependencies=celular)
+    def ficha_celular(factura_id: str, sesion: SesionActual):
+        return servicio.vista(_propia(factura_id, sesion))
+
+    @app.get("/celular/facturas/{factura_id}/foto", dependencies=celular)
+    def foto_celular(factura_id: str, sesion: SesionActual):
+        tipo, contenido = hacer(lambda: servicio.foto(_propia(factura_id, sesion).id))
+        return Response(contenido, media_type=tipo,
+                        headers={"Content-Disposition": "inline", "X-Content-Type-Options": "nosniff",
+                                 "Cache-Control": "no-store"})
+
+    # --- Personas que suben facturas con link + PIN (Parámetros) ----------
+    def _persona(persona, cuentas: dict[str, int] | None = None):
+        vista = servicio_subida().vista(persona)
+        cuentas = servicio.facturas_por_actor() if cuentas is None else cuentas
+        return {**vista, "facturas": cuentas.get(persona.actor, 0)}
+
+    @app.get("/subida-pin/personas", dependencies=administrar)
+    def personas_subida():
+        cuentas = servicio.facturas_por_actor()
+        return [_persona(p, cuentas) for p in servicio_subida().listar()]
+
+    # El PIN y el código del link se devuelven una sola vez: sólo queda su resumen.
+    @app.post("/subida-pin/personas", status_code=201, dependencies=administrar)
+    def alta_subida(entrada: PersonaSubidaEntrada, sesion: SesionActual):
+        persona, pin, codigo = hacer(lambda: servicio_subida().alta(
+            sesion.actor, entrada.nombre, entrada.empresas, entrada.pin))
+        return {"persona": _persona(persona), "pin": pin, "codigo": codigo}
+
+    @app.post("/subida-pin/personas/{persona_id}/pin", dependencies=administrar)
+    def nuevo_pin(persona_id: str, entrada: PinEntrada, sesion: SesionActual):
+        persona, pin = hacer(lambda: servicio_subida().regenerar_pin(sesion.actor, persona_id, entrada.pin))
+        return {"persona": _persona(persona), "pin": pin}
+
+    @app.post("/subida-pin/personas/{persona_id}/link", dependencies=administrar)
+    def nuevo_link(persona_id: str, sesion: SesionActual):
+        persona, codigo = hacer(lambda: servicio_subida().regenerar_link(sesion.actor, persona_id))
+        return {"persona": _persona(persona), "codigo": codigo}
+
+    @app.post("/subida-pin/personas/{persona_id}/desactivar", dependencies=administrar)
+    def desactivar_subida(persona_id: str, sesion: SesionActual):
+        return _persona(hacer(lambda: servicio_subida().desactivar(sesion.actor, persona_id)))
+
+    @app.get("/subida-pin/eventos", dependencies=administrar)
+    def eventos_subida():
+        return servicio_subida().repositorio.eventos(100)
 
     @app.post("/padrones/{nombre}/actualizar", dependencies=operar)
     def actualizar(nombre: Literal["apocrifas", "rg18"]):
