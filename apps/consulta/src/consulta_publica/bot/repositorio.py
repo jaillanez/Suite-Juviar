@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
@@ -10,7 +11,7 @@ from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
 from .archivos import Archivo
-from .dialogo import MINUTOS_SESION, Cuenta, Estado
+from .dialogo import MINUTOS_SESION, Cuenta, Estado, IdentificacionBloqueada
 from .meta import MensajeEntrante
 from .turnos import Borrador, OfertaRechazada, OfertaVigente, TurnoVigente
 
@@ -149,7 +150,7 @@ class RepositorioBot:
         ahora = ahora or datetime.now(UTC)
         with self._conexion() as conexion:
             fila = conexion.execute(
-                """SELECT paso,clientecuit,pedido,turno,actualizado
+                """SELECT paso,clientecuit,pedido,turno,candidatas,actualizado
                    FROM consulta.bot_sesion WHERE telefono=%s""",
                 (telefono,),
             ).fetchone()
@@ -163,6 +164,7 @@ class RepositorioBot:
                 fila["clientecuit"],
                 fila["pedido"],
                 Borrador.desde_dict(fila["turno"]),
+                tuple(fila["candidatas"] or ()),
             ),
             False,
         )
@@ -170,19 +172,65 @@ class RepositorioBot:
     def guardar_estado(self, telefono: str, estado: Estado) -> None:
         with self._conexion() as conexion:
             conexion.execute(
-                """INSERT INTO consulta.bot_sesion(telefono,paso,clientecuit,pedido,turno)
-                   VALUES (%s,%s,%s,%s,%s)
+                """INSERT INTO consulta.bot_sesion(telefono,paso,clientecuit,pedido,turno,candidatas)
+                   VALUES (%s,%s,%s,%s,%s,%s)
                    ON CONFLICT(telefono) DO UPDATE SET paso=EXCLUDED.paso,
                      clientecuit=EXCLUDED.clientecuit,pedido=EXCLUDED.pedido,
-                     turno=EXCLUDED.turno,actualizado=now()""",
+                     turno=EXCLUDED.turno,candidatas=EXCLUDED.candidatas,actualizado=now()""",
                 (
                     telefono,
                     estado.paso,
                     estado.cuenta,
                     estado.pedido,
                     Jsonb(estado.turno.a_dict()) if estado.turno else None,
+                    list(estado.candidatas) or None,
                 ),
             )
+
+    # --- Acceso sin alta: vínculo por cuenta, CUIT o patente (infra/044) ----------------
+
+    def vinculo(self, telefono: str) -> Cuenta | None:
+        """La cuenta a la que quedó vinculado un número que no está dado de alta."""
+        with self._conexion() as conexion:
+            fila = conexion.execute(
+                """SELECT v.clientecuit, v.codigo, p.razonsocial, p.codigos
+                   FROM consulta.bot_vinculo v JOIN fila.productor p USING (clientecuit)
+                   WHERE v.telefono = %s""",
+                (telefono,),
+            ).fetchone()
+        if not fila:
+            return None
+        codigo = fila["codigo"] or (fila["codigos"] or [fila["clientecuit"]])[0]
+        return Cuenta(fila["clientecuit"], codigo, fila["razonsocial"])
+
+    def identificador(self, telefono: str) -> IdentificadorBot:
+        return IdentificadorBot(self._dsn, telefono)
+
+    def cuentas_por_cuit(self, clientecuits: list[str] | tuple[str, ...]) -> list[Cuenta]:
+        """Las cuentas entre las que elige quien escribió un CUIT o una patente con varias."""
+        if not clientecuits:
+            return []
+        with self._conexion() as conexion:
+            filas = conexion.execute(
+                """SELECT clientecuit, razonsocial, codigos FROM fila.productor
+                   WHERE clientecuit = ANY(%s)""",
+                (list(clientecuits),),
+            ).fetchall()
+        por_cuit = {
+            f["clientecuit"]: Cuenta(f["clientecuit"], (f["codigos"] or [f["clientecuit"]])[0], f["razonsocial"])
+            for f in filas
+        }
+        # El orden es el de la pregunta: «2» tiene que ser la misma cuenta que se mostró segunda.
+        return [por_cuit[c] for c in clientecuits if c in por_cuit]
+
+    def vincular(self, telefono: str, cuenta: Cuenta) -> None:
+        """La base sólo vincula una cuenta que este teléfono identificó en la última hora."""
+        self._funcion("SELECT consulta.bot_vincular(%s, %s, %s) AS ok",
+                      (telefono, cuenta.clientecuit, cuenta.codigo))
+
+    def desvincular(self, telefono: str) -> None:
+        with self._conexion() as conexion:
+            conexion.execute("DELETE FROM consulta.bot_vinculo WHERE telefono = %s", (telefono,))
 
     def turnos(self, telefono: str) -> TurnosBot:
         return TurnosBot(self._dsn, telefono)
@@ -325,14 +373,56 @@ class RepositorioBot:
     def marcar_aviso(self, id_: int, wamid: str | None, error: str | None, nota: str | None = None) -> None:
         self._marcar("marcar_aviso", id_, wamid, error, nota)
 
-    def registrar_consulta(self, clientecuit: str, recurso: str, filas: int) -> None:
+    def registrar_consulta(
+        self, clientecuit: str, recurso: str, filas: int, telefono: str | None = None
+    ) -> None:
+        """Con teléfono: la consulta la hizo un número vinculado sin alta (infra/044)."""
         with self._conexion() as conexion:
+            if telefono is None:
+                conexion.execute(
+                    """INSERT INTO consulta.bitacora_consulta
+                           (cliente, clientecuit, recurso, filas)
+                       VALUES ('bot-whatsapp', %s, %s, %s)""",
+                    (clientecuit, recurso, filas),
+                )
+                return
             conexion.execute(
                 """INSERT INTO consulta.bitacora_consulta
-                       (cliente, clientecuit, recurso, filas)
-                   VALUES ('bot-whatsapp', %s, %s, %s)""",
-                (clientecuit, recurso, filas),
+                       (cliente, clientecuit, recurso, filas, telefono)
+                   VALUES ('bot-whatsapp-vinculo', %s, %s, %s, %s)""",
+                (clientecuit, recurso, filas, telefono),
             )
+
+
+class IdentificadorBot:
+    """Busca la cuenta por código, CUIT o patente con ``consulta.bot_identificar``: la base anota
+    cada intento y corta después de BOT_MAX_IDENTIFICACIONES_HORA intentos sin resultado."""
+
+    def __init__(self, dsn: str, telefono: str, maximo: int | None = None) -> None:
+        self._dsn = dsn
+        self._telefono = telefono
+        self._maximo = maximo if maximo is not None else max_identificaciones_hora()
+
+    def buscar(self, por: str, dato: str) -> list[Cuenta]:
+        try:
+            with psycopg.connect(self._dsn, row_factory=dict_row, autocommit=True) as conexion:
+                filas = conexion.execute(
+                    """SELECT clientecuit, codigo, titular
+                       FROM consulta.bot_identificar(%s, %s, %s, %s)""",
+                    (self._telefono, por, dato, self._maximo),
+                ).fetchall()
+        except psycopg.errors.RaiseException as exc:
+            if (exc.diag.message_primary or "") == "demasiados_intentos":
+                raise IdentificacionBloqueada() from exc
+            return []  # dato_invalido: el diálogo lo vuelve a pedir
+        return [Cuenta(f["clientecuit"], f["codigo"], f["titular"]) for f in filas]
+
+
+def max_identificaciones_hora() -> int:
+    valor = int(os.environ.get("BOT_MAX_IDENTIFICACIONES_HORA", "10"))
+    if not 1 <= valor <= 50:
+        raise RuntimeError("BOT_MAX_IDENTIFICACIONES_HORA tiene que estar entre 1 y 50")
+    return valor
 
 
 class TurnosBot:

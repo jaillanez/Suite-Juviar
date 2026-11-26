@@ -185,3 +185,51 @@ como enviado). En el simulador y por Chattigo sale el texto, como antes.
 
 Cambiar el texto de una plantilla aprobada vuelve a pasar por revisión: conviene
 hacerlo con un nombre nuevo y mantener el texto libre igual al de la plantilla.
+
+### Botones y listas
+
+Por Meta las opciones del bot salen como **botones** (hasta 3, título de hasta 20
+caracteres) o como **lista** (de 4 a 10 filas de hasta 24 caracteres, con
+descripción de hasta 72 cuando no entra); con más de 10 la lista muestra 9 y
+«Ver más…». El texto va como cuerpo (hasta 1024; si es más largo, lo largo sale
+antes como texto). Cada opción lleva un id estable (`op:<opción>`; «Ver más…»
+es `pag:<desde>`), así que el bot reconoce la respuesta aunque el título haya
+salido recortado. Escribir el número o la palabra sigue funcionando. En el
+simulador y por Chattigo sigue el texto numerado. Ver `bot/botones.py`.
+
+
+## Comprobante DDJJ y acceso sin alta (infra/044)
+
+Recuperado del bot anterior:
+
+- **Comprobante DDJJ – Comprobante de Ingreso de Uva** en PDF, por descarga
+  (`DDJJ_CIU_0000017377_20260210.pdf`): CIU, fecha, bodega, cuenta, titular,
+  variedad, peso neto y azúcar. Se pide escribiendo el número de CIU (con o sin
+  ceros) o con «Comprobante de descarga» en el menú. Sólo de la cuenta activa de la
+  conversación. Es informativo, como el detalle de cosecha.
+- **Acceso sin alta previa**: un número que no es productor ni personal recibe
+  «escribí tu Número de CUENTA, CUIT o Patente de camión». Con el código («J80158»)
+  va a esa cuenta; con un CUIT, a la cuenta de ese CUIT o a las cuentas para las
+  que entregó ese inscripto en los últimos 3 años (si hay varias, elige); con una
+  patente, a las cuentas de sus descargas del último año (Oracle o la fila de
+  camiones). El teléfono queda vinculado (`consulta.bot_vinculo`) hasta «Salir»,
+  y al vincularse recibe el comprobante de la última descarga. Con el vínculo
+  sólo ve estadísticas, el detalle de cosecha y los comprobantes: ofrecer uva,
+  turnos y contactos siguen siendo para los números que da de alta la bodega.
+  Un archivo de un número sin alta sigue yendo a Selección como CV.
+- Cada intento de identificación queda en `consulta.bot_identificacion`; pasados
+  `BOT_MAX_IDENTIFICACIONES_HORA` intentos sin resultado (10 por defecto) en una
+  hora, la base no busca más para ese teléfono. Cada consulta hecha con el vínculo
+  queda en `consulta.bitacora_consulta` con `cliente = 'bot-whatsapp-vinculo'` y el
+  teléfono.
+
+Instalación:
+
+1. Aplicar `infra/044_bot_ddjj_y_acceso_abierto.sql` en la DMZ (administrador, antes
+   del código; idempotente).
+2. Instalar el código nuevo (worker del bot y worker de Recepción, que publica la
+   cuenta, la patente y el CUIT del inscripto).
+3. Aplicar `infra/045_republicar_descargas_cuenta_patente.sql` en la base de Suite:
+   el worker de Recepción vuelve a publicar las descargas de los últimos 3 años con
+   los datos nuevos (de a 5000 por vuelta). Hasta que termine, el comprobante sale
+   con el código de la cuenta del bot y la patente sólo se busca en la fila.

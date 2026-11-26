@@ -3,11 +3,17 @@
 Es el comprobante que el productor reenvía a su contador o compara contra la
 liquidación, así que lleva la misma información que el ticket: fecha, bodega,
 CIU, variedad, kilos y azúcar, con los totales al pie.
+
+También arma el comprobante de una sola descarga (DDJJ – Comprobante de Ingreso de Uva), con
+el mismo estilo y el mismo pie de documento informativo.
 """
 from __future__ import annotations
 
 import io
-from datetime import UTC, datetime
+import re
+from dataclasses import dataclass
+from datetime import UTC, date, datetime
+from xml.sax.saxutils import escape
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_RIGHT
@@ -24,6 +30,7 @@ from reportlab.platypus import (
 )
 
 from .estadisticas import Entrega, Resumen, formatear_kg
+from .turnos import NOMBRE_SEDE
 
 TINTA = colors.HexColor("#0b0b0b")
 TINTA_SUAVE = colors.HexColor("#52514e")
@@ -127,3 +134,78 @@ def _pie(lienzo, documento) -> None:
     lienzo.drawString(18 * mm, 10 * mm, "Juviar-ENAV · documento informativo, no es una liquidación")
     lienzo.drawRightString(A4[0] - 18 * mm, 10 * mm, f"Página {documento.page}")
     lienzo.restoreState()
+
+
+# --- DDJJ – Comprobante de Ingreso de Uva, por descarga --------------------------------
+
+
+@dataclass(frozen=True)
+class Comprobante:
+    """Una descarga de consulta.descarga_publica, con la cuenta y el titular (infra/044)."""
+
+    ciu: str
+    fecha: datetime | date
+    sede: str
+    cuenta: str
+    titular: str
+    variedad: str | None
+    neto: int | None
+    azucar: float | None
+
+
+def nombre_comprobante(comprobante: Comprobante) -> str:
+    """Como el bot anterior: DDJJ_CIU_0000017377_20260210.pdf."""
+    ciu = re.sub(r"[^0-9A-Za-z]", "", comprobante.ciu or "").zfill(10)[:20]
+    # Una descarga sin fecha no debería llegar acá (la consulta la descarta), pero no se cae.
+    fecha = f"{comprobante.fecha:%Y%m%d}" if comprobante.fecha else "sin_fecha"
+    return f"DDJJ_CIU_{ciu}_{fecha}.pdf"
+
+
+def generar_comprobante(comprobante: Comprobante, datos_al: str | None = None) -> bytes:
+    memoria = io.BytesIO()
+    documento = SimpleDocTemplate(
+        memoria, pagesize=A4,
+        leftMargin=18 * mm, rightMargin=18 * mm, topMargin=16 * mm, bottomMargin=16 * mm,
+        title=f"DDJJ CIU {comprobante.ciu}", author="Juviar-ENAV",
+    )
+    estilo = _estilos()
+    titular = escape(comprobante.titular.strip().rstrip("."))
+    fecha = comprobante.fecha
+    fecha_texto = ("sin fecha" if fecha is None else
+                   f"{fecha:%d/%m/%Y %H:%M}" if isinstance(fecha, datetime) else f"{fecha:%d/%m/%Y}")
+    datos = [
+        ("Número CIU", escape(comprobante.ciu)),
+        ("Fecha", fecha_texto),
+        ("Bodega", NOMBRE_SEDE.get(comprobante.sede, comprobante.sede.replace("-", " ").title())),
+        ("Cuenta", escape(comprobante.cuenta)),
+        ("Titular", titular),
+        ("Variedad", escape(comprobante.variedad or "Sin variedad")),
+        ("Peso neto", formatear_kg(comprobante.neto)),
+    ]
+    if comprobante.azucar is not None:
+        datos.append(("Azúcar", f"{float(comprobante.azucar):g} g/l"))
+    filas = [[Paragraph(f"<b>{clave}</b>", estilo["celda"]), Paragraph(valor, estilo["celda"])]
+             for clave, valor in datos]
+    tabla = Table(filas, colWidths=[40 * mm, 120 * mm])
+    tabla.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LINEBELOW", (0, 0), (-1, -1), 0.4, LINEA),
+        ("BACKGROUND", (0, 0), (0, -1), FONDO_ALTERNO),
+        ("BOX", (0, 0), (-1, -1), 0.9, CABECERA),
+    ]))
+    partes = [
+        Paragraph("DDJJ – Comprobante de Ingreso de Uva", estilo["titulo"]),
+        Paragraph(f"<b>{titular}</b> — Cuenta {escape(comprobante.cuenta)}", estilo["sub"]),
+        Paragraph(f"Emitido el {datetime.now(UTC):%d/%m/%Y}", estilo["sub"]),
+        Spacer(1, 7 * mm),
+        tabla,
+        Spacer(1, 6 * mm),
+        Paragraph("Copia informativa armada con los datos de báscula de la bodega. "
+                  "No reemplaza la declaración presentada ante el INV.", estilo["sub"]),
+    ]
+    if datos_al:
+        partes.append(Paragraph(f"Datos actualizados al {datos_al}.", estilo["sub"]))
+    documento.build(partes, onFirstPage=_pie, onLaterPages=_pie)
+    return memoria.getvalue()

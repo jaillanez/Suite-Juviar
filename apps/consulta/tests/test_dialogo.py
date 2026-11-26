@@ -78,14 +78,14 @@ def test_volver_desde_el_periodo():
 
 
 def test_contactos_solo_para_administradores():
-    assert r("3", estado=Estado(MENU, "20-1"), puede_administrar=True).accion == CONTACTOS
-    sin_permiso = r("3", estado=Estado(MENU, "20-1"), puede_administrar=False)
+    assert r("4", estado=Estado(MENU, "20-1"), puede_administrar=True).accion == CONTACTOS
+    sin_permiso = r("4", estado=Estado(MENU, "20-1"), puede_administrar=False)
     assert sin_permiso.accion is None and "administra" in sin_permiso.texto
 
 
 def test_cambiar_de_cuenta_solo_con_varias():
-    assert r("4", cuentas=DOS, estado=Estado(MENU, "20-1")).estado.paso == CUENTA
-    assert r("4", estado=Estado(MENU, "20-1")).estado.paso == MENU   # con una sola, no existe
+    assert r("5", cuentas=DOS, estado=Estado(MENU, "20-1")).estado.paso == CUENTA
+    assert r("5", estado=Estado(MENU, "20-1")).estado.paso == MENU   # con una sola, no existe
 
 
 def test_tambien_entiende_las_palabras():
