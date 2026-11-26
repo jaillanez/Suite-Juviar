@@ -13,11 +13,10 @@ import os
 import re
 import urllib.error
 import urllib.request
-from pathlib import Path
 
 from .extraccion_pdf import TAMANO_MAXIMO, paginas_png, tipo_imagen
 
-IMAGENES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+IMAGENES = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}  # según tipo_imagen
 ENCAJES = ("ALTO", "MEDIO", "BAJO")
 
 
@@ -82,30 +81,32 @@ def _paginas_como_imagen(contenido: bytes, maximo: int = 3) -> list[str]:
 
 
 def leer_cv(nombre: str, contenido: bytes, texto: str) -> dict[str, object]:
-    """«texto» es la capa de texto del PDF (nunca el OCR): sin ella, la IA recibe la imagen o las páginas."""
-    extension = tipo_imagen(contenido) or Path(nombre).suffix.lower()
-    if extension == ".jpg":
-        extension = ".jpeg"
-    if texto.strip():
-        partes: list[dict[str, object]] = [
-            {"type": "text", "text": f"{INSTRUCCIONES_LECTURA}\n\nCURRÍCULUM:\n{texto[:20000]}"}
-        ]
-    elif extension in IMAGENES:
+    """«texto» es la capa de texto del PDF (nunca el OCR): sin ella, la IA recibe las páginas.
+
+    El tipo sale SÓLO del contenido (firma de imagen o «%PDF»), nunca de la extensión de «nombre»:
+    un archivo que no es PDF ni imagen no se manda. Un problema del archivo es ValueError (no se
+    reintenta); una falla de la IA es RuntimeError."""
+    del nombre  # no se usa: el nombre lo pone quien manda el archivo
+    if imagen := tipo_imagen(contenido):
         if len(contenido) > TAMANO_MAXIMO:
-            raise RuntimeError("La imagen es demasiado grande para leerla con IA.")
+            raise ValueError("La imagen es demasiado grande para leerla con IA.")
         datos = base64.b64encode(contenido).decode()
-        partes = [
+        partes: list[dict[str, object]] = [
             {"type": "text", "text": INSTRUCCIONES_LECTURA},
-            {"type": "image_url", "image_url": {"url": f"data:{IMAGENES[extension]};base64,{datos}",
+            {"type": "image_url", "image_url": {"url": f"data:{IMAGENES[imagen]};base64,{datos}",
                                                 "detail": "original"}},
         ]
-    elif contenido.startswith(b"%PDF") and (paginas := _paginas_como_imagen(contenido)):
+    elif not contenido.startswith(b"%PDF"):
+        raise ValueError("No se pudo leer este archivo: no es PDF ni imagen.")
+    elif texto.strip():
+        partes = [{"type": "text", "text": f"{INSTRUCCIONES_LECTURA}\n\nCURRÍCULUM:\n{texto[:20000]}"}]
+    elif paginas := _paginas_como_imagen(contenido):
         partes = [{"type": "text", "text": INSTRUCCIONES_LECTURA}] + [
             {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{p}", "detail": "original"}}
             for p in paginas
         ]
     else:
-        raise RuntimeError("No se pudo leer este archivo: no es PDF ni imagen, o está dañado.")
+        raise ValueError("No se pudo leer este PDF: está dañado o es demasiado grande.")
     ficha = _llamar(partes, 4000)
     ficha.pop("texto", None)
     return ficha
