@@ -155,8 +155,10 @@ class Comprobante:
 
 def nombre_comprobante(comprobante: Comprobante) -> str:
     """Como el bot anterior: DDJJ_CIU_0000017377_20260210.pdf."""
-    ciu = re.sub(r"[^0-9A-Za-z]", "", comprobante.ciu).zfill(10)[:20]
-    return f"DDJJ_CIU_{ciu}_{comprobante.fecha:%Y%m%d}.pdf"
+    ciu = re.sub(r"[^0-9A-Za-z]", "", comprobante.ciu or "").zfill(10)[:20]
+    # Una descarga sin fecha no debería llegar acá (la consulta la descarta), pero no se cae.
+    fecha = f"{comprobante.fecha:%Y%m%d}" if comprobante.fecha else "sin_fecha"
+    return f"DDJJ_CIU_{ciu}_{fecha}.pdf"
 
 
 def generar_comprobante(comprobante: Comprobante, datos_al: str | None = None) -> bytes:
@@ -169,7 +171,8 @@ def generar_comprobante(comprobante: Comprobante, datos_al: str | None = None) -
     estilo = _estilos()
     titular = escape(comprobante.titular.strip().rstrip("."))
     fecha = comprobante.fecha
-    fecha_texto = f"{fecha:%d/%m/%Y %H:%M}" if isinstance(fecha, datetime) else f"{fecha:%d/%m/%Y}"
+    fecha_texto = ("sin fecha" if fecha is None else
+                   f"{fecha:%d/%m/%Y %H:%M}" if isinstance(fecha, datetime) else f"{fecha:%d/%m/%Y}")
     datos = [
         ("Número CIU", escape(comprobante.ciu)),
         ("Fecha", fecha_texto),

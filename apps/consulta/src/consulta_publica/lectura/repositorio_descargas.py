@@ -109,8 +109,8 @@ class RepositorioDescargasPg:
         filas = self._consultar(
             f"""SELECT sede, ciu, fecha, neto, variedad, azucar, clientecodigo
                 FROM consulta.descarga_publica
-                WHERE clientecuit = %s AND estado = 'descargado' {filtro}
-                ORDER BY fecha DESC NULLS LAST, ciu DESC LIMIT 1""",
+                WHERE clientecuit = %s AND estado = 'descargado' AND fecha IS NOT NULL AND ciu IS NOT NULL {filtro}
+                ORDER BY fecha DESC, ciu DESC LIMIT 1""",
             (clientecuit, ciu) if ciu else (clientecuit,),
         )
         if not filas:
