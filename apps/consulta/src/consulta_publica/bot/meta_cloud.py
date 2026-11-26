@@ -8,6 +8,7 @@ sistema en el Administrador comercial de Meta.
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 
 import httpx
@@ -164,6 +165,9 @@ class ClienteMeta:
         """Plantillas de la cuenta (con su estado de aprobación); con nombre, sólo esa."""
         consulta = "fields=name,language,status,category,rejected_reason&limit=100"
         if nombre:
+            # Los nombres de plantilla de Meta son minúsculas, números y guion bajo.
+            if not re.fullmatch(r"[a-z0-9_]{1,512}", nombre):
+                raise ValueError("nombre de plantilla inválido")
             consulta += f"&name={nombre}"
         try:
             datos = self._pedir("GET", f"/{self._cuenta()}/message_templates?{consulta}").json() or {}

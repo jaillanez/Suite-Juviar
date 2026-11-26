@@ -21,7 +21,6 @@ from .conversacion import responder as responder_legacy
 from .dialogo import CADUCADO, ESTADISTICAS, responder
 from .estadisticas import resumir
 from .graficos import generar as generar_grafico
-from .meta_cloud import ErrorPlantilla
 from .plantillas import LLEGADA_MICRO, armar
 from .reporte_pdf import generar as generar_reporte
 from .repositorio import RepositorioBot
@@ -432,9 +431,12 @@ def enviar_aviso(salida, telefono: str, texto: str, nombre: str | None, parametr
     plantilla, valores = armada
     try:
         return salida.enviar_plantilla(telefono, plantilla.nombre, plantilla.idioma, valores), None
-    except ErrorPlantilla as exc:
-        log.warning("plantilla %s rechazada (%s): sale como texto", plantilla.nombre, exc.codigo)
-        nota = f"plantilla {plantilla.nombre} rechazada ({exc.codigo}); salió como texto"
+    except ErrorChattigo as exc:
+        # Cualquier rechazo de la plantilla (no aprobada, parámetros, códigos que Meta cambie):
+        # el aviso sale igual como texto, que llega si la persona escribió en las últimas 24 h.
+        codigo = getattr(exc, "codigo", None)
+        log.warning("plantilla %s no salió (%s): sale como texto", plantilla.nombre, codigo)
+        nota = f"plantilla {plantilla.nombre} rechazada ({codigo}); salió como texto"
         return salida.enviar_texto(telefono, texto), nota
 
 
