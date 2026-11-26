@@ -7,6 +7,7 @@ from datetime import date, datetime, timedelta
 import psycopg
 from consulta_publica.api.descargas import Descarga
 from consulta_publica.bot.estadisticas import Entrega
+from consulta_publica.bot.reporte_pdf import Comprobante
 from psycopg.rows import dict_row
 
 _CAMPOS = "sede, ciu, id_origen, fecha, neto, variedad, azucar, estado"
@@ -98,6 +99,33 @@ class RepositorioDescargasPg:
             )
             for f in filas
         ]
+
+    def comprobante(
+        self, clientecuit: str, ciu: str | None, titular: str, codigo: str
+    ) -> Comprobante | None:
+        """Una descarga de esa cuenta: la del CIU pedido (con o sin ceros adelante) o la última.
+        Nunca busca fuera de ``clientecuit``: la cuenta activa de la conversación."""
+        filtro = "AND ltrim(ciu, '0') = ltrim(%s, '0')" if ciu else ""
+        filas = self._consultar(
+            f"""SELECT sede, ciu, fecha, neto, variedad, azucar, clientecodigo
+                FROM consulta.descarga_publica
+                WHERE clientecuit = %s AND estado = 'descargado' {filtro}
+                ORDER BY fecha DESC NULLS LAST, ciu DESC LIMIT 1""",
+            (clientecuit, ciu) if ciu else (clientecuit,),
+        )
+        if not filas:
+            return None
+        f = filas[0]
+        return Comprobante(
+            ciu=f["ciu"],
+            fecha=f["fecha"],
+            sede=f["sede"] or "",
+            cuenta=f["clientecodigo"] or codigo,
+            titular=titular,
+            variedad=f["variedad"],
+            neto=f["neto"],
+            azucar=float(f["azucar"]) if f["azucar"] is not None else None,
+        )
 
     def datos_al(self) -> dict[str, datetime]:
         return {

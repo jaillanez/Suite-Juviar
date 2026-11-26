@@ -18,11 +18,20 @@ from .chattigo import ErrorChattigo
 from .conversacion import ZONA
 from .conversacion import intencion as intencion_legacy
 from .conversacion import responder as responder_legacy
-from .dialogo import CADUCADO, ESTADISTICAS, responder
-from .estadisticas import resumir
+from .dialogo import (
+    CADUCADO,
+    COMPROBANTE,
+    DESVINCULAR,
+    ESTADISTICAS,
+    REPORTE,
+    VINCULAR,
+    responder,
+)
+from .estadisticas import formatear_kg, resumir
 from .graficos import generar as generar_grafico
 from .plantillas import LLEGADA_MICRO, armar
 from .reporte_pdf import generar as generar_reporte
+from .reporte_pdf import generar_comprobante, nombre_comprobante
 from .repositorio import RepositorioBot
 
 log = logging.getLogger("bot.worker")
@@ -271,6 +280,8 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
             bot.cerrar(pendiente.id, "respondido", respuesta=texto, wamid_salida=wamid)
             continue
         cuentas = bot.cuentas(pendiente.telefono)
+        # Un número sin alta puede estar vinculado a una cuenta por cuenta, CUIT o patente.
+        vinculada = bot.vinculo(pendiente.telefono) if not cuentas and hasattr(bot, "vinculo") else None
         if not cuentas and _con_archivo(pendiente) and hasattr(bot, "registrar_cv"):
             # Ni productor ni personal: el archivo es un CV para Selección (infra/042).
             try:
@@ -288,9 +299,20 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
                 continue
             bot.cerrar(pendiente.id, "respondido", respuesta=texto, wamid_salida=wamid)
             continue
-        permisos = bot.permisos(pendiente.telefono)
+        abierta = vinculada is not None
+        if abierta:
+            # Sólo consulta: estadísticas, informe y comprobantes (nada de turnos ni contactos).
+            cuentas, permisos = [vinculada], {"ver_informes"}
+        else:
+            permisos = bot.permisos(pendiente.telefono) if cuentas else set()
         estado, caducada = bot.estado_y_caducidad(pendiente.telefono)
+        # Quien todavía se está identificando no pierde lo que escribió porque pasó un rato.
+        caducada = caducada and bool(cuentas)
         try:
+            identificar, candidatas = None, []
+            if not cuentas and hasattr(bot, "identificador"):
+                identificar = bot.identificador(pendiente.telefono)
+                candidatas = bot.cuentas_por_cuit(estado.candidatas) if estado.candidatas else []
             # El pedido de turno lee y reserva en la base desde el diálogo: si la base
             # falla a mitad de camino, el mensaje se reintenta como cualquier envío.
             respuesta = responder(
@@ -301,9 +323,13 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
                 puede_ver_informes="ver_informes" in permisos,
                 puede_administrar="administrar_contactos" in permisos,
                 puede_pedir_turnos="pedir_turnos" in permisos,
-                turnos=bot.turnos(pendiente.telefono) if hasattr(bot, "turnos") else None,
+                turnos=(bot.turnos(pendiente.telefono)
+                        if hasattr(bot, "turnos") and cuentas and not abierta else None),
                 # Los turnos van siempre con la fecha real, aunque haya BOT_FECHA_SIMULADA.
                 hoy_turnos=datetime.now(ZONA).date(),
+                sesion_abierta=abierta,
+                identificar=identificar,
+                candidatas=candidatas,
             )
             if caducada:
                 respuesta.texto = f"{CADUCADO}\n\n{respuesta.texto}"
@@ -318,64 +344,8 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
         except (psycopg.Error, OSError) as exc:
             log.warning("no se pudo guardar la sesión de %s: %s", pendiente.id, exc)
         try:
-            if respuesta.accion in {"estadisticas", "reporte"}:
-                entregas = consultas.entregas(
-                    respuesta.cuenta.clientecuit,
-                    respuesta.periodo.desde,
-                    respuesta.periodo.hasta,
-                )
-                if not entregas:
-                    texto = "No hay entregas en ese período."
-                    wamid = salida.enviar_texto(pendiente.telefono, texto)
-                else:
-                    resumen = resumir(entregas)
-                    ahora = datetime.now(UTC)
-                    if respuesta.accion == ESTADISTICAS:
-                        contenido = generar_grafico(
-                            resumen,
-                            respuesta.cuenta.titular,
-                            respuesta.cuenta.codigo,
-                            respuesta.periodo.etiqueta,
-                        )
-                        archivo = preparar(contenido, "png", "estadisticas.png", ahora)
-                        bot.guardar_archivo(archivo, pendiente.telefono)
-                        texto = (
-                            f"Estadísticas de cosecha - {respuesta.periodo.etiqueta}\n"
-                            f"Total: {resumen.total_kg:,} kg"
-                        ).replace(",", ".")
-                        wamid = salida.enviar_imagen(
-                            pendiente.telefono, archivo.url(base_archivos), texto
-                        )
-                    else:
-                        nombre = nombre_reporte(
-                            respuesta.cuenta.codigo,
-                            respuesta.periodo.desde,
-                            respuesta.periodo.hasta,
-                        )
-                        contenido = generar_reporte(
-                            entregas,
-                            resumen,
-                            respuesta.cuenta.titular,
-                            respuesta.cuenta.codigo,
-                            respuesta.periodo.etiqueta,
-                        )
-                        archivo = preparar(contenido, "pdf", nombre, ahora)
-                        bot.guardar_archivo(archivo, pendiente.telefono)
-                        texto = (
-                            f"Detalle de cosecha - {respuesta.cuenta.titular.strip().rstrip('.')}\n"
-                            f"Total: {resumen.total_kg:,} kg ({resumen.entregas} entregas)"
-                        ).replace(",", ".")
-                        wamid = salida.enviar_documento(
-                            pendiente.telefono, archivo.url(base_archivos), nombre, texto
-                        )
-                    bot.registrar_consulta(
-                        respuesta.cuenta.clientecuit,
-                        f"whatsapp:{respuesta.accion}",
-                        len(entregas),
-                    )
-            else:
-                texto = respuesta.con_botones()
-                wamid = salida.enviar_texto(pendiente.telefono, texto)
+            texto, wamid = ejecutar(bot, consultas, salida, pendiente.telefono, respuesta,
+                                    base_archivos, abierta)
         except (
             ErrorChattigo,
             transporte.ErrorTransporte,
@@ -389,6 +359,114 @@ def procesar_una_vez(bot: RepositorioBot, consultas, salida, maximo_hora: int = 
             continue
         bot.cerrar(pendiente.id, "respondido", respuesta=texto, wamid_salida=wamid)
     return len(pendientes) + enviar_avisos(bot, salida) + enviar_avisos_personal(bot, salida)
+
+
+def enviar_respuesta(salida, telefono: str, respuesta) -> tuple[str, str]:
+    """(texto que queda en la cola, wamid). Por Meta, las opciones van como botones o lista;
+    en el simulador y por Chattigo, como texto numerado (el diálogo entiende las dos)."""
+    texto = respuesta.con_botones()
+    if respuesta.opciones and hasattr(salida, "enviar_opciones"):
+        return texto, salida.enviar_opciones(telefono, respuesta.texto, respuesta.opciones, respuesta.desde)
+    return texto, salida.enviar_texto(telefono, texto)
+
+
+def _registrar(bot, clientecuit: str, recurso: str, filas: int, telefono: str | None) -> None:
+    """Las consultas de un número vinculado sin alta quedan en la bitácora con el teléfono."""
+    if telefono is None:
+        bot.registrar_consulta(clientecuit, recurso, filas)
+    else:
+        bot.registrar_consulta(clientecuit, recurso, filas, telefono)
+
+
+def enviar_comprobante(bot, consultas, salida, telefono: str, cuenta, ciu: str | None, base_archivos: str,
+                       telefono_bitacora: str | None, avisar_si_falta: bool = True) -> tuple[str | None, str | None]:
+    """DDJJ – Comprobante de Ingreso de Uva de una descarga de la cuenta activa: la del CIU pedido
+    o la última. (texto, wamid); (None, None) si no hay y no hace falta avisar."""
+    comprobante = consultas.comprobante(cuenta.clientecuit, ciu, cuenta.titular, cuenta.codigo)
+    if comprobante is None:
+        if not avisar_si_falta:
+            return None, None
+        texto = (f"No encontré el comprobante N.º {ciu} en la cuenta {cuenta.codigo}.\n"
+                 "Revisá el número; sólo se ven las descargas de esta cuenta." if ciu
+                 else f"Todavía no hay descargas en la cuenta {cuenta.codigo}.")
+        return texto, salida.enviar_texto(telefono, texto)
+    nombre = nombre_comprobante(comprobante)
+    archivo = preparar(generar_comprobante(comprobante), "pdf", nombre, datetime.now(UTC))
+    bot.guardar_archivo(archivo, telefono)
+    texto = (f"DDJJ – Comprobante de Ingreso de Uva\nCIU {comprobante.ciu} · "
+             f"{formatear_kg(comprobante.neto)}\nPara otro comprobante, escribí su número de CIU.")
+    wamid = salida.enviar_documento(telefono, archivo.url(base_archivos), nombre, texto)
+    _registrar(bot, cuenta.clientecuit, "whatsapp:comprobante", 1, telefono_bitacora)
+    return texto, wamid
+
+
+def ejecutar(bot, consultas, salida, telefono: str, respuesta, base_archivos: str,
+             abierta: bool = False) -> tuple[str, str]:
+    """Hace lo que pidió el diálogo y responde. (texto que queda en la cola, wamid)."""
+    bitacora = telefono if abierta or respuesta.accion == VINCULAR else None
+    if respuesta.accion == VINCULAR:
+        # Como el bot anterior: al identificarse llega el comprobante de la última descarga.
+        bot.vincular(telefono, respuesta.cuenta)
+        _registrar(bot, respuesta.cuenta.clientecuit, "whatsapp:vincular", 1, telefono)
+        if hasattr(consultas, "comprobante"):
+            enviar_comprobante(bot, consultas, salida, telefono, respuesta.cuenta, None, base_archivos,
+                               telefono, avisar_si_falta=False)
+        return enviar_respuesta(salida, telefono, respuesta)
+    if respuesta.accion == DESVINCULAR:
+        bot.desvincular(telefono)
+        return enviar_respuesta(salida, telefono, respuesta)
+    if respuesta.accion == COMPROBANTE:
+        texto, wamid = enviar_comprobante(bot, consultas, salida, telefono, respuesta.cuenta, respuesta.ciu,
+                                          base_archivos, bitacora)
+        return texto or "", wamid or ""
+    if respuesta.accion not in {ESTADISTICAS, REPORTE}:
+        return enviar_respuesta(salida, telefono, respuesta)
+    entregas = consultas.entregas(
+        respuesta.cuenta.clientecuit,
+        respuesta.periodo.desde,
+        respuesta.periodo.hasta,
+    )
+    if not entregas:
+        texto = "No hay entregas en ese período."
+        return texto, salida.enviar_texto(telefono, texto)
+    resumen = resumir(entregas)
+    ahora = datetime.now(UTC)
+    if respuesta.accion == ESTADISTICAS:
+        contenido = generar_grafico(
+            resumen,
+            respuesta.cuenta.titular,
+            respuesta.cuenta.codigo,
+            respuesta.periodo.etiqueta,
+        )
+        archivo = preparar(contenido, "png", "estadisticas.png", ahora)
+        bot.guardar_archivo(archivo, telefono)
+        texto = (
+            f"Estadísticas de cosecha - {respuesta.periodo.etiqueta}\n"
+            f"Total: {resumen.total_kg:,} kg"
+        ).replace(",", ".")
+        wamid = salida.enviar_imagen(telefono, archivo.url(base_archivos), texto)
+    else:
+        nombre = nombre_reporte(
+            respuesta.cuenta.codigo,
+            respuesta.periodo.desde,
+            respuesta.periodo.hasta,
+        )
+        contenido = generar_reporte(
+            entregas,
+            resumen,
+            respuesta.cuenta.titular,
+            respuesta.cuenta.codigo,
+            respuesta.periodo.etiqueta,
+        )
+        archivo = preparar(contenido, "pdf", nombre, ahora)
+        bot.guardar_archivo(archivo, telefono)
+        texto = (
+            f"Detalle de cosecha - {respuesta.cuenta.titular.strip().rstrip('.')}\n"
+            f"Total: {resumen.total_kg:,} kg ({resumen.entregas} entregas)"
+        ).replace(",", ".")
+        wamid = salida.enviar_documento(telefono, archivo.url(base_archivos), nombre, texto)
+    _registrar(bot, respuesta.cuenta.clientecuit, f"whatsapp:{respuesta.accion}", len(entregas), bitacora)
+    return texto, wamid
 
 
 def enviar_avisos(bot, salida) -> int:

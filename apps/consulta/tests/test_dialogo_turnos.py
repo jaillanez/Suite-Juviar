@@ -88,7 +88,8 @@ def en_paso(paso, cuenta=JUAN, **borrador):
 def test_menu_muestra_ofrecer_uva_y_mis_turnos():
     respuesta = r("hola")
     assert respuesta.opciones == [
-        "Ver estadísticas", "Descargar reporte", "Ofrecer uva", "Mis turnos", "Mis contactos",
+        "Ver estadísticas", "Descargar reporte", "Comprobante de descarga", "Ofrecer uva",
+        "Mis turnos", "Mis contactos",
     ]
 
 
@@ -123,7 +124,7 @@ def test_una_sesion_del_pedido_por_dia_vuelve_al_menu():
 
 
 def test_ofrecer_con_la_cuenta_del_menu_va_directo_a_la_bodega():
-    respuesta = r("3")
+    respuesta = r("4")
     assert respuesta.estado.paso == OFERTA_SEDE and respuesta.estado.cuenta == "20-1"
     assert respuesta.opciones == ["Chimbas", "Lavalle", "Media Agua"]
     assert "QUIROGA JUAN CARLOS (G03436)" in respuesta.texto and "toda la temporada" in respuesta.texto
@@ -282,7 +283,7 @@ def test_mis_turnos_muestra_ofertas_y_dias():
         ],
         proximos=[TurnoVigente(7, "chimbas", HOY, "20-1", "G03436", 3, 1, 11_000, False)],
     )
-    respuesta = r("4", turnos=turnos)
+    respuesta = r("5", turnos=turnos)
     assert respuesta.estado.paso == MENU
     assert "• Cereza, 80.000 kg en Chimbas: esperando que la bodega asigne los días" in respuesta.texto
     assert "• Malbec, 40.000 kg en Chimbas: postergada por falta de grado hasta el martes 01/12" in respuesta.texto

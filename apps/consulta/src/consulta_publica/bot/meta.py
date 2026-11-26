@@ -35,6 +35,11 @@ def _texto(mensaje: dict) -> str | None:
     if tipo == "interactive":
         interactivo = mensaje.get("interactive") or {}
         respuesta = interactivo.get("button_reply") or interactivo.get("list_reply") or {}
+        # Los botones y listas que manda el bot llevan un id estable (``op:<opción completa>`` o
+        # ``pag:<desde>`` para «Ver más…»): vale más que el título, que puede venir recortado.
+        identificador = respuesta.get("id")
+        if isinstance(identificador, str) and identificador.startswith(("op:", "pag:")):
+            return identificador
         return respuesta.get("title")
     if tipo in {"image", "document"}:
         return (mensaje.get(tipo) or {}).get("caption") or None

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 
 import psycopg
@@ -15,6 +16,22 @@ _PARAMETROS = ", ".join(f"%({columna})s" for columna in COLUMNAS_DESTINO)
 _ASIGNACIONES = ", ".join(
     f"{columna} = %({columna})s" for columna in COLUMNAS_DESTINO if columna != "ciu"
 )
+
+
+def _texto(valor: object) -> str | None:
+    limpio = str(valor).strip() if valor is not None else ""
+    return limpio or None
+
+
+def _solo_digitos(valor: object) -> str | None:
+    digitos = re.sub(r"\D", "", str(valor or ""))
+    return digitos or None
+
+
+def normalizar_patente(valor: object) -> str | None:
+    """«AB 123 CD», «ab-123-cd» y «AB123CD» son la misma patente."""
+    limpia = re.sub(r"[^A-Z0-9]", "", str(valor or "").upper())
+    return limpia if 5 <= len(limpia) <= 10 else None
 
 
 class RepositorioSuite:
@@ -149,7 +166,7 @@ class RepositorioSuite:
     def pendientes_de_publicar(conexion: psycopg.Connection, limite: int = 5000) -> list[dict]:
         return conexion.execute(
             """SELECT id, sede, ciu, id_origen, fecha, nroinscripto, clientecuit,
-                      neto, descvariedad,
+                      clientecodigo, codigotransporte, cuit, neto, descvariedad,
                       azucar, estado, actualizado_en
                FROM recepcion.descarga WHERE pendiente_publicar
                ORDER BY id LIMIT %s""",
@@ -174,6 +191,18 @@ class RepositorioDmz:
     def publicar(self, filas: list[dict]) -> None:
         if not filas:
             return
+        # infra/044: la cuenta, la patente y el CUIT del inscripto, para que el bot identifique
+        # la cuenta y arme el comprobante. La patente y el CUIT van normalizados (sin espacios
+        # ni guiones) para buscarlos tal como los escribe el productor.
+        filas = [
+            {
+                **fila,
+                "clientecodigo": _texto(fila.get("clientecodigo")),
+                "patente": normalizar_patente(fila.get("codigotransporte")),
+                "cuit_inscripto": _solo_digitos(fila.get("cuit")),
+            }
+            for fila in filas
+        ]
         with (
             psycopg.connect(self._dsn) as conexion,
             conexion.transaction(),
@@ -182,11 +211,13 @@ class RepositorioDmz:
             cursor.executemany(
                 """INSERT INTO consulta.descarga_publica
                            (id_suite, sede, ciu, id_origen, fecha, nroinscripto, clientecuit, neto,
-                            variedad, azucar, estado, actualizado_en)
+                            variedad, azucar, estado, actualizado_en, clientecodigo, patente,
+                            cuit_inscripto)
                        VALUES
                            (%(id)s, %(sede)s, %(ciu)s, %(id_origen)s, %(fecha)s, %(nroinscripto)s,
                             %(clientecuit)s, %(neto)s, %(descvariedad)s, %(azucar)s,
-                            %(estado)s, %(actualizado_en)s)
+                            %(estado)s, %(actualizado_en)s, %(clientecodigo)s, %(patente)s,
+                            %(cuit_inscripto)s)
                        ON CONFLICT (sede, ciu, id_origen) DO UPDATE SET
                            id_suite = EXCLUDED.id_suite,
                            fecha = EXCLUDED.fecha,
@@ -196,7 +227,10 @@ class RepositorioDmz:
                            variedad = EXCLUDED.variedad,
                            azucar = EXCLUDED.azucar,
                            estado = EXCLUDED.estado,
-                           actualizado_en = EXCLUDED.actualizado_en""",
+                           actualizado_en = EXCLUDED.actualizado_en,
+                           clientecodigo = EXCLUDED.clientecodigo,
+                           patente = EXCLUDED.patente,
+                           cuit_inscripto = EXCLUDED.cuit_inscripto""",
                 filas,
             )
 

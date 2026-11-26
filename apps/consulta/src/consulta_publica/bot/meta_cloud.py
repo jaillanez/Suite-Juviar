@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 import httpx
 
+from .botones import cuerpo_opciones, partir_cuerpo
 from .chattigo import ErrorChattigo
 from .chattigo_media import cuerpo_documento, cuerpo_imagen
 
@@ -101,6 +102,14 @@ class ClienteMeta:
             "type": "text",
             "text": {"preview_url": False, "body": texto},
         })
+
+    def enviar_opciones(self, telefono: str, texto: str, opciones: list[str], desde: int = 0) -> str:
+        """Botones (hasta 3 opciones) o lista (más): ver botones.py. Si el texto no entra como
+        cuerpo, lo largo sale antes como texto común."""
+        antes, cuerpo = partir_cuerpo(texto)
+        if antes:
+            self.enviar_texto(telefono, antes)
+        return self._enviar_mensaje(cuerpo_opciones(telefono, cuerpo, opciones, desde))
 
     def enviar_plantilla(self, telefono: str, nombre: str, idioma: str, parametros: list[str]) -> str:
         """Plantilla aprobada (sale aunque la persona no haya escrito en las últimas 24 h)."""
