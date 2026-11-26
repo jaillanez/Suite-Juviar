@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { abrirArchivo, api, ocultarMarcasPrueba } from "@/lib/api";
+import { hoyLocal } from "@/lib/fechas";
 import { ErrorVisible, Tabla, Vacio, Ventana } from "./compartidos";
 
 type Catalogo = Record<string, unknown> & { codigo: string; producto: string; tipo_modelo: string; marca: string; posee_certificacion: boolean; certificacion: string | null; unidad: string; vida_util_dias: number | null; familia: string; destino_declarado: string | null; criterio_vida_util: string; activo: boolean; simulado: boolean; items: Array<{ codigo_interno: string; marca: string; modelo: string; talle: string; activo: boolean }> };
@@ -70,7 +71,7 @@ export function EppGestion() {
   const [itemAbierto, setItemAbierto] = useState<Stock | null>(null); const [movimientos, setMovimientos] = useState<Movimiento[]>([]); const [errorVentanaEpp, setErrorVentanaEpp] = useState("");
   const [error, setError] = useState(""); const [mensaje, setMensaje] = useState(""); const [previa, setPrevia] = useState<Record<string, unknown> | null>(null);
   const [confirmarReemplazo, setConfirmarReemplazo] = useState(false); const [limpieza, setLimpieza] = useState<Record<string, number> | null>(null); const [fraseLimpieza, setFraseLimpieza] = useState("");
-  const hoy = new Date().toISOString().slice(0, 10); const inicio = `${new Date().getFullYear()}-01-01`;
+  const hoy = hoyLocal(); const inicio = `${new Date().getFullYear()}-01-01`;
   const informar = (e: unknown) => setError(e instanceof Error ? e.message : "No fue posible completar la operación.");
   const nombreElementoPlan = (codigo: string) => catalogo.find(item => item.codigo === codigo)?.producto ?? `Elemento ${codigo}`;
   async function recargar() {
@@ -237,7 +238,3 @@ export function EppGestion() {
   </>;
 }
 
-function hoyLocal() {
-  const ahora = new Date();
-  return `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, "0")}-${String(ahora.getDate()).padStart(2, "0")}`;
-}

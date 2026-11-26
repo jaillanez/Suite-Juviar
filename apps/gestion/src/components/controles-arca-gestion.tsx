@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { abrirArchivo, api, descargarArchivo } from "@/lib/api";
+import { hoyLocal } from "@/lib/fechas";
 import { ErrorVisible, FormularioVentana as Formulario, Tabla, Vacio, Ventana } from "./compartidos";
 
 type EstadoControl = "ok" | "alerta" | "pendiente" | "no_aplica" | "sin_configurar" | "error" | "sin_correr";
@@ -161,7 +162,7 @@ export function ControlesArcaGestion() {
         <label>Tipo de comprobante<select name="tipo_comprobante" required defaultValue="1">{Object.entries(catalogo.tipos_comprobante).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
         <label>Punto de venta<input name="punto_venta" type="number" min="1" max="99999" step="1" required /></label>
         <label>Número<input name="numero" type="number" min="1" max="99999999" step="1" required /></label>
-        <label>Fecha<input name="fecha" type="date" required max={new Date().toISOString().slice(0, 10)} /></label>
+        <label>Fecha<input name="fecha" type="date" required defaultValue={hoyLocal()} max={hoyLocal()} /></label>
         <label>Moneda<select name="moneda" value={moneda} onChange={e => setMoneda(e.target.value)}>{Object.entries(catalogo.monedas ?? { PES: "Pesos argentinos" }).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
         <label>Importe total {moneda === "PES" ? "($)" : "(en esa moneda)"}<input name="importe_total" type="number" min="0.01" step="0.01" required /></label>
         {moneda !== "PES" && <label>Cotización (pesos por unidad)<input name="cotizacion" type="number" min="0.000001" step="any" required /></label>}

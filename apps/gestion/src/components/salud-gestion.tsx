@@ -1,6 +1,7 @@
 "use client";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { api, descargarArchivo } from "@/lib/api";
+import { fechaLocal as iso, rangoMesActual } from "@/lib/fechas";
 import { ErrorVisible, Pestanas, Tabla, Vacio, Ventana } from "./compartidos";
 import { PendientesSalud } from "./rrhh-whatsapp-gestion";
 
@@ -11,8 +12,9 @@ type Auditoria={id:string;actor:string;momento:string;legajo?:string;accion:stri
 type Articulo={meses_remunerados:number};
 type Reporte={por_diagnostico:Array<Record<string,unknown>>;grupos_suprimidos:number;minimo_agregado:number};
 type Analisis={resumen:string;dias_detectados:number|null;tipo_accidente:string;mensaje:string;paciente_nombre?:string|null;paciente_dni?:string|null;diagnostico_texto?:string|null;diagnostico_codigo?:string|null;fecha_desde?:string|null;fecha_hasta?:string|null;fecha_reintegro?:string|null;profesional?:string|null;campos_a_revisar?:string[]};
-const iso=(d:Date)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
-const hoy=iso(new Date()), inicioMes=`${hoy.slice(0,8)}01`;
+const {desde:inicioMes,hasta:hoy}=rangoMesActual();
+/** Lo que se ve al entrar: el mes actual, igual que muestran los filtros Desde/Hasta. */
+const periodoInicial=()=>new URLSearchParams(rangoMesActual()).toString();
 const diasEntre=(a:string,b:string)=>a&&b?Math.max(0,Math.round((Date.parse(`${b}T12:00:00`)-Date.parse(`${a}T12:00:00`))/86400000)+1):0;
 const sumar=(a:string,n:number)=>{const d=new Date(`${a}T12:00:00`);d.setDate(d.getDate()+n-1);return iso(d)};
 async function b64(f:File){return new Promise<string>((ok,mal)=>{const r=new FileReader();r.onerror=mal;r.onload=()=>ok(String(r.result).split(",")[1]);r.readAsDataURL(f)})}
@@ -25,12 +27,14 @@ export function SaludGestion(){
  const [edicion,setEdicion]=useState<Diagnostico>({codigo:"",descripcion:"",padre_codigo:""});
  const dias=diasEntre(desde,hasta), categorias=useMemo(()=>catalogo.filter(x=>!x.padre_codigo),[catalogo]), diagnosticos=useMemo(()=>catalogo.filter(x=>x.padre_codigo&&`${x.codigo} ${x.descripcion}`.toLowerCase().includes(diagBusca.toLowerCase())),[catalogo,diagBusca]);
  const informar=(x:unknown)=>setError(x instanceof Error?x.message:"No se pudo completar la operación.");
- async function refrescar(){const c=await api<{items:Diagnostico[]}>("salud/catalogo");setCatalogo(c.items);setCertificados(await api("salud/certificados"))}
+ async function refrescar(){const c=await api<{items:Diagnostico[]}>("salud/catalogo");setCatalogo(c.items);setCertificados(await api(`salud/certificados?${periodoInicial()}`))}
  useEffect(()=>{refrescar().catch(informar)},[]);
+ const [historialCargado,setHistorialCargado]=useState(false);
+ useEffect(()=>{if(pestana!=="historial"||historialCargado)return;setHistorialCargado(true);api<Auditoria[]>(`salud/bitacora?${periodoInicial()}`).then(setAuditoria).catch(informar)},[pestana,historialCargado]);
  useEffect(()=>{const t=setTimeout(()=>{if(busqueda.trim().length>=2&&!persona)api<Persona[]>(`salud/personas?q=${encodeURIComponent(busqueda)}`).then(setPersonas).catch(informar);else setPersonas([])},250);return()=>clearTimeout(t)},[busqueda,persona]);
  function elegir(p:Persona){setPersona(p);setLegajo(p.legajo);setBusqueda(p.nombre_completo);setPersonas([]);setArticulo(null)}
  async function analizar(f:File){setAnalizando(true);setError("");try{const a=await api<Analisis>("salud/certificados/analizar",{method:"POST",body:JSON.stringify({adjunto_nombre:f.name,adjunto_base64:await b64(f)})});setResumen(a.resumen||"");setTipo(a.tipo_accidente||"NO_INFORMADO");if(a.profesional)setProfesional(a.profesional);if(a.fecha_desde)setDesde(a.fecha_desde);if(a.fecha_hasta)setHasta(a.fecha_hasta);else if(a.dias_detectados)setHasta(sumar(a.fecha_desde||desde,a.dias_detectados));if(a.diagnostico_texto||a.diagnostico_codigo){const sugerido=`${a.diagnostico_codigo||""} ${a.diagnostico_texto||""}`.trim();setDiagBusca(sugerido);const s=sugerido.toLowerCase();const encontrado=catalogo.find(x=>x.padre_codigo&&(s.includes(x.descripcion.toLowerCase())||s.includes(x.codigo.toLowerCase())||(s.includes("f41")&&x.codigo==="SALUD-MENTAL-ANS")));if(encontrado){setDiag(encontrado.codigo);setDiagBusca(encontrado.descripcion)}}const buscarPersona=a.paciente_dni||a.paciente_nombre;if(buscarPersona){const halladas=await api<Persona[]>(`salud/personas?q=${encodeURIComponent(buscarPersona)}`);if(halladas.length===1)elegir(halladas[0]);else if(a.paciente_nombre)setBusqueda(a.paciente_nombre)}setMensaje(`${a.mensaje}${a.campos_a_revisar?.length?` Revisar: ${a.campos_a_revisar.join(", ")}.`:""}`)}catch(x){informar(x)}finally{setAnalizando(false)}}
- async function cargar(e:FormEvent<HTMLFormElement>){e.preventDefault();if(!legajo.trim())return setError("Ingresá un legajo o elegí una persona por nombre.");const f=new FormData(e.currentTarget),archivo=f.get("adjunto") as File;try{const c=await api<Certificado>("salud/certificados",{method:"POST",body:JSON.stringify({legajo:legajo.trim(),diagnostico_codigo:diag,desde,hasta,dias,profesional:f.get("profesional"),adjunto_nombre:archivo.name,adjunto_base64:await b64(archivo),resumen,tipo_accidente:tipo})});setNuevoCert(false);setMensaje(`Certificado registrado. Novedad: ${c.dias} días · ${c.tipo_accidente||"sin accidente informado"}.`);setCertificados(await api("salud/certificados"))}catch(x){informar(x)}}
+ async function cargar(e:FormEvent<HTMLFormElement>){e.preventDefault();if(!legajo.trim())return setError("Ingresá un legajo o elegí una persona por nombre.");const f=new FormData(e.currentTarget),archivo=f.get("adjunto") as File;try{const c=await api<Certificado>("salud/certificados",{method:"POST",body:JSON.stringify({legajo:legajo.trim(),diagnostico_codigo:diag,desde,hasta,dias,profesional:f.get("profesional"),adjunto_nombre:archivo.name,adjunto_base64:await b64(archivo),resumen,tipo_accidente:tipo})});setNuevoCert(false);setMensaje(`Certificado registrado. Novedad: ${c.dias} días · ${c.tipo_accidente||"sin accidente informado"}.`);setCertificados(await api(`salud/certificados?${periodoInicial()}`))}catch(x){informar(x)}}
  async function guardarDiag(e:FormEvent){e.preventDefault();try{const existe=catalogo.some(x=>x.codigo===edicion.codigo);await api(`salud/catalogo${existe?`/${edicion.codigo}`:""}`,{method:existe?"PUT":"POST",body:JSON.stringify(edicion)});setEdicion({codigo:"",descripcion:"",padre_codigo:""});await refrescar();setMensaje("Catálogo actualizado.")}catch(x){informar(x)}}
  async function borrarDiag(){try{await api(`salud/catalogo/${edicion.codigo}`,{method:"DELETE"});setEdicion({codigo:"",descripcion:"",padre_codigo:""});await refrescar()}catch(x){informar(x)}}
  async function filtrar(e:FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget),q=new URLSearchParams();for(const k of ["legajo","desde","hasta"]){const v=String(f.get(k)||"");if(v)q.set(k,v)}try{setCertificados(await api(`salud/certificados?${q}`))}catch(x){informar(x)}}
