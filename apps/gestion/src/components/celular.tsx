@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, PointerEvent, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { Empresa, Perfil, perfiles } from "@/lib/acceso";
 import { api } from "@/lib/api";
@@ -91,7 +92,7 @@ function Ingreso({ entrar }: { entrar: (yo: Yo) => void }) {
       <label>Contraseña<span className="cel-clave"><input name="clave" type={ver ? "text" : "password"} autoComplete="current-password" required /><button type="button" onClick={() => setVer(v => !v)}>{ver ? "Ocultar" : "Ver"}</button></span></label>
       <button className="cel-boton" disabled={enviando}>{enviando ? "Entrando…" : "Entrar"}</button>
     </form>
-    <p className="cel-pie">¿Te olvidaste la contraseña? Pedile una nueva a Sistemas.</p>
+    <p className="cel-pie"><Link href="/recuperar">¿Olvidaste tu contraseña?</Link></p>
   </main>;
 }
 
@@ -123,10 +124,10 @@ function ClaveNueva({ listo }: { listo: (yo: Yo) => void }) {
 
 /* ---------- Piezas comunes ---------- */
 
-function Pantalla({ titulo, paso, volver, children }: { titulo: string; paso?: string; volver: () => void; children: ReactNode }) {
+function Pantalla({ titulo, paso, volver, textoVolver = "‹ Volver", children }: { titulo: string; paso?: string; volver: () => void; textoVolver?: string; children: ReactNode }) {
   useEffect(() => { window.scrollTo(0, 0); }, [titulo, paso]);
   return <main className="cel">
-    <header className="cel-barra"><button className="cel-volver" onClick={volver}>‹ Volver</button>{paso && <span className="cel-paso">{paso}</span>}</header>
+    <header className="cel-barra"><button className="cel-volver" onClick={volver}>{textoVolver}</button>{paso && <span className="cel-paso">{paso}</span>}</header>
     <h1 className="cel-titulo">{titulo}</h1>
     {children}
   </main>;
@@ -393,7 +394,11 @@ type EstadoArca = "ok" | "alerta" | "pendiente" | "no_aplica" | "sin_configurar"
 type ControlArca = { numero: number; nombre: string; estado: EstadoArca; estado_nombre: string; detalle: string };
 type FacturaArca = { id: string; empresa: string; cuit_emisor: string; razon_social: string; comprobante: string; fecha: string; importe_total: number; moneda?: string; importe_texto?: string; alerta: boolean; controles: ControlArca[] };
 type DatosFactura = { empresa?: string | null; cuit_emisor: string | null; tipo_comprobante: number | null; punto_venta: number | null; numero: number | null; fecha: string | null; importe_total: number | null; autorizacion: string | null; codigo_autorizacion: string | null };
-type RespuestaFactura = { estado: "listo"; ya_cargada: boolean; factura: FacturaArca } | { estado: "elegir_empresa"; datos: DatosFactura & { nro_doc_receptor: string } };
+// Con PIN, una factura que ya había cargado otra persona vuelve recortada: sin controles ni quién la cargó.
+type FacturaAjena = Pick<FacturaArca, "comprobante" | "empresa" | "cuit_emisor" | "fecha" | "importe_total" | "moneda" | "importe_texto">;
+type RespuestaFactura = { estado: "listo"; ya_cargada: boolean; ajena?: false; factura: FacturaArca }
+  | { estado: "listo"; ya_cargada: true; ajena: true; factura: FacturaAjena }
+  | { estado: "elegir_empresa"; datos: DatosFactura & { nro_doc_receptor: string } };
 type Propuesta = { datos: DatosFactura; motor: string; texto_detectado: boolean; mensaje: string };
 // Si el servidor encuentra el QR que el celular no pudo leer, contesta como /celular/qr y agrega el QR leído.
 type RespuestaLeer = Propuesta | (RespuestaFactura & { qr: string });
@@ -409,22 +414,27 @@ const SEMAFORO: Record<EstadoArca, { color: string; simbolo: string }> = {
 const SIN_DATOS: DatosFactura = { cuit_emisor: null, tipo_comprobante: null, punto_venta: null, numero: null, fecha: null, importe_total: null, autorizacion: null, codigo_autorizacion: null };
 const pesosAR = (v: number) => v.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
 
-function ControlarFactura({ volver }: { volver: () => void }) {
+/** Misma pantalla para Gestión (`/factura`) y para quien entra con link + PIN (`/subir`, con `subida`). */
+export function ControlarFactura({ volver, subida }: { volver: () => void; subida?: { salir: () => void } }) {
   const entrada = useRef<HTMLInputElement>(null);
   const [catalogo, setCatalogo] = useState<CatalogoArca | null>(null);
   const [foto, setFoto] = useState<Foto | null>(null);
   const [ocupado, setOcupado] = useState(""); const [error, setError] = useState("");
   const [resultado, setResultado] = useState<{ ya_cargada: boolean; factura: FacturaArca } | null>(null);
+  const [ajena, setAjena] = useState<FacturaAjena | null>(null);
   const [elegir, setElegir] = useState<(DatosFactura & { nro_doc_receptor: string }) | null>(null);
   const [propuesta, setPropuesta] = useState<Propuesta | null>(null);
   const [enVivo, setEnVivo] = useState(false);
   const [qrServidor, setQrServidor] = useState(""); const [moneda, setMoneda] = useState("PES");
-  useEffect(() => { api<CatalogoArca>("controles-arca/catalogo").then(setCatalogo).catch(x => setError(mensaje(x, "No pudimos leer la configuración de los controles."))); }, []);
+  useEffect(() => { api<CatalogoArca>("controles-arca/celular/catalogo").then(setCatalogo).catch(x => setError(mensaje(x, "No pudimos leer la configuración de los controles."))); }, []);
   useEffect(() => () => { if (foto) URL.revokeObjectURL(foto.vista); }, [foto]);
-  function otra() { setFoto(null); setResultado(null); setElegir(null); setPropuesta(null); setError(""); setQrServidor(""); setMoneda("PES"); }
+  function otra() { setFoto(null); setResultado(null); setAjena(null); setElegir(null); setPropuesta(null); setError(""); setQrServidor(""); setMoneda("PES"); }
+  // Con PIN no hay menú de Gestión: «volver» lleva a la pantalla de la cámara.
+  const inicio = subida ? otra : volver;
 
   function mostrar(r: RespuestaFactura) {
-    if (r.estado === "listo") { setResultado({ ya_cargada: r.ya_cargada, factura: r.factura }); setElegir(null); setPropuesta(null); }
+    if (r.estado === "listo" && r.ajena) { setAjena(r.factura); setElegir(null); setPropuesta(null); }
+    else if (r.estado === "listo") { setResultado({ ya_cargada: r.ya_cargada, factura: r.factura }); setElegir(null); setPropuesta(null); }
     else setElegir(r.datos);
   }
   async function conQr(f: Foto, empresa?: string) {
@@ -491,7 +501,17 @@ function ControlarFactura({ volver }: { volver: () => void }) {
   const camara = <input ref={entrada} type="file" accept="image/*" capture="environment" hidden onChange={e => void elegida(e.target.files?.[0])} />;
   const empresas = catalogo?.empresas ?? ["ENAV", "JUBIAR"];
 
-  if (resultado) { const fa = resultado.factura; return <Pantalla titulo={fa.comprobante} volver={volver}>
+  if (ajena) return <Pantalla titulo={ajena.comprobante} volver={inicio}>
+    <p className="cel-aviso" role="status">Esta factura ya estaba cargada en Gestión por otra persona: no hace falta cargarla de nuevo.</p>
+    <div className="cel-ficha"><dl>
+      <div><dt>Proveedor</dt><dd>CUIT {ajena.cuit_emisor}</dd></div>
+      <div><dt>Se le facturó a</dt><dd>{ajena.empresa}</dd></div>
+      <div><dt>Fecha e importe</dt><dd>{ajena.fecha.split("-").reverse().join("/")} · {ajena.importe_texto ?? pesosAR(ajena.importe_total)}</dd></div>
+    </dl></div>
+    <button className="cel-boton" onClick={camaraEnVivo}>Otra factura</button>
+  </Pantalla>;
+
+  if (resultado) { const fa = resultado.factura; return <Pantalla titulo={fa.comprobante} volver={inicio}>
     {resultado.ya_cargada && <p className="cel-aviso" role="status">Esta factura ya estaba cargada: estos son sus controles.</p>}
     {fa.alerta ? <p className="cel-error" role="alert">Alerta: algún control dio mal. Revisala antes de pagar.</p> : <p className="cel-exito" role="status">✓ Factura guardada en Gestión con la foto.</p>}
     <div className="cel-ficha"><dl>
@@ -503,16 +523,16 @@ function ControlarFactura({ volver }: { volver: () => void }) {
       <span className="cel-luz" aria-hidden="true">{s.simbolo}</span>
       <span><strong>{c.nombre}</strong><em>{c.estado_nombre}</em>{c.detalle && <small>{c.detalle}</small>}</span>
     </li>; })}</ul>
-    <p className="cel-pie">Los PDF de cada control y el control impositivo están en Gestión, en Controles ARCA.</p>
+    <p className="cel-pie">{subida ? "Administración ve los PDF de cada control y hace el control impositivo en Gestión." : "Los PDF de cada control y el control impositivo están en Gestión, en Controles ARCA."}</p>
     <button className="cel-boton" onClick={camaraEnVivo}>Otra factura</button>
-    <button className="cel-boton cel-secundario" onClick={volver}>Volver al inicio</button>
+    {!subida && <button className="cel-boton cel-secundario" onClick={volver}>Volver al inicio</button>}
   </Pantalla>; }
 
   if (enVivo) return <Pantalla titulo="Leer el QR de la factura" volver={() => setEnVivo(false)}>
     <LectorQrFactura leida={leidaEnVivo} cancelar={() => setEnVivo(false)} />
   </Pantalla>;
 
-  if (ocupado) return <Pantalla titulo="Controlar una factura" volver={volver}>
+  if (ocupado) return <Pantalla titulo="Controlar una factura" volver={inicio}>
     {foto && <img className="cel-foto" src={foto.vista} alt="Foto de la factura" />}
     <p className="cel-cargando" aria-busy="true">{ocupado}</p>
   </Pantalla>;
@@ -546,7 +566,7 @@ function ControlarFactura({ volver }: { volver: () => void }) {
     <button className="cel-boton cel-secundario" onClick={() => entrada.current?.click()}>Sacar otra foto</button>
   </Pantalla>; }
 
-  return <Pantalla titulo="Controlar una factura" volver={volver}>
+  return <Pantalla titulo="Controlar una factura" volver={subida ? subida.salir : volver} textoVolver={subida ? "Salir" : undefined}>
     <p className="cel-texto">Apuntá la cámara al código QR de la factura del proveedor: se lee solo, se controla en ARCA y queda guardada en Gestión con la imagen.</p>
     {catalogo?.faltantes.map(f => <p key={f} className="cel-aviso">{f}</p>)}
     {error && <p className="cel-error" role="alert">{error}</p>}

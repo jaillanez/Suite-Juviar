@@ -9,6 +9,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
 from ..application.ingreso import DURACION_SESION
+from ..domain.recuperacion import RESPUESTA_PEDIDO, EnlaceDeRecuperacionInvalido
 from ..domain.usuarios import DatosDeUsuarioInvalidos, IngresoInvalido, Usuario
 from .dependencias import (
     COOKIE_SESION,
@@ -16,6 +17,7 @@ from .dependencias import (
     exigir_permiso,
     identidad_es_simulada,
     servicio_ingreso,
+    servicio_recuperacion,
 )
 
 Token = Annotated[str | None, Cookie(alias=COOKIE_SESION)]
@@ -30,6 +32,15 @@ class IngresoEntrada(BaseModel):
 class CambioClaveEntrada(BaseModel):
     actual: str = Field(min_length=1, max_length=200)
     nueva: str = Field(min_length=1, max_length=200)
+
+
+class RecuperarEntrada(BaseModel):
+    email: str = Field(min_length=1, max_length=200)
+
+
+class RestablecerEntrada(BaseModel):
+    token: str = Field(min_length=1, max_length=200)
+    clave: str = Field(min_length=1, max_length=200)
 
 
 class EmpresaEntrada(BaseModel):
@@ -124,6 +135,26 @@ def cambiar_clave(entrada: CambioClaveEntrada, token: Token = None):
     except DatosDeUsuarioInvalidos as exc:
         raise _datos_invalidos(exc) from exc
     return yo(token)
+
+
+@router.post("/recuperar")
+def recuperar(entrada: RecuperarEntrada, request: Request):
+    """Siempre la misma respuesta, exista o no el correo; el envío sigue en segundo plano."""
+    origen = request.client.host if request.client else ""
+    servicio_recuperacion().pedir(entrada.email, origen=origen)
+    return {"ok": True, "mensaje": RESPUESTA_PEDIDO}
+
+
+@router.post("/restablecer")
+def restablecer(entrada: RestablecerEntrada, request: Request):
+    origen = request.client.host if request.client else ""
+    try:
+        servicio_recuperacion().restablecer(entrada.token, entrada.clave, origen=origen)
+    except EnlaceDeRecuperacionInvalido as exc:
+        raise HTTPException(status.HTTP_410_GONE, str(exc)) from exc
+    except DatosDeUsuarioInvalidos as exc:
+        raise _datos_invalidos(exc) from exc
+    return {"ok": True}
 
 
 @router.put("/empresa")

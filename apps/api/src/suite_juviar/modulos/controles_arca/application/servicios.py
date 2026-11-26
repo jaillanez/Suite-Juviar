@@ -354,13 +354,22 @@ class GestionarControles:
         """Qué empresa del grupo es el receptor, según los CUIT cargados en Parámetros."""
         return next((e for e, c in self.parametros().cuit_empresas.items() if c and c == cuit), None)
 
-    def _registrar(self, datos: dict[str, Any], foto: bytes, actor: str) -> dict[str, Any]:
-        """Da de alta la factura con el alta de siempre (o toma la que ya estaba), guarda la foto y controla."""
+    def _registrar(self, datos: dict[str, Any], foto: bytes, actor: str,
+                   empresas: tuple[str, ...] | None = None) -> dict[str, Any]:
+        """Da de alta la factura con el alta de siempre (o toma la que ya estaba), guarda la foto y controla.
+
+        Con ``empresas`` (quien sube con PIN) sólo se da de alta en esas empresas, y una factura que
+        ya cargó otra persona no se toca: se devuelve tal cual para que la API la muestre recortada.
+        """
         with self._bloqueo:
             factura = self.buscar_factura(datos["cuit_emisor"], datos["tipo_comprobante"], datos["punto_venta"],
                                           datos["numero"])
             ya_cargada = factura is not None
+            if factura is not None and empresas is not None and factura.cargada_por != actor:
+                return {"estado": "listo", "ya_cargada": True, "factura": self.vista(factura)}
             if factura is None:
+                if empresas is not None and datos.get("empresa") not in empresas:
+                    raise PermissionError(f"No tenés permiso para cargar facturas de {datos.get('empresa') or 'esa empresa'}.")
                 factura = self.crear_factura(datos, actor)
             if _clave_foto(factura.id) not in self.repo.archivos:
                 self.repo.archivos[_clave_foto(factura.id)] = foto
@@ -369,7 +378,8 @@ class GestionarControles:
             factura = self.correr(factura.id, actor)
         return {"estado": "listo", "ya_cargada": ya_cargada, "factura": self.vista(factura)}
 
-    def cargar_desde_qr(self, texto_qr: str, foto: bytes, empresa: str | None, actor: str) -> dict[str, Any]:
+    def cargar_desde_qr(self, texto_qr: str, foto: bytes, empresa: str | None, actor: str,
+                        empresas: tuple[str, ...] | None = None) -> dict[str, Any]:
         """Con el QR de ARCA los datos son los autorizados: se da de alta y se controla sin más."""
         validar_foto(foto)
         qr = leer_qr(texto_qr)
@@ -385,7 +395,7 @@ class GestionarControles:
             # El receptor del QR no es ninguna de las dos empresas (o falta su CUIT en Parámetros).
             return {"estado": "elegir_empresa", "datos": {**datos, "nro_doc_receptor": qr.nro_doc_receptor}}
         # Sin empresa sólo se llega acá si la factura ya estaba: se toma la cargada y la empresa no se usa.
-        return self._registrar({**datos, "empresa": elegida or ""}, foto, actor)
+        return self._registrar({**datos, "empresa": elegida or ""}, foto, actor, empresas)
 
     def buscar_qr_en_foto(self, foto: bytes) -> str | None:
         """Segundo intento de leer el QR, en el servidor: lee códigos borrosos que el celular no lee.
@@ -407,7 +417,8 @@ class GestionarControles:
             return texto
         return None
 
-    def leer_foto(self, foto: bytes, actor: str, empresa: str | None = None, modo: str = "todo") -> dict[str, Any]:
+    def leer_foto(self, foto: bytes, actor: str, empresa: str | None = None, modo: str = "todo",
+                  empresas: tuple[str, ...] | None = None) -> dict[str, Any]:
         """Foto en la que el celular no encontró el QR.
 
         Primero se busca el QR en el servidor (``modo`` «todo» o «solo_qr»): si aparece uno de ARCA
@@ -420,7 +431,7 @@ class GestionarControles:
             raise ValueError("Modo de lectura desconocido.")
         if modo != "solo_texto" and (texto_qr := self.buscar_qr_en_foto(foto)):
             _registro.info("QR de la factura leído en el servidor (%s).", actor)
-            return {**self.cargar_desde_qr(texto_qr, foto, empresa, actor), "qr": texto_qr}
+            return {**self.cargar_desde_qr(texto_qr, foto, empresa, actor, empresas), "qr": texto_qr}
         texto, motor, aviso = "", "ninguno", ""
         if modo == "solo_qr":
             return {"datos": extraer_datos("", {}, _dia(self._reloj())), "motor": motor, "texto_detectado": False,
@@ -444,10 +455,18 @@ class GestionarControles:
                                  "Se leyó la foto pero no se encontraron los datos: cargalos mirando la factura."),
         }
 
-    def cargar_confirmada(self, datos: dict[str, Any], foto: bytes, actor: str) -> dict[str, Any]:
+    def cargar_confirmada(self, datos: dict[str, Any], foto: bytes, actor: str,
+                          empresas: tuple[str, ...] | None = None) -> dict[str, Any]:
         """Datos sin QR que la persona ya revisó: se da de alta y se controla."""
         validar_foto(foto)
-        return self._registrar(datos, foto, actor)
+        return self._registrar(datos, foto, actor, empresas)
+
+    def facturas_por_actor(self) -> dict[str, int]:
+        """Cuántas facturas cargó cada quien (para la lista de personas que suben con PIN)."""
+        cuentas: dict[str, int] = {}
+        for factura in self.repo.facturas.values():
+            cuentas[factura.cargada_por] = cuentas.get(factura.cargada_por, 0) + 1
+        return cuentas
 
     def foto(self, factura_id: str) -> tuple[str, bytes]:
         self.obtener(factura_id)

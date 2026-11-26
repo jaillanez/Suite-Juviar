@@ -35,6 +35,26 @@ para construirlos, pero no debe quedar ejecutándose en el servidor. El servidor
 HTTP interno publica ese directorio y deriva `/api/v1/*` a FastAPI en el mismo
 origen. Véase ADR 0004.
 
+## ¿Olvidaste tu contraseña?
+
+Con ingreso real, el link «¿Olvidaste tu contraseña?» (escritorio y celular) lleva a
+`/recuperar`: la persona pone su correo y siempre ve la misma respuesta, exista o no. Si
+la cuenta existe y está activa, le llega un correo con un enlace a
+`<SJ_URL_PUBLICA_GESTION>/restablecer/#<código>` (si la variable no está, se usa
+`https://juviar-enav.com.ar`). El código va después de `#` para que no quede en los
+registros del servidor.
+
+- El correo sale desde la casilla de RRHH cargada en Parámetros (la de ENAV; si no está,
+  la de JUBIAR), la misma que usan los avisos de mosto.
+- El enlace sirve una sola vez y vence a los 30 minutos; pedir otro anula el anterior.
+  Del código sólo se guarda el SHA-256, en la base de usuarios (`SJ_USUARIOS_SQLITE_PATH`).
+- Límite: 3 pedidos por hora por correo y 10 por hora por equipo, contados en la base.
+- Al elegir la contraseña nueva (mínimo 10 caracteres) se cierran todas las sesiones de
+  esa persona y no se le vuelve a pedir que la cambie.
+- En Usuarios → Últimos accesos queda cada paso: `RECUPERACION_ENVIADA`, `RECUPERACION_SIN_CUENTA`,
+  `RECUPERACION_LIMITE`, `RECUPERACION_ERROR_ENVIO` (por ejemplo, sin casilla de RRHH) y
+  `RECUPERACION_CLAVE_CAMBIADA`. Nunca la contraseña ni el código.
+
 ## Perfiles de Gestión
 
 El ingreso de escritorio ofrece un selector visible porque identidad todavía es

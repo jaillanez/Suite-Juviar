@@ -74,6 +74,7 @@ from suite_juviar.modulos.turnos.infrastructure.sqlite import (
     ExportadorArchivoLocal,
     FuenteFichadasSQLite,
 )
+from suite_juviar.plataforma.identidad.api.dependencias import configurar_envio_correo
 from suite_juviar.plataforma.terceros.api.personal_bot import configurar as configurar_personal_bot
 from suite_juviar.plataforma.terceros.api.tablero_fila import NOMBRES as NOMBRES_SEDES
 from suite_juviar.plataforma.terceros.api.tablero_fila import sedes as sedes_fila
@@ -121,10 +122,15 @@ def construir_routers(rrhh):
         if os.getenv("SJ_CORREO_CV_AUTOMATICO", "1").strip() not in {"0", "false", "no"}:
             lectura_nocturna.iniciar(correo_rrhh, int(os.getenv("SJ_CORREO_CV_HORA") or "2"))
     dsn_fila = (os.getenv("SJ_FILA_DSN_DMZ_LECTURA") or "").strip()
+
+    def aviso_desde_rrhh(destino: str, asunto: str, cuerpo: str) -> bool:
+        return correo_rrhh.enviar_aviso(destino, asunto, cuerpo) if correo_rrhh else False
+
+    # Los correos de «¿Olvidaste tu contraseña?» salen por la misma casilla (ENAV y si no, JUBIAR).
+    configurar_envio_correo(aviso_desde_rrhh)
     mosto = GestionarMosto(MostoSQLite(ruta_modulos), (
         # El aviso por mail sale desde la casilla de RRHH cargada en Parámetros.
-        avisos_mosto.CorreoDesdeRRHH(
-            lambda *aviso: correo_rrhh.enviar_aviso(*aviso) if correo_rrhh else False),
+        avisos_mosto.CorreoDesdeRRHH(aviso_desde_rrhh),
         avisos_mosto.WhatsappPorBot((os.getenv("SJ_FILA_DSN_DMZ_LECTURA") or "").strip()),
     ))
     if os.getenv("SJ_ALARMA_MOSTO", "1").strip() not in {"0", "false", "no"}:
