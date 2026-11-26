@@ -5,7 +5,7 @@ import pytest
 
 from suite_juviar.modulos.seleccion.application.datos_faltantes import datos_faltantes
 from suite_juviar.modulos.seleccion.application.genero import genero_de, genero_por_nombre
-from suite_juviar.modulos.seleccion.infrastructure import ia_deepseek
+from suite_juviar.modulos.seleccion.infrastructure import ia_deepseek, lectura_en_fondo
 
 from .test_api_gestion import cliente, pdf
 
@@ -43,15 +43,23 @@ def test_lista_y_ficha_muestran_faltantes_genero_y_fecha_de_carga(monkeypatch):
         "nombre_completo": "Rocío Díaz", "edad": 31, "estudios": [], "experiencia": []})
     c = cliente()
     cv_id = subir(c, "cv.pdf", "Experiencia: cosecha")["incorporados"][0]
+    lectura_en_fondo.esperar_todas()  # la IA lee sola al entrar el CV
 
     fila = c.get("/cvs").json()[0]
-    assert fila["datos_faltantes"] == ["edad_o_fecha_nacimiento", "nivel_estudios"]
-    assert fila["genero"] is None and fila["cargado_en"]
+    assert fila["datos_faltantes"] == ["nivel_estudios"]
+    assert fila["motivo_faltantes"] == "NO_LO_ENCONTRO" and fila["cargado_en"]
 
-    c.post(f"/cvs/{cv_id}/leer-ia")
     ficha = c.get(f"/cvs/{cv_id}").json()
     assert ficha["datos_faltantes"] == ["nivel_estudios"]
     assert (ficha["genero"], ficha["origen"]) == ("F", "NOMBRE")
+
+
+def test_sin_ia_lo_que_falta_es_que_no_se_pudo_leer_no_que_el_cv_no_lo_trae():
+    c = cliente()
+    cv_id = subir(c, "cv.pdf", "Experiencia: cosecha")["incorporados"][0]
+    ficha = c.get(f"/cvs/{cv_id}").json()
+    assert ficha["datos_faltantes"] == ["edad_o_fecha_nacimiento", "nivel_estudios"]
+    assert ficha["motivo_faltantes"] == "NO_SE_PUDO_LEER" and ficha["lectura_ia"] == "NO_DISPONIBLE"
 
 
 def test_filtro_por_fecha_de_carga(monkeypatch):

@@ -6,6 +6,7 @@ que se extrae automáticamente).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import datetime
 
@@ -17,7 +18,9 @@ from .ingesta import IngestarCVs
 
 class IncorporarCVWhatsapp:
     def __init__(self, ingestar: IngestarCVs, extraer: ExtraerDatosCV,
-                 extracciones: RepositorioExtracciones) -> None:
+                 extracciones: RepositorioExtracciones,
+                 al_incorporar: Callable[[str], None] | None = None) -> None:
+        self._al_incorporar = al_incorporar or (lambda _cv_id: None)  # p. ej. la lectura con IA en segundo plano
         self._ingestar = ingestar
         self._extraer = extraer
         self._extracciones = extracciones
@@ -36,6 +39,7 @@ class IncorporarCVWhatsapp:
         incorporados = self._ingestar.ejecutar(_FuenteUnica(documento))
         for original in incorporados:
             self._sumar_contacto(self._extraer.ejecutar(original.id), telefono)
+            self._al_incorporar(original.id)
         return bool(incorporados)
 
     def _sumar_contacto(self, extraccion, telefono: str) -> None:

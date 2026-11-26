@@ -334,3 +334,21 @@ def test_un_cursor_en_cero_guardado_antes_no_abre_toda_la_bandeja():
     BandejaGmailIMAP("rrhh@gmail.com", CLAVE, date(2026, 10, 1), {"uidvalidity": 7, "uid": 0},
                      conectar=gmail).listar_nuevos()
     assert gmail.pedidos[0] == "(SINCE 01-Oct-2026)"
+
+
+def test_los_cv_del_correo_se_leen_con_ia_en_segundo_plano(monkeypatch):
+    from suite_juviar.modulos.seleccion.infrastructure import ia_deepseek, lectura_en_fondo
+    from suite_juviar.modulos.seleccion.infrastructure.sqlite import fichas_ia_sqlite
+
+    monkeypatch.setenv("SJ_IA_DEEPSEEK_API_KEY", "clave-de-prueba")
+    monkeypatch.setattr(ia_deepseek, "leer_cv", lambda nombre, contenido, texto: {"nivel_estudios": "Primario"})
+    ruta = str(Path(tempfile.mkdtemp()) / "modulos.sqlite3")
+    correo = construir_correo(ruta, "clave-de-prueba", "prueba")
+    gmail = GmailFalso([correo_con(("cv.pdf", b"%PDF-1.4 cv por mail"))])
+    correo._crear_bandeja = lambda casilla, clave, ultima, cursor: BandejaGmailIMAP(
+        casilla, clave, date(2026, 10, 1), cursor, gmail)
+    correo.guardar("ENAV", "rrhh@gmail.com", CLAVE, "admin")
+    assert correo.leer("ENAV").incorporados == 1
+    lectura_en_fondo.esperar_todas()
+    [ficha] = fichas_ia_sqlite(ruta).values()
+    assert ficha["nivel_estudios"] == "Primario" and ficha["leido_por"] == "lectura automática"

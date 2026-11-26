@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from suite_juviar.modulos.seleccion.api.app import crear_app
-from suite_juviar.modulos.seleccion.infrastructure import ia_deepseek
+from suite_juviar.modulos.seleccion.infrastructure import ia_deepseek, lectura_en_fondo
 from suite_juviar.modulos.seleccion.infrastructure.perfiles_yaml import CriteriosPerfilYAML
 
 RAIZ = Path(__file__).resolve().parents[2] / "src" / "suite_juviar" / "modulos" / "seleccion" / "data"
@@ -36,13 +36,15 @@ def test_lee_cv_y_busca_candidatos_con_un_pedido(monkeypatch):
     monkeypatch.setattr(ia_deepseek, "buscar_candidatos", buscar)
     c = cliente()
     leido = subir(c, "ana.png", b"uno")
-    subir(c, "luis.png", b"dos")
-    assert c.get("/ia/estado", headers=RRHH).json() == {"disponible": True, "total": 2, "leidos": 0}
+    otro = subir(c, "luis.png", b"dos")
+    lectura_en_fondo.esperar_todas()  # los dos se leyeron solos al entrar
+    estado = c.get("/ia/estado", headers=RRHH).json()
+    assert (estado["disponible"], estado["total"], estado["leidos"], estado["en_cola"]) == (True, 2, 2, 0)
     assert c.post(f"/cvs/{leido}/leer-ia", headers=RRHH).json()["nombre_completo"] == "Ana Pérez"
     resultado = c.post("/ia/buscar", headers=RRHH, json={"pedido": "Capataz de finca en Caucete"}).json()
-    assert resultado["sin_leer"] == 1
-    assert [x["nombre"] for x in resultado["candidatos"]] == ["Ana Pérez"]
-    assert pedidos == [("Capataz de finca en Caucete", {leido})]
+    assert resultado["sin_leer"] == 0
+    assert [x["nombre"] for x in resultado["candidatos"]] == ["Ana Pérez", "Ana Pérez"]
+    assert pedidos == [("Capataz de finca en Caucete", {leido, otro})]
 
 
 def test_sin_clave_o_sin_permiso_no_se_usa_la_ia(monkeypatch):

@@ -118,7 +118,7 @@ def construir_routers(rrhh):
     clave_parametros = os.getenv("SJ_CLAVE_PARAMETROS", "").strip()
     # Sólo en desarrollo se acepta la clave de prueba; cualquier otro entorno exige la propia.
     if clave_parametros or entorno in {"desarrollo", "development", "dev", "local", "prueba", "test"}:
-        correo_rrhh = construir_correo(ruta_modulos, clave_parametros or clave_adjuntos.decode())
+        correo_rrhh = construir_correo(ruta_modulos, clave_parametros or clave_adjuntos.decode(), entorno)
         if os.getenv("SJ_CORREO_CV_AUTOMATICO", "1").strip() not in {"0", "false", "no"}:
             lectura_nocturna.iniciar(correo_rrhh, int(os.getenv("SJ_CORREO_CV_HORA") or "2"))
     dsn_fila = (os.getenv("SJ_FILA_DSN_DMZ_LECTURA") or "").strip()
@@ -190,7 +190,7 @@ def construir_bandeja_rrhh(entorno: str, ruta_modulos: str, clave_adjuntos: byte
     def adjuntar(legajo_empleado: str, nombre: str, contenido: bytes, actor: str) -> str:
         return legajo.adjuntar(legajo_empleado, nombre, contenido).id
 
-    cvs = construir_cvs_whatsapp(ruta_modulos)
+    cvs = construir_cvs_whatsapp(ruta_modulos, entorno)
     return BandejaRRHH(
         BandejaCifradaSQLite(clave_adjuntos, ruta_modulos),
         PuertaRRHHDMZ(dsn_fila) if dsn_fila else PuertaRRHHSinConfigurar(),
