@@ -26,6 +26,7 @@ FRAGMENTO_IA = "Leído por la IA en el archivo original"
 LEIDO = "LEIDO"
 EN_COLA = "EN_COLA"
 LEYENDO = "LEYENDO"
+REINTENTO = "REINTENTO"  # la IA falló o está en pausa: espera en la cola para volver a intentar
 ERROR = "ERROR"
 SIN_LEER = "SIN_LEER"
 NO_DISPONIBLE = "NO_DISPONIBLE"

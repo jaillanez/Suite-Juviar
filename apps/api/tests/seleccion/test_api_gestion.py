@@ -17,7 +17,7 @@ def base_temporal() -> str:
 def cliente() -> TestClient:
     ruta = Path(__file__).parents[2] / "src/suite_juviar/modulos/seleccion/data/criterios_perfil.yaml"
     return TestClient(
-        crear_app(CriteriosPerfilYAML(ruta), ruta_base=base_temporal()),
+        crear_app(CriteriosPerfilYAML(ruta), "prueba", ruta_base=base_temporal()),
         headers={"X-Perfil-Simulado": "RRHH"},
     )
 
@@ -78,5 +78,5 @@ def test_campo_requiere_confirmacion_explicita_con_autor():
 def test_perfil_sin_permiso_recibe_403():
     c = TestClient(crear_app(CriteriosPerfilYAML(
         Path(__file__).parents[2] / "src/suite_juviar/modulos/seleccion/data/criterios_perfil.yaml"
-    ), ruta_base=base_temporal()))
+    ), "prueba", ruta_base=base_temporal()))
     assert c.get("/busquedas", headers={"X-Perfil-Simulado": "HYS"}).status_code == 403

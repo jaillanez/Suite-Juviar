@@ -1,15 +1,31 @@
 // Textos de Selección que dependen de cómo se leyó cada currículum. Nunca se le dice a RRHH que el
 // currículum no trae un dato si en realidad el sistema no lo pudo leer.
 
-export type LecturaIA = "LEIDO" | "EN_COLA" | "LEYENDO" | "ERROR" | "SIN_LEER" | "NO_DISPONIBLE";
+export type LecturaIA = "LEIDO" | "EN_COLA" | "LEYENDO" | "REINTENTO" | "ERROR" | "SIN_LEER" | "NO_DISPONIBLE";
 export type MotivoFaltantes = "NO_LO_ENCONTRO" | "NO_SE_PUDO_LEER" | "LEYENDO";
-export type EstadoLectura = { datos_faltantes?: string[]; motivo_faltantes?: MotivoFaltantes; lectura_ia?: LecturaIA; texto_leido?: boolean };
+export type EstadoLectura = { datos_faltantes?: string[]; motivo_faltantes?: MotivoFaltantes; lectura_ia?: LecturaIA; texto_leido?: boolean; lectura_pendiente?: boolean };
 
 export const CAMPOS: Record<string, string> = { edad_o_fecha_nacimiento: "Edad o fecha de nacimiento", nivel_estudios: "Nivel de estudios", experiencia: "Experiencia", oficio: "Oficio o perfil", localidad: "Localidad", contacto: "Contacto" };
 export const campo = (c: string) => CAMPOS[c] ?? c.replaceAll("_", " ");
 const lista = (campos: string[]) => campos.map(campo).join(", ");
 
 export const leyendo = (c: EstadoLectura) => c.lectura_ia === "EN_COLA" || c.lectura_ia === "LEYENDO";
+export const IA_EN_PAUSA = "La IA no está disponible; se vuelve a intentar más tarde.";
+
+/** Ver un currículum no lo manda a leer: si al abrir el detalle falta leerlo, se pide una sola vez. */
+export function pedirLectura(ficha: EstadoLectura & { id: string }, yaPedida: string | null): boolean {
+  return Boolean(ficha.lectura_pendiente) && !leyendo(ficha) && yaPedida !== ficha.id;
+}
+
+/** La línea de estado del detalle. */
+export function estadoDetalle(c: EstadoLectura): string {
+  if (leyendo(c)) return "La IA está leyendo este currículum…";
+  if (c.lectura_ia === "LEIDO") return "Leído con IA y con la lectura automática.";
+  if (c.lectura_ia === "REINTENTO") return `${IA_EN_PAUSA} Mientras tanto se muestra la lectura automática.`;
+  if (c.lectura_ia === "ERROR") return "La IA no pudo leerlo; se muestra la lectura automática.";
+  if (c.texto_leido === false) return "La lectura automática no pudo sacar texto de este archivo.";
+  return "Leído con la lectura automática (texto y OCR).";
+}
 
 /** Lo que dice la columna «Datos faltantes» de la lista. */
 export function resumenFaltantes(c: EstadoLectura): { texto: string; clase: string } {
@@ -28,6 +44,7 @@ export function avisoFaltantes(c: EstadoLectura, errorIA?: string | null): strin
   const base = c.texto_leido === false
     ? `El sistema no pudo leer el texto de este archivo, así que no sabe si trae: ${lista(faltan)}. Miralo en el original.`
     : `El sistema no pudo leer: ${lista(faltan)}. Puede que estén en el currículum con otro formato: miralo en el original.`;
+  if (c.lectura_ia === "REINTENTO") return `${base} ${IA_EN_PAUSA}`;
   if (c.lectura_ia === "ERROR") return `${base} La lectura con IA falló${errorIA ? ` (${errorIA})` : ""}; tocá «Volver a leer este currículum».`;
   return base;
 }
@@ -35,8 +52,9 @@ export function avisoFaltantes(c: EstadoLectura, errorIA?: string | null): strin
 export const ORIGEN: Record<string, string> = { IA: "Leído por la IA", LECTURA_AUTOMATICA: "Leído automáticamente", RRHH: "Confirmado por RRHH" };
 
 /** Avance del reproceso: «Leyendo 3 de 10…». */
-export function progresoLectura(p: { en_cola?: number; hechos?: number; lote?: number } | null | undefined): string {
+export function progresoLectura(p: { en_cola?: number; en_espera?: number; en_pausa?: number; hechos?: number; lote?: number } | null | undefined): string {
   if (!p?.en_cola) return "";
+  if (p.en_pausa) return `${IA_EN_PAUSA} ${p.en_cola === 1 ? "Queda 1 currículum" : `Quedan ${p.en_cola} currículums`} esperando; no se pierde ninguno.`;
   const lote = Math.max(p.lote ?? 0, (p.hechos ?? 0) + p.en_cola);
   return `Leyendo currículums: ${Math.min((p.hechos ?? 0) + 1, lote)} de ${lote}…`;
 }

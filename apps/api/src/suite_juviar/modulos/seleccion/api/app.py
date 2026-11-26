@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import os
-import time
+import threading
 from base64 import b64decode, b64encode
 from dataclasses import asdict
 from datetime import UTC, date, datetime
@@ -45,8 +45,10 @@ from ..infrastructure.correo_gmail import (
     enviar_por_gmail,
 )
 from ..infrastructure.extraccion_pdf import (
+    TAMANO_MAXIMO,
     CamposPorReglasProvisorias,
     TextoPDF,
+    cantidad_paginas,
     paginas_png,
     tipo_imagen,
 )
@@ -75,6 +77,27 @@ class BusquedaEntrada(BaseModel):
 
 class LoteEntrada(BaseModel):
     archivos: list[dict[str, str]] = Field(min_length=1)
+
+
+# El base64 de un archivo de TAMANO_MAXIMO: lo que pase de esto se rechaza antes de decodificarlo.
+MAXIMO_BASE64 = 4 * -(-TAMANO_MAXIMO // 3)
+
+
+def contenido_de_carga(archivo: dict[str, str]) -> tuple[str, bytes]:
+    """Nombre y contenido de un archivo cargado a mano, con el mismo tope que el resto de las lecturas."""
+    try:
+        nombre, codificado = archivo["nombre"], archivo["contenido_base64"]
+    except KeyError as exc:
+        raise HTTPException(400, "Cada archivo requiere nombre y contenido base64 válido") from exc
+    if len(codificado) > MAXIMO_BASE64:
+        raise HTTPException(413, f"«{nombre[:80]}» pasa de {TAMANO_MAXIMO // (1024 * 1024)} MB.")
+    try:
+        contenido = b64decode(codificado, validate=True)
+    except ValueError as exc:
+        raise HTTPException(400, "Cada archivo requiere nombre y contenido base64 válido") from exc
+    if len(contenido) > TAMANO_MAXIMO:
+        raise HTTPException(413, f"«{nombre[:80]}» pasa de {TAMANO_MAXIMO // (1024 * 1024)} MB.")
+    return nombre, contenido
 
 
 class ConfirmacionEntrada(BaseModel):
@@ -119,8 +142,30 @@ def ia_externa_permitida(entorno: str) -> bool:
     )
 
 
+_ENTORNOS: dict[str, set[str]] = {}  # base de datos → entornos que la usan
+_BLOQUEO_ENTORNOS = threading.Lock()
+
+
+def ia_autorizada(ruta_base: str) -> bool:
+    """En este momento, con el entorno más restrictivo de los que usan esa base (producción si
+    ninguno se registró todavía)."""
+    with _BLOQUEO_ENTORNOS:
+        entornos = set(_ENTORNOS.get(str(Path(ruta_base).resolve())) or {"produccion"})
+    return all(ia_externa_permitida(e) for e in entornos)
+
+
 def lectura_cvs(ruta_base: str, entorno: str) -> tuple[LeerCVsConIA, ColaLecturaCV]:
-    """La lectura en segundo plano (reglas + OCR, y IA si está autorizada), una sola por base de datos."""
+    """La lectura en segundo plano (reglas + OCR, y IA si está autorizada), una sola por base de datos.
+
+    La autorización no queda guardada al crear la cola: se evalúa en cada lectura, con el entorno más
+    restrictivo de los que usan esa base y la configuración del servidor de ese momento."""
+    clave = str(Path(ruta_base).resolve())
+    with _BLOQUEO_ENTORNOS:
+        _ENTORNOS.setdefault(clave, set()).add(entorno)
+
+    def permitida() -> bool:
+        return ia_autorizada(ruta_base) and ia_deepseek.disponible()
+
     def crear() -> tuple[LeerCVsConIA, ColaLecturaCV]:
         originales = OriginalesSQLite(ruta_base)
         extracciones = ExtraccionesSQLite(ruta_base)
@@ -131,12 +176,11 @@ def lectura_cvs(ruta_base: str, entorno: str) -> tuple[LeerCVsConIA, ColaLectura
             fichas_ia_sqlite(ruta_base), lecturas_ia_errores_sqlite(ruta_base),
             # A la IA va la capa de texto del PDF; si no la tiene (foto, escaneo), la imagen. Nunca el OCR.
             leer=lambda cv: ia_deepseek.leer_cv(cv.nombre_archivo, cv.contenido, texto.capa_texto(cv.contenido)),
-            permitida=lambda: ia_externa_permitida(entorno) and ia_deepseek.disponible(),
-            dormir=time.sleep,
+            permitida=permitida,
         )
         return servicio, ColaLecturaCV(servicio.procesar)
 
-    return compartida(str(Path(ruta_base).resolve()), crear)
+    return compartida(clave, crear)
 
 
 def _al_incorporar(ruta_base: str, entorno: str):
@@ -149,7 +193,7 @@ def _al_incorporar(ruta_base: str, entorno: str):
     return encolar
 
 
-def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> APIRouter:
+def crear_router(perfiles, entorno: str, ruta_base: str = "datos/modulos.sqlite3") -> APIRouter:
     exigir_identidad_configurada(entorno)
     app = APIRouter(dependencies=[Depends(exigir_permiso("seleccion.gestionar"))])
     originales = OriginalesSQLite(ruta_base)
@@ -167,7 +211,7 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
         return estados.get(cv_id) or {"estado": "DISPONIBLE"}
 
     def exigir_ia() -> None:
-        if not ia_externa_permitida(entorno):
+        if not ia_externa_permitida(entorno) or not ia_autorizada(ruta_base):
             raise HTTPException(409, "La lectura con IA externa no está autorizada en este servidor.")
         if not ia_deepseek.disponible():
             raise HTTPException(503, "Falta configurar la clave de DeepSeek en el servidor.")
@@ -201,13 +245,9 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
     @app.post("/cvs/lote", status_code=201)
     def cargar_lote(entrada: LoteEntrada):
         ids = []
-        for archivo in entrada.archivos:
-            try:
-                contenido = b64decode(archivo["contenido_base64"], validate=True)
-                nombre = archivo["nombre"]
-            except (KeyError, ValueError) as exc:
-                raise HTTPException(400, "Cada archivo requiere nombre y contenido base64 válido") from exc
-            digest = __import__("hashlib").sha256(contenido).hexdigest()
+        cargados = [contenido_de_carga(archivo) for archivo in entrada.archivos]  # todos o ninguno
+        for nombre, contenido in cargados:
+            digest = hashlib.sha256(contenido).hexdigest()
             original = CVOriginal(digest, OrigenCV.CORREO, f"carga-manual:{digest}", nombre,
                                   contenido, digest, datetime.now(UTC), datetime.now(UTC),
                                   fuente_simulada=True)
@@ -276,9 +316,6 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
         if original is None:
             raise HTTPException(404, "CV inexistente")
         extraccion = extracciones.obtener_extraccion(cv_id)
-        # Abrir un CV que la IA todavía no leyó lo manda a leer (si la IA está autorizada).
-        if extraccion is None or (cola.estado(cv_id) is None and lectura.necesita_ia(cv_id)):
-            cola.encolar(cv_id, releer_reglas=extraccion is None)
         busqueda = busquedas.get(busqueda_id) if busqueda_id else None
         confirmaciones = extracciones.confirmaciones(cv_id)
         cv = vista(original, extraccion, confirmaciones)
@@ -291,6 +328,8 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
             "confirmaciones": confirmaciones,
             "ficha_ia": cv["ficha"],
             "error_ia": lectura.error(cv_id),
+            # Ver no lee nada: si falta leerlo, el detalle pide «releer?faltante=true» (un POST).
+            "lectura_pendiente": falta_leer(cv_id, extraccion),
             "estado": estado_de(cv_id),
             "historial_estado": [h for h in historial_estados if h["cv_id"] == cv_id],
             "resultado": evaluar.ejecutar(busqueda, cv["combinada"]) if busqueda else None,
@@ -298,12 +337,21 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
             "marca": "DATOS SIMULADOS — SIN VALIDEZ",
         }
 
+    def falta_leer(cv_id: str, extraccion) -> bool:
+        """Sin lectura de reglas, o la IA (autorizada ahora) todavía no lo leyó y no está en la cola."""
+        return extraccion is None or (cola.estado(cv_id) is None and lectura.necesita_ia(cv_id))
+
     @app.post("/cvs/{cv_id}/releer", status_code=202)
-    def releer_cv(cv_id: str):
-        """Vuelve a leer este CV en segundo plano: reglas + OCR y, si está autorizada, la IA."""
+    def releer_cv(cv_id: str, faltante: bool = False):
+        """Vuelve a leer este CV en segundo plano: reglas + OCR y, si está autorizada, la IA.
+
+        Con «faltante», sólo lo que todavía falta (lo pide el detalle al abrir un CV sin leer)."""
         if originales.obtener_original(cv_id) is None:
             raise HTTPException(404, "CV inexistente")
-        cola.encolar(cv_id, releer_reglas=True)
+        if not faltante:
+            cola.encolar(cv_id, releer_reglas=True)
+        elif falta_leer(cv_id, extraccion := extracciones.obtener_extraccion(cv_id)):
+            cola.encolar(cv_id, releer_reglas=extraccion is None)
         return {"lectura_ia": estado_lectura(cv_id)}
 
     @app.post("/ia/releer", status_code=202)
@@ -326,10 +374,12 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
             raise HTTPException(404, "CV inexistente")
         if tipo_imagen(cv.contenido):
             raise HTTPException(400, "El currículum ya es una imagen.")
+        if len(cv.contenido) > TAMANO_MAXIMO:
+            raise HTTPException(413, "El archivo es demasiado grande para dibujarlo.")
         paginas = paginas_png(cv.contenido, 1, 1.0)
         if not paginas:
             raise HTTPException(422, "No se pudo dibujar la primera página del PDF.")
-        return {"contenido_base64": b64encode(paginas[0]).decode(), "paginas": _paginas(cv.contenido)}
+        return {"contenido_base64": b64encode(paginas[0]).decode(), "paginas": cantidad_paginas(cv.contenido)}
 
     @app.put("/cvs/{cv_id}/campos/{campo}/confirmacion")
     def confirmar_campo(
@@ -363,7 +413,8 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
     def estado_ia():
         ids = [o.id for o in originales.listar_originales()]
         leidos = sum(1 for cv_id in ids if cv_id in fichas_ia)
-        return {"disponible": lectura.permitida(), "total": len(ids), "leidos": leidos,
+        return {"disponible": lectura.permitida(), "en_pausa": round(lectura.en_pausa()),
+                "total": len(ids), "leidos": leidos,
                 "con_error": sum(1 for cv_id in ids if lectura.estado(cv_id) == "ERROR"), **cola.progreso()}
 
     @app.get("/ia/fichas")
@@ -377,6 +428,8 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
             return lectura.leer_ahora(cv_id, sesion.actor)
         except LookupError as exc:
             raise HTTPException(404, "CV inexistente") from exc
+        except ValueError as exc:  # el archivo no es PDF ni imagen, o no se puede mandar
+            raise HTTPException(422, str(exc)) from exc
         except RuntimeError as exc:
             raise HTTPException(502, str(exc)) from exc
 
@@ -446,7 +499,7 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
     return app
 
 
-def crear_app(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> FastAPI:
+def crear_app(perfiles, entorno: str, ruta_base: str = "datos/modulos.sqlite3") -> FastAPI:
     app = FastAPI(title="Selección de personal")
     app.include_router(crear_router(perfiles, entorno, ruta_base))
     return app
@@ -455,19 +508,6 @@ def crear_app(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modulos
 class CorreoEntrada(BaseModel):
     casilla: str = Field(min_length=3, max_length=200)
     clave_aplicacion: str | None = Field(default=None, max_length=100)
-
-
-def _paginas(contenido: bytes) -> int | None:
-    try:
-        import pypdfium2
-
-        documento = pypdfium2.PdfDocument(contenido)
-    except Exception:  # noqa: BLE001 - PDF roto o sin renderizador
-        return None
-    try:
-        return len(documento)
-    finally:
-        documento.close()
 
 
 def construir_correo(ruta_base: str, clave: str, entorno: str = "produccion") -> CorreoRRHH:

@@ -12,9 +12,10 @@ import io
 import math
 import re
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from datetime import date
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
@@ -28,6 +29,7 @@ MINIMO_TEXTO_PDF = 40  # menos que esto: PDF escaneado, sin capa de texto
 MAXIMO_PAGINAS_OCR = 4
 TAMANO_MAXIMO = 15 * 1024 * 1024  # lo mismo que acepta la lectura del correo por adjunto
 MAXIMO_PIXELES = 12_000_000  # una página dibujada nunca pasa de esto (≈ A4 a 300 ppp)
+MAXIMO_PIXELES_IMAGEN = 4 * MAXIMO_PIXELES  # una foto más grande que esto no se lee (ni se achica)
 ESCALA_MINIMA = 0.25  # una página que habría que achicar más que esto es absurda: se saltea
 TIEMPO_OCR_TOTAL = 20.0  # segundos de OCR, en total, por documento
 
@@ -51,17 +53,37 @@ def escala_segura(ancho: float, alto: float, maxima: float) -> float | None:
     return escala if escala >= ESCALA_MINIMA else None
 
 
-def paginas_png(contenido: bytes, maximo: int, escala: float) -> list[bytes]:
-    """Las primeras páginas de un PDF dibujadas como PNG, con tamaño acotado."""
+@contextmanager
+def _abrir_pdf(contenido: bytes) -> Iterator[Any | None]:
+    """El PDF abierto con pypdfium2, con los mismos controles para dibujar páginas y contarlas.
+    None si pasa del tamaño máximo, está roto o falta el renderizador."""
     if len(contenido) > TAMANO_MAXIMO:
-        return []
+        yield None
+        return
     try:
         import pypdfium2
         documento = pypdfium2.PdfDocument(contenido)
     except Exception:  # noqa: BLE001 - sin el renderizador o PDF roto: no hay páginas
-        return []
-    paginas = []
+        yield None
+        return
     try:
+        yield documento
+    finally:
+        documento.close()
+
+
+def cantidad_paginas(contenido: bytes) -> int | None:
+    """Cuántas páginas tiene el PDF; None si no se puede abrir o pasa del tamaño máximo."""
+    with _abrir_pdf(contenido) as documento:
+        return None if documento is None else len(documento)
+
+
+def paginas_png(contenido: bytes, maximo: int, escala: float) -> list[bytes]:
+    """Las primeras páginas de un PDF dibujadas como PNG, con tamaño acotado."""
+    paginas: list[bytes] = []
+    with _abrir_pdf(contenido) as documento:
+        if documento is None:
+            return paginas
         for indice in range(min(len(documento), maximo)):
             try:
                 pagina = documento[indice]
@@ -74,27 +96,32 @@ def paginas_png(contenido: bytes, maximo: int, escala: float) -> list[bytes]:
                 paginas.append(salida.getvalue())
             except Exception:  # noqa: BLE001, S112 - una página que no se puede dibujar no frena el resto
                 continue
-    finally:
-        documento.close()
     return paginas
 
 
 def _achicar_imagen(contenido: bytes) -> bytes:
-    """Una foto enorme se achica antes del OCR; si Pillow no la puede abrir, va tal cual."""
+    """La foto lista para el OCR, o vacío si no se debe leer (falla cerrada).
+
+    El tamaño sale del encabezado, antes de decodificar nada: si no se puede leer o la imagen pasa de
+    MAXIMO_PIXELES_IMAGEN, no hay OCR; entre MAXIMO_PIXELES y ese tope, se achica."""
     try:
         from PIL import Image
 
+        Image.MAX_IMAGE_PIXELS = min(Image.MAX_IMAGE_PIXELS or MAXIMO_PIXELES_IMAGEN, MAXIMO_PIXELES_IMAGEN)
         with Image.open(io.BytesIO(contenido)) as imagen:
             ancho, alto = imagen.size
+            if ancho <= 0 or alto <= 0 or ancho * alto > MAXIMO_PIXELES_IMAGEN:
+                return b""
             if ancho * alto <= MAXIMO_PIXELES:
                 return contenido
             factor = math.sqrt(MAXIMO_PIXELES / (ancho * alto))
+            medida = (max(1, int(ancho * factor)), max(1, int(alto * factor)))
+            imagen.draft("RGB", medida)  # JPEG: decodifica ya achicada
             salida = io.BytesIO()
-            imagen.convert("RGB").resize((max(1, int(ancho * factor)), max(1, int(alto * factor)))).save(
-                salida, format="PNG")
+            imagen.convert("RGB").resize(medida).save(salida, format="PNG")
             return salida.getvalue()
-    except Exception:  # noqa: BLE001 - imagen rara o gigante: tesseract decide
-        return contenido
+    except Exception:  # noqa: BLE001 - imagen ilegible, dañada o bomba de descompresión: sin OCR
+        return b""
 
 
 class TextoPDF:
@@ -120,7 +147,12 @@ class TextoPDF:
             return ""
         limite = self._reloj() + TIEMPO_OCR_TOTAL
         if extension := tipo_imagen(contenido):
-            return self._leer_imagen(_achicar_imagen(contenido), extension, TIEMPO_OCR_TOTAL)
+            imagen = _achicar_imagen(contenido)
+            if not imagen:
+                return ""
+            if imagen is not contenido:
+                extension = ".png"  # achicada: siempre sale como PNG
+            return self._leer_imagen(imagen, extension, TIEMPO_OCR_TOTAL)
         texto = self._texto_pdf(contenido)
         if len(texto.strip()) >= MINIMO_TEXTO_PDF or not contenido.startswith(b"%PDF"):
             return texto

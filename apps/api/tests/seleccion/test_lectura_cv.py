@@ -351,16 +351,28 @@ def test_reproceso_de_los_cv_ya_cargados(monkeypatch):
     assert pdf_id
 
 
-def test_el_detalle_manda_a_leer_lo_que_la_ia_no_leyo(monkeypatch):
+def test_ver_el_detalle_no_manda_nada_a_la_ia_y_el_post_de_faltante_si(monkeypatch):
     c, _ = cliente()
     cv_id = subir(c, "cv.pdf", pdf(["Experiencia: cosecha"]))  # sin IA al entrar
     monkeypatch.setenv("SJ_IA_DEEPSEEK_API_KEY", "clave-de-prueba")
-    monkeypatch.setattr(ia_deepseek, "leer_cv", lambda *a: {"nivel_estudios": "Primario completo"})
-    assert c.get(f"/cvs/{cv_id}").json()["lectura_ia"] in {"EN_COLA", "LEYENDO", "LEIDO"}
+    leidos = []
+    monkeypatch.setattr(ia_deepseek, "leer_cv", lambda *a: leidos.append(1) or {"nivel_estudios": "Primario completo"})
+    # El GET sólo avisa que falta leerlo: no encola nada ni manda datos afuera.
+    ficha = c.get(f"/cvs/{cv_id}").json()
+    assert ficha["lectura_pendiente"] is True and ficha["lectura_ia"] == "SIN_LEER"
+    lectura_en_fondo.esperar_todas()
+    assert leidos == [] and c.get(f"/cvs/{cv_id}").json()["lectura_ia"] == "SIN_LEER"
+    # El detalle lo pide con un POST, una vez.
+    r = c.post(f"/cvs/{cv_id}/releer?faltante=true")
+    assert r.status_code == 202 and r.json()["lectura_ia"] in {"EN_COLA", "LEYENDO", "LEIDO"}
     lectura_en_fondo.esperar_todas()
     ficha = c.get(f"/cvs/{cv_id}").json()
     assert ficha["lectura_ia"] == "LEIDO" and ficha["datos_faltantes"] == ["edad_o_fecha_nacimiento"]
-    assert ficha["motivo_faltantes"] == "NO_LO_ENCONTRO"
+    assert ficha["motivo_faltantes"] == "NO_LO_ENCONTRO" and ficha["lectura_pendiente"] is False
+    # Ya leído: pedir lo faltante otra vez no vuelve a mandar nada.
+    c.post(f"/cvs/{cv_id}/releer?faltante=true")
+    lectura_en_fondo.esperar_todas()
+    assert len(leidos) == 1
 
 
 def test_cv_por_whatsapp_se_lee_con_ia_al_entrar_y_conserva_el_telefono_al_releer(monkeypatch):
@@ -399,28 +411,49 @@ class TextoFijo:
         return self.texto
 
 
-def servicio_lectura(leer, texto=""):
+class Reloj:
+    def __init__(self):
+        self.ahora = 0.0
+
+    def __call__(self):
+        return self.ahora
+
+
+def servicio_lectura(leer, texto="", cvs=("cv-1",), permitida=lambda: True):
     originales, extracciones = OriginalesEnMemoria(), ExtraccionesEnMemoria()
     ahora = datetime.now(UTC)
-    originales.guardar_original(CVOriginal("cv-1", OrigenCV.CORREO, "c:1", "cv.png", b"x", "h", ahora, ahora))
-    fichas, errores, esperas = {}, {}, []
+    for cv_id in cvs:
+        originales.guardar_original(CVOriginal(cv_id, OrigenCV.CORREO, f"c:{cv_id}", "cv.png", b"x", cv_id,
+                                               ahora, ahora))
+    fichas, errores, reloj = {}, {}, Reloj()
     lectura = LeerCVsConIA(originales, extracciones,
                            ExtraerDatosCV(originales, extracciones, TextoFijo(texto), CamposPorReglasProvisorias()),
-                           fichas, errores, leer, lambda: True, esperas.append, esperas=(1, 2))
-    return lectura, fichas, errores, esperas
+                           fichas, errores, leer, permitida, esperas=(1, 2), reloj=reloj,
+                           fallas_para_pausar=5, pausa=300)
+    return lectura, fichas, errores, reloj
 
 
-def test_reintentos_acotados_y_despues_queda_el_error():
+def reintentar(lectura, cv_id="cv-1"):
+    """Lo que hace la cola: vuelve a procesar con el intento que devolvió el anterior."""
+    esperas, reintento = [], lectura.procesar(cv_id)
+    while reintento:
+        esperas.append(reintento.segundos)
+        reintento = lectura.procesar(cv_id, intento=reintento.intento)
+    return esperas
+
+
+def test_reintentos_acotados_sin_dormir_y_despues_queda_el_error():
     intentos = []
 
     def falla(cv):
         intentos.append(cv.id)
         raise RuntimeError("caída")
 
-    lectura, fichas, errores, esperas = servicio_lectura(falla)
-    lectura.procesar("cv-1")
-    assert len(intentos) == 3 and esperas == [1, 2]
+    lectura, fichas, errores, _ = servicio_lectura(falla)
+    assert reintentar(lectura) == [1, 2]  # devuelve cuánto esperar; nunca duerme
+    assert len(intentos) == 3
     assert not fichas and errores["cv-1"]["error"] == "caída" and lectura.estado("cv-1") == "ERROR"
+    assert errores["cv-1"]["intentos"] == 3
     assert not lectura.necesita_ia("cv-1") and lectura.necesita_ia("cv-1", incluir_errores=True)
 
 
@@ -433,11 +466,74 @@ def test_al_segundo_intento_lee_y_borra_el_error():
             raise r
         return r
 
-    lectura, fichas, errores, esperas = servicio_lectura(leer)
+    lectura, fichas, errores, _ = servicio_lectura(leer)
     errores["cv-1"] = {"error": "vieja"}
-    lectura.procesar("cv-1")
+    assert reintentar(lectura) == [1]
     assert fichas["cv-1"]["nivel_estudios"] == "Secundario completo" and fichas["cv-1"]["version_lectura"] == 2
-    assert errores == {} and esperas == [1]
+    assert errores == {}
+
+
+def test_archivo_que_no_se_puede_mandar_no_se_reintenta():
+    def no_es_cv(cv):
+        raise ValueError("No se pudo leer este archivo: no es PDF ni imagen.")
+
+    lectura, _, errores, _ = servicio_lectura(no_es_cv)
+    assert lectura.procesar("cv-1") is None and "no es PDF ni imagen" in errores["cv-1"]["error"]
+
+
+def test_con_la_ia_caida_se_pausa_sin_perder_los_pendientes():
+    cvs = tuple(f"cv-{i}" for i in range(8))
+    llamadas = []
+
+    def caida(cv):
+        llamadas.append(cv.id)
+        raise RuntimeError("caída")
+
+    lectura, fichas, errores, reloj = servicio_lectura(caida, cvs=cvs)
+    reintentos = {cv_id: lectura.procesar(cv_id) for cv_id in cvs}
+    # Cinco fallas seguidas: pausa. Los que siguen no llaman a la IA y esperan la pausa.
+    assert len(llamadas) == 5 and lectura.en_pausa() == 300
+    for cv_id in cvs[5:]:
+        assert reintentos[cv_id].segundos == 300 and reintentos[cv_id].intento == 0
+        assert errores[cv_id]["error"] == "IA no disponible, se reintenta más tarde."
+        assert errores[cv_id]["en_pausa"] is True
+    assert reintentos["cv-4"].segundos == 300  # el que disparó la pausa también espera
+    # Pasada la pausa, la IA vuelve y los pendientes se leen.
+    reloj.ahora = 301
+    lectura._leer = lambda cv: {"nivel_estudios": "Primario completo"}
+    for cv_id in cvs:
+        assert lectura.procesar(cv_id, intento=reintentos[cv_id].intento) is None
+    assert set(fichas) == set(cvs) and errores == {}
+
+
+def test_la_autorizacion_se_mira_en_cada_lectura():
+    autorizada = [True]
+    leidos = []
+    lectura, _, _, _ = servicio_lectura(lambda cv: leidos.append(cv.id) or {}, cvs=("cv-1", "cv-2"),
+                                        permitida=lambda: autorizada[0])
+    lectura.procesar("cv-1")
+    autorizada[0] = False  # p. ej. se quitó la autorización o la clave del servidor
+    lectura.procesar("cv-2")
+    assert leidos == ["cv-1"] and lectura.estado("cv-2") == "NO_DISPONIBLE"
+
+
+def test_la_cola_no_se_frena_con_un_reintento():
+    from suite_juviar.modulos.seleccion.application.lectura_ia import Reintento
+
+    orden = []
+
+    def procesar(cv_id, *, releer_reglas=False, intento=0):
+        orden.append((cv_id, intento))
+        return Reintento(0.2, 1) if cv_id == "a" and intento == 0 else None
+
+    cola = lectura_en_fondo.ColaLecturaCV(procesar)
+    cola.encolar("a")
+    cola.encolar("b")
+    cola.encolar("c")
+    assert not cola.esperar(0.1)  # «a» espera su reintento, los demás ya se leyeron
+    assert orden == [("a", 0), ("b", 0), ("c", 0)] and cola.estado("a") == "REINTENTO"
+    assert cola.progreso()["en_espera"] == 1
+    assert cola.esperar(5) and orden[-1] == ("a", 1) and cola.estado("a") is None
 
 
 def test_ficha_vieja_incompleta_se_vuelve_a_leer_y_la_completa_no():

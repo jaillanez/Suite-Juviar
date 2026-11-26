@@ -3,7 +3,7 @@
 import { ChangeEvent, FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { rangoMesActual } from "@/lib/fechas";
-import { type EstadoLectura, ORIGEN, avisoFaltantes, campo, leyendo, progresoLectura, resumenFaltantes } from "@/lib/seleccion";
+import { type EstadoLectura, ORIGEN, avisoFaltantes, campo, estadoDetalle, leyendo, pedirLectura, progresoLectura, resumenFaltantes } from "@/lib/seleccion";
 import { ErrorVisible, Pestanas, Tabla, Vacio, Ventana, urlDeArchivo } from "./compartidos";
 import { MiniaturaArchivo } from "./vista-archivo";
 
@@ -44,7 +44,7 @@ function Razones({ razones }: { razones: string[] }): ReactNode {
 function leerBase64(archivo: File) { return new Promise<string>((ok, mal) => { const l = new FileReader(); l.onerror = mal; l.onload = () => ok(String(l.result).split(",")[1]); l.readAsDataURL(archivo); }); }
 
 type FichaIA = { nombre_completo?: string | null; localidad?: string | null; provincia?: string | null; resumen?: string | null; oficios?: string[]; estudios?: string[]; idiomas?: string[]; experiencia?: Array<{ puesto?: string | null; empresa?: string | null; periodo?: string | null }>; edad?: number | string | null; fecha_nacimiento?: string | null; nivel_estudios?: string | null; telefono?: string | null; email?: string | null };
-type EstadoIA = { disponible: boolean; total: number; leidos: number; con_error?: number; en_cola?: number; hechos?: number; lote?: number };
+type EstadoIA = { disponible: boolean; total: number; leidos: number; con_error?: number; en_cola?: number; en_espera?: number; en_pausa?: number; hechos?: number; lote?: number };
 type Candidato = { id: string; encaje: "ALTO" | "MEDIO" | "BAJO"; motivos: string[]; faltan: string[]; nombre_archivo: string; nombre?: string | null; localidad?: string | null; resumen?: string | null };
 const ENCAJE: Record<string, string> = { ALTO: "Encaja bien", MEDIO: "Puede encajar", BAJO: "Encaja poco" };
 const tipoArchivo = (nombre: string, tipo?: "imagen" | "pdf") => /\.png$/i.test(nombre) ? "image/png" : /\.jpe?g$/i.test(nombre) ? "image/jpeg" : /\.webp$/i.test(nombre) ? "image/webp" : tipo === "imagen" ? "image/jpeg" : "application/pdf";
@@ -88,10 +88,16 @@ export function SeleccionGestion() {
   const avisarPagina = (e: unknown) => setError(e ? mensaje(e) : "");
   const [miniatura, setMiniatura] = useState<{ imagen: string | null; paginas: number | null }>({ imagen: null, paginas: null });
   const pedirFicha = (id: string) => api<Ficha>(`seleccion/cvs/${id}${busqueda ? `?busqueda_id=${busqueda}` : ""}`);
+  const lecturaPedida = useRef<string | null>(null); // el CV que ya se mandó a leer al abrir el detalle
   async function abrir(cv: Cv) {
     setErrorVentana(""); let abiertaFicha = Boolean(ficha); const otro = cv.id !== ficha?.id; if (otro) { setOriginal(""); setMiniatura({ imagen: null, paginas: null }); }
     try {
-      const datos = await pedirFicha(cv.id); setFicha(datos); abiertaFicha = true;
+      let datos = await pedirFicha(cv.id);
+      if (pedirLectura(datos, lecturaPedida.current)) { // ver no lee: si la IA no lo leyó, se pide una vez con POST
+        lecturaPedida.current = datos.id;
+        try { await api(`seleccion/cvs/${datos.id}/releer?faltante=true`, { method: "POST" }); datos = await pedirFicha(cv.id); } catch { /* queda como está; se puede volver a leer a mano */ }
+      }
+      setFicha(datos); abiertaFicha = true;
       if (!otro && original) return;
       const o = await api<{ contenido_base64: string }>(`seleccion/cvs/${cv.id}/original`); setOriginal(urlDeArchivo(o.contenido_base64, tipoArchivo(datos.nombre, datos.tipo)));
       if (datos.tipo !== "imagen") { try { const m = await api<{ contenido_base64: string; paginas: number | null }>(`seleccion/cvs/${cv.id}/miniatura`); setMiniatura({ imagen: `data:image/png;base64,${m.contenido_base64}`, paginas: m.paginas }); } catch { /* sin miniatura: queda el ícono del PDF */ } }
@@ -104,7 +110,7 @@ export function SeleccionGestion() {
   }, [ficha]);
   async function releerFicha() { if (!ficha) return; setErrorVentana(""); try { await api(`seleccion/cvs/${ficha.id}/releer`, { method: "POST" }); await abrir({ id: ficha.id, nombre: ficha.nombre } as Cv); } catch (x) { setErrorVentana(mensaje(x)); } }
   async function confirmar(c: Campo) { if (!ficha) return; try { await api(`seleccion/cvs/${ficha.id}/campos/${c.nombre}/confirmacion`, { method: "PUT", body: JSON.stringify({ valor: c.valor }) }); await abrir({ id: ficha.id } as Cv); } catch (x) { setErrorVentana(mensaje(x)); } }
-  function cerrarFicha() { setFicha(null); setOriginal(""); setMiniatura({ imagen: null, paginas: null }); setErrorVentana(""); }
+  function cerrarFicha() { lecturaPedida.current = null; setFicha(null); setOriginal(""); setMiniatura({ imagen: null, paginas: null }); setErrorVentana(""); }
   const botonReleer = iaEstado && <button className="enlace" disabled={enCola > 0 || progresoIA === "Preparando…"} onClick={releerTodos}>Volver a leer los currículums</button>;
   const avance = progresoLectura(iaEstado) || progresoIA;
   const filasRanking: Array<Cv & { posicion: string }> = ranking.map((c, i) => ({ ...c, posicion: String(i + 1).padStart(3, "0") }));
@@ -161,7 +167,7 @@ export function SeleccionGestion() {
     {ficha && <Ventana tamano="amplia" titulo={`Currículum: ${ficha.nombre}`} cerrar={cerrarFicha}><section className={`estado-cv-panel estado-cv-panel-${ficha.estado?.estado ?? "DISPONIBLE"}`}><div><strong>{ESTADO_CV[ficha.estado?.estado ?? "DISPONIBLE"]}</strong>{ficha.estado?.motivo && <span> · {ficha.estado.motivo}</span>}{ficha.estado?.por && <small> — marcado por {ficha.estado.por} el {new Date(ficha.estado.en ?? "").toLocaleDateString("es-AR")}</small>}</div><div className="acciones">{(ficha.estado?.estado ?? "DISPONIBLE") === "DISPONIBLE" ? <><button onClick={() => { setErrorMarca(""); setMarcando("CONTRATADO"); }}>Marcar como contratado</button><button className="peligro" onClick={() => { setErrorMarca(""); setMarcando("NO_CONVOCAR"); }}>No volver a convocar</button></> : <button onClick={volverADisponible}>Volver a disponible</button>}</div></section>{(() => { const aviso = avisoFaltantes(ficha, ficha.error_ia?.error); return aviso ? <div className="aviso-faltantes" role={leyendo(ficha) ? "status" : "alert"}>{aviso}</div> : null; })()}<p className="ayuda">Género: {genero(ficha)}{ficha.cargado_en && ` · Cargado el ${new Date(ficha.cargado_en).toLocaleDateString("es-AR")}`}</p>{(ficha.ficha_ia ?? fichasIA[ficha.id]) && (() => { const f = (ficha.ficha_ia ?? fichasIA[ficha.id])!; return <section className="ficha-ia"><h3>Lo que leyó la IA</h3>{f.resumen && <p>{f.resumen}</p>}<dl className="ficha">{f.nombre_completo && <div><dt>Nombre</dt><dd>{f.nombre_completo}</dd></div>}{f.localidad && <div><dt>Localidad</dt><dd>{f.localidad}</dd></div>}{f.edad != null && f.edad !== "" && <div><dt>Edad</dt><dd>{String(f.edad)}</dd></div>}{f.fecha_nacimiento && <div><dt>Fecha de nacimiento</dt><dd>{f.fecha_nacimiento}</dd></div>}{f.nivel_estudios && <div><dt>Nivel de estudios</dt><dd>{f.nivel_estudios}</dd></div>}{(f.telefono || f.email) && <div><dt>Contacto</dt><dd>{[f.telefono, f.email].filter(Boolean).join(" · ")}</dd></div>}{f.oficios?.length ? <div><dt>Oficios</dt><dd>{f.oficios.join(", ")}</dd></div> : null}{f.estudios?.length ? <div><dt>Estudios</dt><dd>{f.estudios.join(" · ")}</dd></div> : null}{f.idiomas?.length ? <div><dt>Idiomas</dt><dd>{f.idiomas.join(", ")}</dd></div> : null}</dl>{f.experiencia?.length ? <><h4>Experiencia</h4><ul>{f.experiencia.map((x, i) => <li key={i}>{[x.puesto, x.empresa, x.periodo].filter(Boolean).join(" · ")}</li>)}</ul></> : null}<p className="ayuda">Revisalo contra el original antes de decidir.</p></section>; })()}{errorVentana && <ErrorVisible mensaje={errorVentana} />}
       {ficha.resultado && abierta && <div className="ficha-resultado"><div className="titulo-fila"><h3>Para «{abierta.nombre}»</h3>{(() => { const v = veredicto(ficha.resultado); return <span className={v.clase}>{v.texto}</span>; })()}</div><Razones razones={ficha.resultado.razones} /></div>}
       <div className="ficha-doble"><div><p className="ayuda">Compará cada dato con el original y confirmalo. Nada cuenta como confirmado hasta que lo hagas vos.</p>
-        <p className="ayuda lectura-ia-estado"><span>{leyendo(ficha) ? "La IA está leyendo este currículum…" : ficha.lectura_ia === "LEIDO" ? "Leído con IA y con la lectura automática." : ficha.lectura_ia === "ERROR" ? "La IA no pudo leerlo; se muestra la lectura automática." : ficha.texto_leido === false ? "La lectura automática no pudo sacar texto de este archivo." : "Leído con la lectura automática (texto y OCR)."}</span>{!leyendo(ficha) && <button className="enlace" onClick={releerFicha}>Volver a leer este currículum</button>}</p>
+        <p className="ayuda lectura-ia-estado"><span>{estadoDetalle(ficha)}</span>{!leyendo(ficha) && <button className="enlace" onClick={releerFicha}>Volver a leer este currículum</button>}</p>
         {(() => { const otros = ficha.pendientes.filter(p => !(ficha.datos_faltantes ?? []).includes(p)); return otros.length > 0 && !leyendo(ficha) && (ficha.texto_leido !== false || ficha.lectura_ia === "LEIDO") ? <p className="preliminar">{ficha.motivo_faltantes === "NO_LO_ENCONTRO" ? "Tampoco se encontró" : "Tampoco se pudo leer"}: {otros.map(campo).join(", ")}. Buscalo en el original.</p> : null; })()}
         {ficha.campos.length ? ficha.campos.map(c => { const hecha = ficha.confirmaciones.find(x => x.campo === c.nombre); const fragmento = c.fragmento_fuente ?? c.fragmento; return <article className="campo-extraido" key={c.nombre}><span className="ayuda">{campo(c.nombre)}</span><strong>{c.valor}</strong>{c.origen === "IA" ? <p className="origen">{ORIGEN.IA}{c.otra_lectura ? ` · la lectura automática leyó: “${c.otra_lectura}”` : ""}</p> : fragmento && <p>Leído en el archivo: “{fragmento}”</p>}{hecha ? <span className="estado">Confirmado por {hecha.confirmado_por}</span> : <div className="acciones-inlinea"><span className="estado estado-revisar">Sin confirmar</span><button onClick={() => confirmar(c)}>Confirmar este dato</button></div>}</article>; }) : <Vacio>{leyendo(ficha) ? "La IA está leyendo este currículum; en unos segundos aparecen los datos." : "El sistema todavía no pudo leer datos de este currículum. Miralo en el original o tocá «Volver a leer este currículum»."}</Vacio>}</div>
         {original ? <MiniaturaArchivo archivo={{ nombre: ficha.nombre, tipo: ficha.tipo ?? "pdf", url: original, miniatura: miniatura.imagen, paginas: miniatura.paginas }} /> : <Vacio>Cargando el original…</Vacio>}</div>
