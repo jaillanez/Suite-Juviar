@@ -20,7 +20,7 @@ RUN pnpm --filter @suite-juviar/gestion build:static
 
 FROM python:3.14-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
-RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr \
+RUN apt-get update && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-spa \
     && rm -rf /var/lib/apt/lists/*
 COPY apps/api/pyproject.toml /opt/gestion/api/pyproject.toml
 COPY apps/api/src /opt/gestion/api/src

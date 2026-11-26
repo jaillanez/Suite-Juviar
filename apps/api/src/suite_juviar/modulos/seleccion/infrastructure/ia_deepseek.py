@@ -8,13 +8,14 @@ El CV SALE de la empresa hacia DeepSeek: en producción requiere autorización e
 from __future__ import annotations
 
 import base64
-import io
 import json
 import os
 import re
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+from .extraccion_pdf import TAMANO_MAXIMO, paginas_png, tipo_imagen
 
 IMAGENES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
 ENCAJES = ("ALTO", "MEDIO", "BAJO")
@@ -57,47 +58,48 @@ def _llamar(contenido: list[dict[str, object]], max_tokens: int) -> dict[str, ob
     return datos
 
 
-INSTRUCCIONES_LECTURA = """Leé este currículum (en español) y armá una ficha. No inventes nada: si un dato
-no está, usá null o una lista vacía. Respondé solamente JSON válido con estas claves:
-nombre_completo, localidad, provincia, edad, estudios (lista de textos), experiencia (lista de
-objetos con puesto, empresa, periodo), oficios (lista: p. ej. tractorista, soldador, administrativo,
-jornalero, capataz), idiomas (lista), licencia_conducir (texto o null), habilidades (lista),
-disponibilidad (texto o null), genero (lo que el CV diga expresamente sobre sexo o género,
-con sus palabras; si no dice nada, null), resumen (2 o 3 líneas para RRHH).
+INSTRUCCIONES_LECTURA = """Leé este currículum (en español, de San Juan, Argentina) y armá una ficha.
+No inventes nada: si un dato no está escrito, usá null o una lista vacía. Respondé solamente JSON
+válido con estas claves:
+nombre_completo, localidad, provincia,
+edad (número, sólo si el CV la dice; si no, null),
+fecha_nacimiento (dd/mm/aaaa tal como figura, o null),
+telefono (texto tal como figura, o null), email (texto o null),
+nivel_estudios (el MÁXIMO nivel alcanzado con su estado, p. ej. «Secundario incompleto»,
+«Primario completo», «Universitario en curso»; null si el CV no dice nada de estudios),
+estudios (lista de textos con cada estudio tal como figura),
+experiencia (lista de objetos con puesto, empresa, periodo; lo que no esté, null),
+oficios (lista de oficios o puestos escritos en el CV: p. ej. tractorista, soldador, medio oficial,
+administrativo, jornalero, capataz), idiomas (lista), licencia_conducir (texto o null),
+habilidades (lista), disponibilidad (texto o null), genero (lo que el CV diga expresamente sobre
+sexo o género, con sus palabras; si no dice nada, null), resumen (2 o 3 líneas para RRHH).
 Como máximo 10 experiencias (las más recientes) y 15 habilidades."""
 
 
 def _paginas_como_imagen(contenido: bytes, maximo: int = 3) -> list[str]:
-    """PDF escaneado (sin texto): las primeras páginas como PNG en base64."""
-    import pypdfium2
-
-    try:
-        documento = pypdfium2.PdfDocument(contenido)
-    except pypdfium2.PdfiumError:
-        return []
-    paginas = []
-    for indice in range(min(len(documento), maximo)):
-        imagen = documento[indice].render(scale=1.6).to_pil()
-        salida = io.BytesIO()
-        imagen.save(salida, format="PNG")
-        paginas.append(base64.b64encode(salida.getvalue()).decode())
-    return paginas
+    """PDF escaneado (sin texto): las primeras páginas como PNG en base64, con tamaño acotado."""
+    return [base64.b64encode(p).decode() for p in paginas_png(contenido, maximo, 1.6)]
 
 
 def leer_cv(nombre: str, contenido: bytes, texto: str) -> dict[str, object]:
-    extension = Path(nombre).suffix.lower()
+    """«texto» es la capa de texto del PDF (nunca el OCR): sin ella, la IA recibe la imagen o las páginas."""
+    extension = tipo_imagen(contenido) or Path(nombre).suffix.lower()
+    if extension == ".jpg":
+        extension = ".jpeg"
     if texto.strip():
         partes: list[dict[str, object]] = [
             {"type": "text", "text": f"{INSTRUCCIONES_LECTURA}\n\nCURRÍCULUM:\n{texto[:20000]}"}
         ]
     elif extension in IMAGENES:
+        if len(contenido) > TAMANO_MAXIMO:
+            raise RuntimeError("La imagen es demasiado grande para leerla con IA.")
         datos = base64.b64encode(contenido).decode()
         partes = [
             {"type": "text", "text": INSTRUCCIONES_LECTURA},
             {"type": "image_url", "image_url": {"url": f"data:{IMAGENES[extension]};base64,{datos}",
                                                 "detail": "original"}},
         ]
-    elif extension == ".pdf" and (paginas := _paginas_como_imagen(contenido)):
+    elif contenido.startswith(b"%PDF") and (paginas := _paginas_como_imagen(contenido)):
         partes = [{"type": "text", "text": INSTRUCCIONES_LECTURA}] + [
             {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{p}", "detail": "original"}}
             for p in paginas

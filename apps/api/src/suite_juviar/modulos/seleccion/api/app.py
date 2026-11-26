@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import os
+import time
 from base64 import b64decode, b64encode
 from dataclasses import asdict
 from datetime import UTC, date, datetime
+from pathlib import Path
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
@@ -18,10 +20,12 @@ from suite_juviar.plataforma.identidad.api.dependencias import (
 )
 
 from ..application.correo import CorreoRRHH
+from ..application.datos_cv import combinar, extraccion_combinada, motivo_faltantes
 from ..application.datos_faltantes import datos_faltantes
 from ..application.extraccion import ExtraerDatosCV
 from ..application.genero import FEMENINO, MASCULINO, genero_de
 from ..application.ingesta import IngestarCVs
+from ..application.lectura_ia import LeerCVsConIA
 from ..application.ranking import EvaluarBusqueda, ordenar_resultados
 from ..application.whatsapp import IncorporarCVWhatsapp
 from ..domain.modelos import (
@@ -40,7 +44,13 @@ from ..infrastructure.correo_gmail import (
     desde_para,
     enviar_por_gmail,
 )
-from ..infrastructure.extraccion_pdf import CamposPorReglasProvisorias, TextoPDF
+from ..infrastructure.extraccion_pdf import (
+    CamposPorReglasProvisorias,
+    TextoPDF,
+    paginas_png,
+    tipo_imagen,
+)
+from ..infrastructure.lectura_en_fondo import ColaLecturaCV, compartida
 from ..infrastructure.sqlite import (
     ExtraccionesSQLite,
     OriginalesSQLite,
@@ -50,6 +60,7 @@ from ..infrastructure.sqlite import (
     estados_cv_sqlite,
     fichas_ia_sqlite,
     historial_estados_sqlite,
+    lecturas_ia_errores_sqlite,
 )
 
 
@@ -100,6 +111,44 @@ class EstadoEntrada(BaseModel):
     motivo: str = Field(default="", max_length=500)
 
 
+def ia_externa_permitida(entorno: str) -> bool:
+    """Mandar CV a DeepSeek saca datos personales de la empresa: en producción sólo con autorización
+    expresa en la configuración del servidor. Vale igual para la lectura a pedido y la automática."""
+    return entorno.lower() not in {"produccion", "production", "prod"} or (
+        os.getenv("SJ_IA_EXTERNA_AUTORIZADA", "").strip().lower() in {"1", "true", "si"}
+    )
+
+
+def lectura_cvs(ruta_base: str, entorno: str) -> tuple[LeerCVsConIA, ColaLecturaCV]:
+    """La lectura en segundo plano (reglas + OCR, y IA si está autorizada), una sola por base de datos."""
+    def crear() -> tuple[LeerCVsConIA, ColaLecturaCV]:
+        originales = OriginalesSQLite(ruta_base)
+        extracciones = ExtraccionesSQLite(ruta_base)
+        texto = TextoPDF()
+        servicio = LeerCVsConIA(
+            originales, extracciones,
+            ExtraerDatosCV(originales, extracciones, texto, CamposPorReglasProvisorias()),
+            fichas_ia_sqlite(ruta_base), lecturas_ia_errores_sqlite(ruta_base),
+            # A la IA va la capa de texto del PDF; si no la tiene (foto, escaneo), la imagen. Nunca el OCR.
+            leer=lambda cv: ia_deepseek.leer_cv(cv.nombre_archivo, cv.contenido, texto.capa_texto(cv.contenido)),
+            permitida=lambda: ia_externa_permitida(entorno) and ia_deepseek.disponible(),
+            dormir=time.sleep,
+        )
+        return servicio, ColaLecturaCV(servicio.procesar)
+
+    return compartida(str(Path(ruta_base).resolve()), crear)
+
+
+def _al_incorporar(ruta_base: str, entorno: str):
+    servicio, cola = lectura_cvs(ruta_base, entorno)
+
+    def encolar(cv_id: str) -> None:
+        if servicio.permitida():
+            cola.encolar(cv_id)
+
+    return encolar
+
+
 def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modulos.sqlite3") -> APIRouter:
     exigir_identidad_configurada(entorno)
     app = APIRouter(dependencies=[Depends(exigir_permiso("seleccion.gestionar"))])
@@ -112,18 +161,13 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
     consultas_ia = consultas_ia_sqlite(ruta_base)
     estados = estados_cv_sqlite(ruta_base)
     historial_estados = historial_estados_sqlite(ruta_base)
+    lectura, cola = lectura_cvs(ruta_base, entorno)
 
     def estado_de(cv_id: str) -> dict[str, object]:
         return estados.get(cv_id) or {"estado": "DISPONIBLE"}
-    texto_pdf = TextoPDF()
-    # Mandar CV a DeepSeek saca datos personales de la empresa: en producción sólo con
-    # autorización expresa en la configuración del servidor.
-    ia_permitida = entorno.lower() not in {"produccion", "production", "prod"} or (
-        os.getenv("SJ_IA_EXTERNA_AUTORIZADA", "").strip().lower() in {"1", "true", "si"}
-    )
 
     def exigir_ia() -> None:
-        if not ia_permitida:
+        if not ia_externa_permitida(entorno):
             raise HTTPException(409, "La lectura con IA externa no está autorizada en este servidor.")
         if not ia_deepseek.disponible():
             raise HTTPException(503, "Falta configurar la clave de DeepSeek en el servidor.")
@@ -169,14 +213,31 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
                                   fuente_simulada=True)
             if originales.guardar_original(original):
                 extraer.ejecutar(digest)
+                if lectura.permitida():
+                    cola.encolar(digest)  # la IA lee en segundo plano; la carga no la espera
             ids.append(digest)
         return {"incorporados": ids, "marca": "DATOS SIMULADOS — SIN VALIDEZ"}
 
-    def faltantes_y_genero(original: CVOriginal, extraccion) -> dict[str, object]:
+    def estado_lectura(cv_id: str) -> str:
+        return cola.estado(cv_id) or lectura.estado(cv_id)
+
+    def vista(original: CVOriginal, extraccion, confirmaciones=()) -> dict[str, object]:
+        """Lo que se muestra de un CV: lo de la IA y, si la IA no lo encontró, lo de las reglas."""
         ficha = fichas_ia.get(original.id)
-        leidos = [c.nombre for c in extraccion.campos] if extraccion else []
-        return {"datos_faltantes": datos_faltantes(leidos, ficha), **genero_de(ficha),
-                "cargado_en": original.incorporado_en}
+        datos = combinar(extraccion, ficha, confirmaciones)
+        combinada = extraccion_combinada(extraccion, datos, original.id)
+        estado_ia = estado_lectura(original.id)
+        return {
+            "datos": datos, "combinada": combinada, "ficha": ficha,
+            "publico": {
+                "datos_faltantes": datos_faltantes([d["nombre"] for d in datos]),
+                "motivo_faltantes": motivo_faltantes(estado_ia),
+                "lectura_ia": estado_ia,
+                "texto_leido": bool(extraccion and extraccion.estado != "SIN_TEXTO"),
+                **genero_de(ficha),
+                "cargado_en": original.incorporado_en,
+            },
+        }
 
     @app.get("/cvs")
     def listar_cvs(busqueda_id: str | None = None, desde: date | None = None, hasta: date | None = None):
@@ -187,15 +248,17 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
             if not en_periodo(original):
                 continue
             extraccion = extracciones.obtener_extraccion(original.id)
-            resultado = evaluar.ejecutar(busqueda, extraccion) if busqueda and extraccion else None
+            cv = vista(original, extraccion, extracciones.confirmaciones(original.id))
+            combinada = cv["combinada"]
+            resultado = evaluar.ejecutar(busqueda, combinada) if busqueda and extraccion else None
             filas.append({
                 "id": original.id, "nombre": original.nombre_archivo,
-                "requiere_revision": bool(extraccion and extraccion.requiere_revision),
-                "campos": list(extraccion.campos) if extraccion else [],
-                "campos_pendientes": list(extraccion.campos_pendientes) if extraccion else [],
+                "requiere_revision": combinada.requiere_revision,
+                "campos": cv["datos"],
+                "campos_pendientes": list(combinada.campos_pendientes),
                 "resultado": resultado,
                 "estado": estado_de(original.id),
-                **faltantes_y_genero(original, extraccion),
+                **cv["publico"],
             })
         if busqueda:
             por_id = {fila["id"]: fila for fila in filas}
@@ -210,22 +273,63 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
     @app.get("/cvs/{cv_id}")
     def ficha_cv(cv_id: str, busqueda_id: str | None = None):
         original = originales.obtener_original(cv_id)
-        extraccion = extracciones.obtener_extraccion(cv_id)
-        if original is None or extraccion is None:
+        if original is None:
             raise HTTPException(404, "CV inexistente")
+        extraccion = extracciones.obtener_extraccion(cv_id)
+        # Abrir un CV que la IA todavía no leyó lo manda a leer (si la IA está autorizada).
+        if extraccion is None or (cola.estado(cv_id) is None and lectura.necesita_ia(cv_id)):
+            cola.encolar(cv_id, releer_reglas=extraccion is None)
         busqueda = busquedas.get(busqueda_id) if busqueda_id else None
+        confirmaciones = extracciones.confirmaciones(cv_id)
+        cv = vista(original, extraccion, confirmaciones)
         return {
             "id": cv_id,
             "nombre": original.nombre_archivo,
-            "campos": list(extraccion.campos),
-            "pendientes": list(extraccion.campos_pendientes),
-            "confirmaciones": extracciones.confirmaciones(cv_id),
+            "tipo": "imagen" if tipo_imagen(original.contenido) else "pdf",
+            "campos": cv["datos"],
+            "pendientes": list(cv["combinada"].campos_pendientes),
+            "confirmaciones": confirmaciones,
+            "ficha_ia": cv["ficha"],
+            "error_ia": lectura.error(cv_id),
             "estado": estado_de(cv_id),
             "historial_estado": [h for h in historial_estados if h["cv_id"] == cv_id],
-            "resultado": evaluar.ejecutar(busqueda, extraccion) if busqueda else None,
-            **faltantes_y_genero(original, extraccion),
+            "resultado": evaluar.ejecutar(busqueda, cv["combinada"]) if busqueda else None,
+            **cv["publico"],
             "marca": "DATOS SIMULADOS — SIN VALIDEZ",
         }
+
+    @app.post("/cvs/{cv_id}/releer", status_code=202)
+    def releer_cv(cv_id: str):
+        """Vuelve a leer este CV en segundo plano: reglas + OCR y, si está autorizada, la IA."""
+        if originales.obtener_original(cv_id) is None:
+            raise HTTPException(404, "CV inexistente")
+        cola.encolar(cv_id, releer_reglas=True)
+        return {"lectura_ia": estado_lectura(cv_id)}
+
+    @app.post("/ia/releer", status_code=202)
+    def releer_todos():
+        """Reproceso de los CV ya cargados: los que no tienen ficha de IA (o una vieja incompleta) y los
+        que las reglas dejaron con datos sin leer."""
+        encolados = 0
+        for original in originales.listar_originales():
+            reglas = lectura.necesita_reglas(original.id)
+            if (reglas or lectura.necesita_ia(original.id, incluir_errores=True)) and cola.encolar(
+                    original.id, releer_reglas=reglas):
+                encolados += 1
+        return {"encolados": encolados, **cola.progreso()}
+
+    @app.get("/cvs/{cv_id}/miniatura")
+    def miniatura(cv_id: str):
+        """Primera página del PDF como imagen chica, para la vista del detalle."""
+        cv = originales.obtener_original(cv_id)
+        if cv is None:
+            raise HTTPException(404, "CV inexistente")
+        if tipo_imagen(cv.contenido):
+            raise HTTPException(400, "El currículum ya es una imagen.")
+        paginas = paginas_png(cv.contenido, 1, 1.0)
+        if not paginas:
+            raise HTTPException(422, "No se pudo dibujar la primera página del PDF.")
+        return {"contenido_base64": b64encode(paginas[0]).decode(), "paginas": _paginas(cv.contenido)}
 
     @app.put("/cvs/{cv_id}/campos/{campo}/confirmacion")
     def confirmar_campo(
@@ -234,11 +338,11 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
         entrada: ConfirmacionEntrada,
         sesion: SesionActual,
     ):
-        extraccion = extracciones.obtener_extraccion(cv_id)
-        if extraccion is None:
+        original = originales.obtener_original(cv_id)
+        if original is None:
             raise HTTPException(404, "CV inexistente")
-        extraido = next((valor for valor in extraccion.campos if valor.nombre == campo), None)
-        if extraido is None:
+        datos = vista(original, extracciones.obtener_extraccion(cv_id))["datos"]
+        if not any(dato["nombre"] == campo for dato in datos):
             raise HTTPException(400, "No existe ese campo extraído")
         confirmacion = ConfirmacionCampo(
             cv_id, campo, entrada.valor, sesion.actor, datetime.now(UTC)
@@ -257,9 +361,10 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
 
     @app.get("/ia/estado")
     def estado_ia():
-        total = len(originales.listar_originales())
-        leidos = sum(1 for o in originales.listar_originales() if o.id in fichas_ia)
-        return {"disponible": ia_permitida and ia_deepseek.disponible(), "total": total, "leidos": leidos}
+        ids = [o.id for o in originales.listar_originales()]
+        leidos = sum(1 for cv_id in ids if cv_id in fichas_ia)
+        return {"disponible": lectura.permitida(), "total": len(ids), "leidos": leidos,
+                "con_error": sum(1 for cv_id in ids if lectura.estado(cv_id) == "ERROR"), **cola.progreso()}
 
     @app.get("/ia/fichas")
     def fichas():
@@ -268,16 +373,12 @@ def crear_router(perfiles, entorno: str = "prueba", ruta_base: str = "datos/modu
     @app.post("/cvs/{cv_id}/leer-ia")
     def leer_con_ia(cv_id: str, sesion: SesionActual):
         exigir_ia()
-        cv = originales.obtener_original(cv_id)
-        if cv is None:
-            raise HTTPException(404, "CV inexistente")
         try:
-            ficha = ia_deepseek.leer_cv(cv.nombre_archivo, cv.contenido, texto_pdf.extraer_texto(cv.contenido))
+            return lectura.leer_ahora(cv_id, sesion.actor)
+        except LookupError as exc:
+            raise HTTPException(404, "CV inexistente") from exc
         except RuntimeError as exc:
             raise HTTPException(502, str(exc)) from exc
-        ficha = {**ficha, "leido_por": sesion.actor, "leido_en": datetime.now(UTC).isoformat()}
-        fichas_ia[cv_id] = ficha
-        return ficha
 
     def genero_para_ia(ficha: dict[str, object]) -> str | None:
         dato = genero_de(ficha)
@@ -356,7 +457,20 @@ class CorreoEntrada(BaseModel):
     clave_aplicacion: str | None = Field(default=None, max_length=100)
 
 
-def construir_correo(ruta_base: str, clave: str) -> CorreoRRHH:
+def _paginas(contenido: bytes) -> int | None:
+    try:
+        import pypdfium2
+
+        documento = pypdfium2.PdfDocument(contenido)
+    except Exception:  # noqa: BLE001 - PDF roto o sin renderizador
+        return None
+    try:
+        return len(documento)
+    finally:
+        documento.close()
+
+
+def construir_correo(ruta_base: str, clave: str, entorno: str = "produccion") -> CorreoRRHH:
     originales = OriginalesSQLite(ruta_base)
     extracciones = ExtraccionesSQLite(ruta_base)
     return CorreoRRHH(
@@ -366,10 +480,11 @@ def construir_correo(ruta_base: str, clave: str) -> CorreoRRHH:
         IngestarCVs(originales),
         ExtraerDatosCV(originales, extracciones, TextoPDF(), CamposPorReglasProvisorias()),
         enviar_por_gmail,
+        al_incorporar=_al_incorporar(ruta_base, entorno),
     )
 
 
-def construir_cvs_whatsapp(ruta_base: str) -> IncorporarCVWhatsapp:
+def construir_cvs_whatsapp(ruta_base: str, entorno: str = "produccion") -> IncorporarCVWhatsapp:
     """CV que llegan por WhatsApp (infra/042): mismo guardado y extracción que los del mail."""
     originales = OriginalesSQLite(ruta_base)
     extracciones = ExtraccionesSQLite(ruta_base)
@@ -377,6 +492,7 @@ def construir_cvs_whatsapp(ruta_base: str) -> IncorporarCVWhatsapp:
         IngestarCVs(originales),
         ExtraerDatosCV(originales, extracciones, TextoPDF(), CamposPorReglasProvisorias()),
         extracciones,
+        al_incorporar=_al_incorporar(ruta_base, entorno),
     )
 
 

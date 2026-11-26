@@ -54,7 +54,9 @@ class CorreoRRHH:
         ingestar: IngestarCVs,
         extraer: ExtraerDatosCV,
         enviar_correo: Callable[[str, str, str, str, str], None] | None = None,
+        al_incorporar: Callable[[str], None] | None = None,
     ) -> None:
+        self._al_incorporar = al_incorporar or (lambda _cv_id: None)  # p. ej. la lectura con IA en segundo plano
         self._parametros = parametros
         self._enviar_correo = enviar_correo  # (casilla, clave, destino, asunto, cuerpo)
         self._cifrador = cifrador
@@ -140,6 +142,7 @@ class CorreoRRHH:
         incorporados = self._ingestar.ejecutar(_FuenteFija(bandeja.estado, documentos))
         for original in incorporados:
             self._extraer.ejecutar(original.id)
+            self._al_incorporar(original.id)
         resultado = ResultadoLectura(empresa, ahora, len(documentos), len(incorporados),
                                      len(documentos) - len(incorporados), incompleta=not bandeja.completa,
                                      salteados=bandeja.salteados)

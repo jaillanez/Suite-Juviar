@@ -12,6 +12,16 @@ import tempfile
 from pathlib import Path
 
 
+def idioma_disponible() -> str:
+    """Español si el servidor tiene el diccionario instalado (lee bien acentos y «ñ»); si no, inglés."""
+    try:
+        proceso = subprocess.run(["tesseract", "--list-langs"], capture_output=True, text=True,
+                                 timeout=10, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return "eng"
+    return "spa+eng" if "spa" in proceso.stdout.split() else "eng"
+
+
 def leer_texto_imagen(contenido: bytes, extension: str, *, idioma: str = "eng", timeout: int = 30) -> str:
     ruta = None
     try:
