@@ -35,6 +35,11 @@ def fichas_ia_sqlite(ruta: str | Path):
     return MapaSQLite(BaseColeccionesSQLite(ruta), "seleccion.fichas_ia")
 
 
+def lecturas_ia_errores_sqlite(ruta: str | Path):
+    """CV que la IA no pudo leer después de los reintentos, con el motivo."""
+    return MapaSQLite(BaseColeccionesSQLite(ruta), "seleccion.lecturas_ia_errores")
+
+
 def consultas_ia_sqlite(ruta: str | Path):
     return ListaSQLite(BaseColeccionesSQLite(ruta), "seleccion.consultas_ia")
 

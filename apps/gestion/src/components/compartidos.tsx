@@ -39,7 +39,7 @@ export function Confirmacion({ abierto, titulo, detalle, confirmar, cancelar }: 
 // Pila de ventanas abiertas: Escape cierra sólo la de arriba cuando hay una encima de otra.
 const ventanasAbiertas: symbol[] = [];
 
-export function Ventana({ titulo, cerrar, children, tamano = "ancha" }: { titulo: string; cerrar: () => void; children: ReactNode; tamano?: "chica" | "ancha" | "amplia" }) {
+export function Ventana({ titulo, cerrar, children, tamano = "ancha" }: { titulo: string; cerrar: () => void; children: ReactNode; tamano?: "chica" | "ancha" | "amplia" | "completa" }) {
   const alCerrar = useRef(cerrar);
   useEffect(() => { alCerrar.current = cerrar; }, [cerrar]);
   const id = useId();
