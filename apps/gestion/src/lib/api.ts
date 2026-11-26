@@ -10,7 +10,13 @@ export function ingresoReal(): boolean {
   return typeof window !== "undefined" && sessionStorage.getItem("gestion-modo") === "real";
 }
 
+// Pantalla /subir (link personal + PIN): la sesión es otra cookie, HttpOnly, que el servidor
+// sólo mira cuando llega esta cabecera. No se mandan las cabeceras de prueba de Gestión.
+let ingresoSubida = false;
+export function usarIngresoSubida(): void { ingresoSubida = true; }
+
 function cabecerasSesion(): Record<string, string> {
+  if (ingresoSubida) return { "X-Ingreso-Subida": "1" };
   if (ingresoReal()) return {};
   const guardada = typeof window === "undefined" ? null : sessionStorage.getItem("gestion-sesion");
   const sesion = guardada ? JSON.parse(guardada) as { perfil: string; empresa: string } : null;
@@ -33,7 +39,7 @@ export async function api<T>(ruta: string, opciones?: RequestInit): Promise<T> {
     },
   });
   const cuerpo = await respuesta.json().catch(() => null);
-  if (respuesta.status === 401 && ingresoReal() && !ruta.replace(/^\//, "").startsWith("ingreso")) {
+  if (respuesta.status === 401 && !ingresoSubida && ingresoReal() && !ruta.replace(/^\//, "").startsWith("ingreso")) {
     sessionStorage.removeItem("gestion-sesion");
     window.location.assign("/");
   }

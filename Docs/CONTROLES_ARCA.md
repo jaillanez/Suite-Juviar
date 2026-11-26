@@ -65,7 +65,42 @@ antes de este cambio se leen como pesos con cotización 1.
 
 Endpoints (permiso `controles_fiscales.operar`): `POST /api/v1/controles-arca/celular/qr`,
 `POST .../celular/leer` (sólo propone datos, no carga nada), `POST .../celular/confirmar` y
-`GET .../facturas/{id}/foto`.
+`GET .../facturas/{id}/foto`. Los de `celular/*` (y `GET .../celular/catalogo`,
+`.../celular/facturas/{id}` y `.../celular/facturas/{id}/foto`) también aceptan la sesión de PIN.
+
+### Subir facturas con PIN
+
+Para quien sólo saca fotos de facturas y no tiene usuario de Gestión. En **Parámetros → Controles
+de ARCA → «Personas que suben facturas con PIN»** (`parametros.gestionar`) se da de alta a la
+persona (nombre y empresas) y el sistema muestra **una sola vez** su PIN de 3 números (o el que
+elija quien la da de alta) y su **link personal** `https://<servidor>/subir/#<código>`, con
+«Copiar link» y «Compartir». Conviene mandar el link y el PIN por separado. Desde ahí también se
+da un PIN nuevo, un link nuevo o se desactiva a la persona; la lista muestra estado, último
+ingreso y facturas cargadas, y todo queda en la bitácora de accesos (`/subida-pin/eventos`).
+
+- La persona abre el link, escribe el PIN en el teclado grande y queda en la misma pantalla de
+  «Controlar una factura», sin el menú de Gestión. El celular queda recordado **30 días**.
+- Las facturas quedan cargadas a nombre de «Nombre (PIN <id>)». Sólo puede cargar en sus
+  empresas y sólo ve sus facturas: si la factura ya la había cargado otra persona, se le avisa
+  sin mostrar sus controles ni quién la cargó.
+- **Por qué el link**: 3 números son 1000 combinaciones. El código del link es `<id>.<secreto>`
+  con 192 bits al azar: sin el link no hay a quién probarle PINs. Va después de `#`, así que no
+  viaja en la dirección al servidor ni queda en registros; la pantalla lo manda sólo junto con
+  el PIN y después lo saca de la barra de direcciones.
+- **Bloqueos, en el servidor**: 5 PIN incorrectos seguidos bloquean 15 minutos (avisa cuántos
+  intentos quedan y hasta qué hora); 20 sin un ingreso bueno desactivan el link hasta darle uno
+  nuevo. Un link equivocado responde siempre lo mismo, exista o no, y 30 desde un mismo equipo
+  lo frenan 15 minutos. Con 20 intentos, quien tenga el link tiene 2 % de acertar.
+- **Guardado**: del PIN y del secreto del link sólo queda el resumen scrypt con sal (como las
+  contraseñas); las comparaciones son en tiempo constante. La sesión va en la cookie
+  `sj_subida` (HttpOnly, Secure, SameSite=Strict), guardada por su SHA-256, y el servidor sólo
+  la mira cuando la pantalla `/subir` manda la cabecera `X-Ingreso-Subida`: el ingreso normal
+  de Gestión no cambia.
+- **Sesión acotada**: tiene un único permiso, `controles_fiscales.subir_celular`, que sólo
+  piden los endpoints `celular/*` de arriba: todo lo demás (lista de facturas, parámetros, otros
+  módulos) da 403. Se revoca al desactivar a la persona o darle PIN o link nuevo.
+- Las tablas (`subida_persona`, `subida_sesion`) se crean solas en la base de usuarios
+  (`SJ_USUARIOS_SQLITE_PATH`): no hace falta migración ni variable nueva.
 
 ## Listados de ARCA (verificados el 18-11-2026)
 

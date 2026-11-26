@@ -271,5 +271,117 @@ export function ParametrosControlesArca() {
       {datos.actualizado_por && <p className="ayuda">Último cambio: {datos.actualizado_por}, {fecha(datos.actualizado_en)}.</p>}
     </form>}
     {certificado && <Certificado estado={certificado} cambio={setCertificado} />}
+    <PersonasSubidaPin />
   </section>;
+}
+
+/* ---------- Personas que suben facturas con link + PIN ---------- */
+
+type PersonaSubida = {
+  id: string; nombre: string; actor: string; empresas: string[]; activo: boolean;
+  estado: "activo" | "bloqueado" | "link_desactivado" | "inactivo"; bloqueado_hasta: string | null;
+  fallos_acumulados: number; ultimo_ingreso: string | null; creado_por: string; creado_en: string; facturas: number;
+};
+// El PIN y el link se muestran una sola vez: en el servidor sólo queda su resumen.
+type Entrega = { nombre: string; pin?: string; codigo?: string };
+const ESTADO_SUBIDA: Record<PersonaSubida["estado"], string> = {
+  activo: "Activo", bloqueado: "Bloqueado", link_desactivado: "Link desactivado", inactivo: "Desactivado",
+};
+const linkSubida = (codigo: string) => `${window.location.origin}/subir/#${codigo}`;
+
+function EntregaUnaVez({ entrega, cerrar }: { entrega: Entrega; cerrar: () => void }) {
+  const [aviso, setAviso] = useState("");
+  const link = entrega.codigo ? linkSubida(entrega.codigo) : "";
+  async function copiar() {
+    try { await navigator.clipboard.writeText(link); setAviso("Link copiado."); }
+    catch { setAviso("No se pudo copiar: seleccioná el link y copialo a mano."); }
+  }
+  async function compartir() {
+    try { await navigator.share({ title: "Subir facturas", text: `Link para subir facturas de ${entrega.nombre}`, url: link }); }
+    catch { /* la persona canceló */ }
+  }
+  return <Ventana titulo={`Datos de ingreso · ${entrega.nombre}`} tamano="chica" cerrar={cerrar}>
+    <p className="aviso-error"><strong>Anotalo ahora: no se vuelve a mostrar.</strong> Mandá el link y el PIN por separado (por ejemplo el link por WhatsApp y el PIN de palabra).</p>
+    {entrega.pin && <p>PIN: <strong className="pin-una-vez">{entrega.pin}</strong></p>}
+    {link && <>
+      <label>Link personal<input readOnly value={link} onFocus={e => e.currentTarget.select()} /></label>
+      <div className="acciones">
+        <button className="primario" onClick={() => void copiar()}>Copiar link</button>
+        {typeof navigator !== "undefined" && "share" in navigator && <button onClick={() => void compartir()}>Compartir</button>}
+        {aviso && <span className="ayuda">{aviso}</span>}
+      </div>
+    </>}
+    <div className="acciones"><button onClick={cerrar}>Listo, ya lo anoté</button></div>
+  </Ventana>;
+}
+
+export function PersonasSubidaPin() {
+  const [personas, setPersonas] = useState<PersonaSubida[] | null>(null);
+  const [error, setError] = useState(""); const [ocupado, setOcupado] = useState(false);
+  const [entrega, setEntrega] = useState<Entrega | null>(null);
+  const leer = useCallback(() => api<PersonaSubida[]>("controles-arca/subida-pin/personas").then(setPersonas)
+    .catch(x => setError(mensaje(x, "No se pudo leer la lista de personas."))), []);
+  useEffect(() => { void leer(); }, [leer]);
+  async function hacer(accion: () => Promise<Entrega | null>) {
+    setOcupado(true); setError("");
+    try { const r = await accion(); if (r) setEntrega(r); await leer(); }
+    catch (x) { setError(mensaje(x, "No se pudo completar.")); }
+    setOcupado(false);
+  }
+  function alta(f: FormData, formulario: HTMLFormElement) {
+    void hacer(async () => {
+      const empresas = ["ENAV", "JUBIAR"].filter(e => f.get(`empresa_${e}`));
+      if (!empresas.length) throw new Error("Elegí al menos una empresa.");
+      const pin = String(f.get("pin") ?? "").trim();
+      const r = await api<{ persona: PersonaSubida; pin: string; codigo: string }>("controles-arca/subida-pin/personas", {
+        method: "POST", body: JSON.stringify({ nombre: String(f.get("nombre") ?? "").trim(), empresas, ...(pin ? { pin } : {}) }) });
+      formulario.reset();
+      return { nombre: r.persona.nombre, pin: r.pin, codigo: r.codigo };
+    });
+  }
+  const nuevoPin = (p: PersonaSubida) => hacer(async () => {
+    if (!window.confirm(`¿Darle un PIN nuevo a ${p.nombre}? El anterior deja de servir y su celular tiene que volver a entrar.`)) return null;
+    const r = await api<{ persona: PersonaSubida; pin: string }>(`controles-arca/subida-pin/personas/${p.id}/pin`, { method: "POST", body: "{}" });
+    return { nombre: p.nombre, pin: r.pin };
+  });
+  const nuevoLink = (p: PersonaSubida) => hacer(async () => {
+    if (!window.confirm(`¿Darle un link nuevo a ${p.nombre}? El anterior deja de servir y su celular tiene que volver a entrar con el PIN.`)) return null;
+    const r = await api<{ persona: PersonaSubida; codigo: string }>(`controles-arca/subida-pin/personas/${p.id}/link`, { method: "POST" });
+    return { nombre: p.nombre, codigo: r.codigo };
+  });
+  const desactivar = (p: PersonaSubida) => hacer(async () => {
+    if (!window.confirm(`¿Desactivar a ${p.nombre}? Su celular deja de entrar en el momento.`)) return null;
+    await api(`controles-arca/subida-pin/personas/${p.id}/desactivar`, { method: "POST" });
+    return null;
+  });
+  return <fieldset className="franjas"><legend>Personas que suben facturas con PIN</legend>
+    <p className="ayuda">Para quien sólo saca fotos de facturas desde el celular: entra con su link personal y un PIN de 3 números, sin correo ni contraseña, y sólo puede cargar facturas y ver las que cargó. El celular queda recordado 30 días. Con 5 PIN incorrectos seguidos se bloquea 15 minutos; con 20 sin un ingreso bueno, el link se desactiva hasta darle uno nuevo.</p>
+    {error && <ErrorVisible mensaje={error} />}
+    <form className="campos-organica" onSubmit={e => { e.preventDefault(); alta(new FormData(e.currentTarget), e.currentTarget); }}>
+      <label>Nombre y apellido<input name="nombre" required maxLength={80} /></label>
+      <span className="casillas-en-linea">Empresas que puede elegir
+        <label className="casilla"><input type="checkbox" name="empresa_ENAV" defaultChecked /> ENAV</label>
+        <label className="casilla"><input type="checkbox" name="empresa_JUBIAR" /> JUBIAR</label>
+      </span>
+      <label>PIN (opcional: vacío lo elige el sistema)<input name="pin" inputMode="numeric" pattern="[0-9]{3}" maxLength={3} autoComplete="off" /></label>
+      <div className="acciones"><button className="primario" disabled={ocupado}>Dar de alta</button></div>
+    </form>
+    {personas && (personas.length ? <div className="tabla-scroll"><table>
+      <thead><tr><th>Persona</th><th>Empresas</th><th>Estado</th><th>Último ingreso</th><th>Facturas</th><th>Alta</th><th /></tr></thead>
+      <tbody>{personas.map(p => <tr key={p.id}>
+        <td><strong>{p.nombre}</strong><br /><small>PIN {p.id}</small></td>
+        <td>{p.empresas.join(", ")}</td>
+        <td>{ESTADO_SUBIDA[p.estado]}{p.estado === "bloqueado" && p.bloqueado_hasta && <><br /><small>hasta {fecha(p.bloqueado_hasta)}</small></>}</td>
+        <td>{fecha(p.ultimo_ingreso)}</td>
+        <td>{p.facturas}</td>
+        <td><small>{p.creado_por}<br />{fecha(p.creado_en)}</small></td>
+        <td>{p.activo && <div className="acciones">
+          <button disabled={ocupado} onClick={() => void nuevoPin(p)}>Nuevo PIN</button>
+          <button disabled={ocupado} onClick={() => void nuevoLink(p)}>Nuevo link</button>
+          <button className="peligro" disabled={ocupado} onClick={() => void desactivar(p)}>Desactivar</button>
+        </div>}</td>
+      </tr>)}</tbody>
+    </table></div> : <Vacio>Todavía no hay nadie que suba facturas con PIN.</Vacio>)}
+    {entrega && <EntregaUnaVez entrega={entrega} cerrar={() => setEntrega(null)} />}
+  </fieldset>;
 }
