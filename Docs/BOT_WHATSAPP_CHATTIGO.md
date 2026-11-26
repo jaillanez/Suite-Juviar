@@ -140,6 +140,48 @@ Puesta en marcha:
    (con `BOT_TRANSPORTE=meta` sólo suscribe la cuenta).
 5. Escribir al número desde un teléfono registrado y confirmar la respuesta.
 
+### Plantillas (avisos que inicia la empresa)
+
 Los mensajes que el bot manda sin que la persona haya escrito en las últimas 24 h
-(avisos de turnos, mosto) Meta sólo los acepta como **plantillas aprobadas**;
-mientras no estén, esos avisos quedan con error y se ven en Gestión.
+Meta sólo los entrega como **plantillas aprobadas**. Están todas en
+`apps/consulta/src/consulta_publica/bot/plantillas.py` (categoría `UTILITY`,
+idioma `es_AR`):
+
+| Plantilla | A quién y cuándo | Parámetros |
+|---|---|---|
+| `turnos_asignados` | Productor, cuando la bodega asigna los días de una oferta | productor, bodega, variedad, desde, hasta, camiones |
+| `oferta_postergada` | Productor, «Stop por falta de grado» | productor, bodega, variedad, desde cuándo |
+| `mosto_virgen_demorado` | Personal elegido en Mosto, camión pasado de horas | patente, proveedor, compra, horas, bodega |
+| `llegada_micro` | Personal del recorrido, «Llegó el micro» en la guardia | recorrido |
+
+La lectura del certificado médico no lleva plantilla: contesta lo que mandó el
+empleado y sale dentro de las 24 h. Las respuestas del bot tampoco.
+
+Cómo sale cada aviso: con `BOT_TRANSPORTE=meta`, si el aviso trae plantilla se
+manda la plantilla; si Meta la rechaza (no existe, no está aprobada, pausada:
+errores 132000–132999) se manda el texto de siempre, que llega si la persona
+escribió en las últimas 24 h, y queda la nota en `ultimo_error` del aviso (marcado
+como enviado). En el simulador y por Chattigo sale el texto, como antes.
+
+1. **Aplicar `infra/043_avisos_plantilla.sql`** en la DMZ (como administrador, antes
+   de instalar el worker nuevo; es idempotente y el worker anterior sigue andando).
+   Agrega `plantilla` y `parametros` a `fila.aviso_productor`; las mismas funciones
+   que encolan (`fila._encolar_aviso`, `fila.encolar_aviso_mosto`) los completan.
+   El aviso del micro no necesita columnas: el worker usa el recorrido.
+2. **Enviar las plantillas a revisión** (sólo crea las que faltan; se puede correr
+   de nuevo sin problema):
+
+   ```bash
+   set -a; . /etc/suite/bot.env; set +a
+   PYTHONPATH=apps/consulta/src python -m consulta_publica.bot.registrar_plantillas
+   ```
+
+   Necesita `META_TOKEN` (con `whatsapp_business_management`) y `META_CUENTA_ID`.
+3. **Ver el estado** (PENDING, APPROVED, REJECTED con el motivo):
+   `... python -m consulta_publica.bot.registrar_plantillas --listar`.
+   Meta suele resolver en minutos u horas. Una rechazada se corrige en
+   `plantillas.py` y se vuelve a enviar con otro nombre (Meta no deja reusar el
+   nombre de una borrada durante un tiempo).
+
+Cambiar el texto de una plantilla aprobada vuelve a pasar por revisión: conviene
+hacerlo con un nombre nuevo y mantener el texto libre igual al de la plantilla.
