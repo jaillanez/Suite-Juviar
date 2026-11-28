@@ -120,6 +120,9 @@ class TurnosQueAnotan:
         self.consultas = []
         self.falla = falla
 
+    def tiene_organico(self, clientecuit, fecha):
+        return False
+
     def variedades(self, clientecuit):
         if self.falla:
             raise self.falla

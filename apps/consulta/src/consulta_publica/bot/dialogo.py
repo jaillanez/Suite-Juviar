@@ -607,11 +607,12 @@ def _resumen(cuenta: Cuenta, borrador: Borrador, aviso: str = "") -> Respuesta:
     )
 
 
-def _terminar_variedades(cuenta: Cuenta, borrador: Borrador, ctx: _Contexto) -> Respuesta:
+def _despues_de_sede(cuenta: Cuenta, borrador: Borrador, ctx: _Contexto) -> Respuesta:
+    """Orgánica se pregunta antes de las variedades, y sólo a quien tiene certificado."""
     assert ctx.turnos is not None
     if ctx.turnos.tiene_organico(cuenta.clientecuit, ctx.hoy_turnos):
         return _pedir_organica(cuenta, borrador)
-    return _resumen(cuenta, replace(borrador, organica=None))
+    return _pedir_variedad(cuenta, replace(borrador, organica=None), ctx)
 
 
 def _variedad_escrita(texto: str | None) -> str | None:
@@ -629,7 +630,7 @@ def _paso_oferta(
         indice = _opcion_elegida(t, [nombre for _, nombre in SEDES])
         if indice is None:
             return _pedir_sede(cuenta, "No entendí la bodega.")
-        return _pedir_variedad(cuenta, replace(borrador, sede=SEDES[indice][0]), ctx)
+        return _despues_de_sede(cuenta, replace(borrador, sede=SEDES[indice][0]), ctx)
 
     if paso == OFERTA_VARIEDAD:
         opciones = list(borrador.opciones) + (["Listo, no hay más"] if borrador.lineas else [])
@@ -637,7 +638,7 @@ def _paso_oferta(
         if t in {"listo", "no", "ninguna"} or (borrador.lineas and indice == len(opciones) - 1):
             if not borrador.lineas:
                 return _pedir_variedad(cuenta, borrador, ctx, "Todavía no anotaste ninguna variedad.")
-            return _terminar_variedades(cuenta, borrador, ctx)
+            return _resumen(cuenta, borrador)
         variedad = opciones[indice] if indice is not None else _variedad_escrita(texto)
         if variedad is None:
             return _pedir_variedad(cuenta, borrador, ctx, "No entendí la variedad." if t else "")
@@ -655,9 +656,9 @@ def _paso_oferta(
     if paso == OFERTA_ORGANICA:
         indice = _opcion_elegida(t, ["Sí, orgánica", "No"])
         if indice == 0 or t in _SI or t == "organica":
-            return _resumen(cuenta, replace(borrador, organica=True))
+            return _pedir_variedad(cuenta, replace(borrador, organica=True), ctx)
         if indice == 1 or t in _NO or t.startswith("no "):
-            return _resumen(cuenta, replace(borrador, organica=False))
+            return _pedir_variedad(cuenta, replace(borrador, organica=False), ctx)
         return _pedir_organica(cuenta, borrador, "Respondé 1 (sí) o 2 (no).")
 
     if paso == OFERTA_CONFIRMAR and borrador.lineas:

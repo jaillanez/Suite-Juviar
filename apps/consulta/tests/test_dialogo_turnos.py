@@ -206,12 +206,16 @@ def test_listo_sin_ninguna_variedad_vuelve_a_preguntar():
     assert respuesta.estado.paso == OFERTA_VARIEDAD and "Todavía no anotaste" in respuesta.texto
 
 
-def test_con_certificado_pregunta_si_es_organica():
-    estado = en_paso(OFERTA_VARIEDAD, sede="chimbas", lineas=(("Cereza", 80_000),), opciones=())
-    respuesta = r("listo", estado=estado, turnos=TurnosFalsos(organico=True))
+def test_con_certificado_pregunta_si_es_organica_antes_de_las_variedades():
+    turnos = TurnosFalsos(organico=True)
+    respuesta = r("1", estado=en_paso(OFERTA_SEDE), turnos=turnos)
     assert respuesta.estado.paso == OFERTA_ORGANICA
-    si = r("1", estado=respuesta.estado, turnos=TurnosFalsos(organico=True))
-    assert si.estado.paso == OFERTA_CONFIRMAR and "Uva orgánica: sí" in si.texto
+    si = r("1", estado=respuesta.estado, turnos=turnos)
+    assert si.estado.paso == OFERTA_VARIEDAD and si.estado.turno.organica is True
+    kg = r("cereza", estado=si.estado, turnos=turnos)
+    vuelta = r("80000", estado=kg.estado, turnos=turnos)
+    listo = r("listo", estado=vuelta.estado, turnos=turnos)
+    assert listo.estado.paso == OFERTA_CONFIRMAR and "Uva orgánica: sí" in listo.texto
 
 
 def test_interpretar_kilos():
