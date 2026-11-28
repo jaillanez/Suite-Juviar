@@ -185,7 +185,7 @@ def test_ia_externa_se_registra_y_en_produccion_requiere_autorizacion(monkeypatc
     monkeypatch.setenv("SJ_SALUD_IA_API_KEY", "clave-de-prueba")
     monkeypatch.setattr(
         lector_certificados, "_leer_con_deepseek",
-        lambda nombre, contenido, clave: enviados.append(nombre) or {"motor": "deepseek"},
+        lambda imagenes, clave, texto_pdf="": enviados.append(imagenes[0][0]) or {"motor": "deepseek"},
     )
     monkeypatch.setattr(lector_certificados, "_leer_imagen", lambda contenido, extension: "")
     imagen = {"adjunto_nombre": "certificado.jpg",
@@ -194,16 +194,45 @@ def test_ia_externa_se_registra_y_en_produccion_requiere_autorizacion(monkeypatc
     s = servicio()
     cliente = TestClient(crear_app(s), headers={"X-Perfil-Simulado": "MEDICO"})
     assert cliente.post("/certificados/analizar", json=imagen).status_code == 200
-    assert enviados == ["certificado.jpg"]
+    assert enviados == ["image/jpeg"]
     assert s.repositorio.listar_auditoria()[-1].accion == "ENVIO_CERTIFICADO_A_IA_EXTERNA_DEEPSEEK"
 
     s.catalogo.simulada = False
     produccion = TestClient(crear_app(s, "produccion"), headers={"X-Perfil-Simulado": "MEDICO"})
     assert produccion.post("/certificados/analizar", json=imagen).status_code == 200
-    assert enviados == ["certificado.jpg"]
+    assert enviados == ["image/jpeg"]
     assert s.repositorio.listar_auditoria()[-1].accion == "ANALISIS_CERTIFICADO"
 
     monkeypatch.setenv("SJ_SALUD_IA_EXTERNA_AUTORIZADA", "si")
     autorizada = TestClient(crear_app(s, "produccion"), headers={"X-Perfil-Simulado": "MEDICO"})
     assert autorizada.post("/certificados/analizar", json=imagen).status_code == 200
-    assert enviados == ["certificado.jpg", "certificado.jpg"]
+    assert enviados == ["image/jpeg", "image/jpeg"]
+
+
+def test_ia_usa_la_clave_de_deepseek_de_la_lectura_de_cv(monkeypatch):
+    from suite_juviar.modulos.salud.application import lector_certificados
+
+    monkeypatch.delenv("SJ_SALUD_IA_API_KEY", raising=False)
+    monkeypatch.delenv("SJ_IA_DEEPSEEK_API_KEY", raising=False)
+    assert not lector_certificados.usaria_ia_externa("certificado.jpg")
+    monkeypatch.setenv("SJ_IA_DEEPSEEK_API_KEY", "clave-de-prueba")
+    assert lector_certificados.usaria_ia_externa("certificado.jpg")
+    assert lector_certificados.usaria_ia_externa("certificado.pdf")
+    assert not lector_certificados.usaria_ia_externa("certificado.txt")
+
+
+def test_pdf_escaneado_se_manda_a_la_ia_como_imagen(monkeypatch):
+    from suite_juviar.modulos.salud.application import lector_certificados
+    from suite_juviar.modulos.seleccion.infrastructure import extraccion_pdf
+
+    monkeypatch.setenv("SJ_IA_DEEPSEEK_API_KEY", "clave-de-prueba")
+    monkeypatch.setattr(extraccion_pdf, "paginas_png", lambda contenido, maximo, escala: [b"hoja1", b"hoja2"])
+    enviados = []
+    monkeypatch.setattr(
+        lector_certificados, "_leer_con_deepseek",
+        lambda imagenes, clave, texto_pdf="": enviados.append(imagenes) or {"motor": "deepseek"},
+    )
+    assert lector_certificados.analizar_certificado("certificado.pdf", b"%PDF-roto")["motor"] == "deepseek"
+    assert enviados == [[("image/png", b"hoja1"), ("image/png", b"hoja2")]]
+    assert lector_certificados.analizar_certificado(
+        "certificado.pdf", b"%PDF-roto", permitir_ia_externa=False)["texto_detectado"] is False
