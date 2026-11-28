@@ -11,26 +11,47 @@ from pathlib import Path
 
 from suite_juviar.plataforma.ocr import leer_texto_imagen
 
+IMAGENES = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+PAGINAS_PDF_IA = 2
+
+
+def _clave() -> str:
+    """La misma clave de DeepSeek que usa la lectura de CV; la de Salud queda como alternativa."""
+    return (os.getenv("SJ_SALUD_IA_API_KEY") or os.getenv("SJ_IA_DEEPSEEK_API_KEY") or "").strip()
+
 
 def usaria_ia_externa(nombre: str) -> bool:
-    """Indica si este archivo se enviaría a DeepSeek (fuera de la empresa)."""
-    return bool(os.getenv("SJ_SALUD_IA_API_KEY", "").strip()) and nombre.lower().endswith(
-        (".jpg", ".jpeg", ".png", ".webp")
-    )
+    """Indica si este archivo se enviaría a DeepSeek (fuera de la empresa): fotos y PDF."""
+    return bool(_clave()) and nombre.lower().endswith((*IMAGENES, ".pdf"))
+
+
+def _texto_pdf(contenido: bytes) -> str:
+    try:
+        from pypdf import PdfReader
+        return "\n".join(p.extract_text() or "" for p in PdfReader(BytesIO(contenido)).pages)
+    except Exception:  # noqa: BLE001 - PDF dañado o sin capa de texto
+        return ""
+
+
+def _imagenes_para_ia(nombre: str, contenido: bytes) -> list[tuple[str, bytes]]:
+    """(tipo, bytes) de lo que se le muestra a la IA: la foto, o las primeras hojas del PDF."""
+    extension = Path(nombre).suffix.lower()
+    if extension in IMAGENES:
+        return [(IMAGENES[extension], contenido)]
+    from suite_juviar.modulos.seleccion.infrastructure.extraccion_pdf import paginas_png
+    return [("image/png", pagina) for pagina in paginas_png(contenido, PAGINAS_PDF_IA, 2.0)]
 
 
 def analizar_certificado(
     nombre: str, contenido: bytes, *, permitir_ia_externa: bool = True,
 ) -> dict[str, object]:
     if permitir_ia_externa and usaria_ia_externa(nombre):
-        return _leer_con_deepseek(nombre, contenido, os.getenv("SJ_SALUD_IA_API_KEY", "").strip())
+        imagenes = _imagenes_para_ia(nombre, contenido)
+        if imagenes:
+            return _leer_con_deepseek(imagenes, _clave(), _texto_pdf(contenido) if nombre.lower().endswith(".pdf") else "")
     texto = ""
     if nombre.lower().endswith(".pdf"):
-        try:
-            from pypdf import PdfReader
-            texto = "\n".join(p.extract_text() or "" for p in PdfReader(BytesIO(contenido)).pages)
-        except Exception:  # noqa: BLE001 - PDF dañado o sin capa de texto
-            texto = ""
+        texto = _texto_pdf(contenido)
     elif nombre.lower().endswith((".txt", ".csv")):
         texto = contenido.decode("utf-8", errors="ignore")
     elif nombre.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff")):
@@ -66,23 +87,26 @@ def analizar_certificado(
     }
 
 
-def _leer_con_deepseek(nombre: str, contenido: bytes, clave: str) -> dict[str, object]:
+def _leer_con_deepseek(imagenes: list[tuple[str, bytes]], clave: str, texto_pdf: str = "") -> dict[str, object]:
     """Envía la imagen del certificado a DeepSeek: el dato de salud SALE de la empresa."""
-    extension = Path(nombre).suffix.lower()
-    mime = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}[extension]
-    instrucciones = """Leé este certificado médico manuscrito en español. No inventes datos ilegibles.
+    instrucciones = """Leé este certificado médico (manuscrito o impreso) en español. No inventes datos ilegibles.
 Respondé solamente JSON válido con estas claves: transcripcion, resumen, paciente_nombre,
 paciente_dni, diagnostico_texto, diagnostico_codigo, fecha_desde, fecha_hasta,
 fecha_reintegro, dias_detectados, tipo_accidente, profesional y campos_a_revisar.
 Usá null cuando el documento no indique un dato. Fechas en AAAA-MM-DD. tipo_accidente debe ser
 NO_INFORMADO, NO_ES_ACCIDENTE, ACCIDENTE_LABORAL, IN_ITINERE o ACCIDENTE_A_REVISAR.
 El resumen debe ser breve y útil para novedades de liquidación de sueldos."""
+    contenido_ia: list[dict[str, object]] = [{"type": "text", "text": instrucciones}]
+    if texto_pdf.strip():
+        contenido_ia.append({"type": "text", "text": "Texto que trae el PDF:\n" + texto_pdf[:4000]})
+    contenido_ia += [
+        {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{base64.b64encode(datos).decode()}",
+                                            "detail": "original"}}
+        for mime, datos in imagenes
+    ]
     cuerpo = {
-        "model": os.getenv("SJ_SALUD_IA_MODELO", "deepseek-flash"),
-        "messages": [{"role": "user", "content": [
-            {"type": "text", "text": instrucciones},
-            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{base64.b64encode(contenido).decode()}", "detail": "original"}},
-        ]}],
+        "model": os.getenv("SJ_SALUD_IA_MODELO") or os.getenv("SJ_IA_DEEPSEEK_MODELO") or "deepseek-flash",
+        "messages": [{"role": "user", "content": contenido_ia}],
         "thinking": {"type": "disabled"},
         "reasoning_effort": "none",
         "temperature": 0,
