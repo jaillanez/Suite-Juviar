@@ -450,11 +450,15 @@ class TurnosBot:
     def variedades(self, clientecuit: str) -> list[str]:
         with self._conexion() as conexion:
             filas = conexion.execute(
+                # Primero las que entregó este productor; después las más recibidas por la
+                # bodega, así uno sin historia (o con pocas) igual ve una lista para elegir.
                 """SELECT initcap(btrim(variedad)) AS variedad FROM consulta.descarga_publica
-                   WHERE clientecuit=%s AND estado='descargado' AND neto > 0
+                   WHERE estado='descargado' AND neto > 0
                      AND variedad IS NOT NULL AND btrim(variedad) <> ''
                      AND fecha > now() - interval '3 years'
-                   GROUP BY 1 ORDER BY sum(neto) DESC LIMIT 12""",
+                   GROUP BY 1
+                   ORDER BY sum(neto) FILTER (WHERE clientecuit=%s) DESC NULLS LAST, sum(neto) DESC
+                   LIMIT 12""",
                 (clientecuit,),
             ).fetchall()
         return [f["variedad"] for f in filas]
